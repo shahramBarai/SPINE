@@ -1,0 +1,33 @@
+[package]
+name = "mqtt_subscriber"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# MQTT client
+rumqttc = "0.24.0"
+
+# Async runtime
+tokio = { version = "1.28.0", features = ["full"] }
+
+# Web framework
+axum = "0.8.1"
+tower = "0.5.2"
+tower-http = { version = "0.6.2", features = ["trace", "cors"] }
+
+# Serialization/deserialization
+serde = { version = "1.0.160", features = ["derive"] }
+serde_json = "1.0.96"
+
+# Logging and environment
+env_logger = "0.11.7"
+log = "0.4.17"
+dotenv = "0.15.0"
+
+# Shared state management
+tokio-stream = "0.1.14"
+futures = "0.3"
+
+# OpenAPI documentation
+utoipa = { version = "5.3.1", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "9.0.0", features = ["axum"] } 
