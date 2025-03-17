@@ -10,16 +10,24 @@ use log::{error, info};
 use rumqttc::{AsyncClient, Event, MqttOptions, Packet, QoS};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, env, sync::Arc, time::Duration};
-use tokio::sync::RwLock;
+use tokio::sync::{mpsc, Mutex, RwLock};
 use tower_http::cors::{Any, CorsLayer};
 use utoipa::{OpenApi, ToSchema};
 use utoipa_swagger_ui::SwaggerUi;
 
+// Connection manager for MQTT
+struct MqttConnection {
+    client: Option<AsyncClient>,
+    event_loop_handle: Option<tokio::task::JoinHandle<()>>,
+}
+
 // Type for shared state across handlers
 struct AppState {
-    mqtt_client: Arc<AsyncClient>,
+    mqtt_connection: Arc<Mutex<MqttConnection>>,
     topics: Arc<RwLock<HashSet<String>>>,
+    mqtt_options: MqttOptions,
     mqtt_qos: QoS,
+    message_handlers: Arc<Mutex<Vec<mpsc::Sender<(String, Vec<u8>)>>>>,
 }
 
 // Request body for subscribe endpoint
@@ -76,53 +84,140 @@ fn get_env_or_default(key: &str, default: &str) -> String {
     env::var(key).unwrap_or_else(|_| default.to_string())
 }
 
-// Handle MQTT events in a separate task
-async fn process_mqtt_events(
-    mut eventloop: rumqttc::EventLoop,
+// Process incoming messages from MQTT
+async fn process_messages(mut rx: mpsc::Receiver<(String, Vec<u8>)>) {
+    while let Some((topic, payload)) = rx.recv().await {
+        let payload_str = String::from_utf8_lossy(&payload);
+        info!("Received message from {}: {}", topic, payload_str);
+        
+        // TODO: Process message based on topic
+        }
+    }
+}
+
+// Connect to MQTT broker and start event processing
+async fn connect_mqtt(
+    mqtt_options: MqttOptions,
     topics: Arc<RwLock<HashSet<String>>>,
-) {
-    info!("Starting MQTT event processing loop");
+    message_handlers: Arc<Mutex<Vec<mpsc::Sender<(String, Vec<u8>)>>>>,
+    qos: QoS,
+) -> Result<(AsyncClient, tokio::task::JoinHandle<()>), String> {
+    info!("Connecting to MQTT broker with options: {:?}", mqtt_options);
     
-    loop {
-        match eventloop.poll().await {
-            Ok(notification) => {
-                match notification {
-                    Event::Incoming(Packet::Publish(publish)) => {
-                        let payload = String::from_utf8_lossy(&publish.payload);
-                        info!("Received from {}: {}", publish.topic, payload);
-                        
-                        // Further processing can be added here
-                        // - Parse JSON
-                        // - Forward to other systems
-                        // - Trigger rules engine
-                    },
-                    Event::Incoming(packet) => {
-                        info!("Received packet: {:?}", packet);
-                    },
-                    Event::Outgoing(packet) => {
-                        // Debug level for outgoing packets to reduce noise
-                        if log::log_enabled!(log::Level::Debug) {
-                            info!("Sent packet: {:?}", packet);
+    // Create MQTT client
+    let (client, mut eventloop) = AsyncClient::new(mqtt_options, 100);
+    let client_clone = client.clone();
+    
+    // Clone the topics Arc for use in the event loop
+    let topics_for_eventloop = Arc::clone(&topics);
+    
+    // Start event processing loop
+    let handle = tokio::spawn(async move {
+        info!("MQTT event loop started");
+        
+        loop {
+            match eventloop.poll().await {
+                Ok(notification) => {
+                    match notification {
+                        Event::Incoming(Packet::Publish(publish)) => {
+                            let topic = publish.topic.clone();
+                            let payload = publish.payload.to_vec();
+                            
+                            // Distribute the message to all handlers
+                            let handlers = message_handlers.lock().await;
+                            for handler in handlers.iter() {
+                                if let Err(e) = handler.send((topic.clone(), payload.clone())).await {
+                                    error!("Failed to send message to handler: {:?}", e);
+                                }
+                            }
+                        },
+                        Event::Incoming(packet) => {
+                            info!("Received MQTT packet: {:?}", packet);
+                        },
+                        Event::Outgoing(packet) => {
+                            if log::log_enabled!(log::Level::Debug) {
+                                info!("Sent MQTT packet: {:?}", packet);
+                            }
+                        }
+                    }
+                },
+                Err(e) => {
+                    error!("MQTT connection error: {:?}", e);
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    
+                    // Try to reconnect
+                    let topics_to_resubscribe = {
+                        let topics_read = topics_for_eventloop.read().await;
+                        topics_read.iter().cloned().collect::<Vec<_>>()
+                    };
+                    
+                    if !topics_to_resubscribe.is_empty() {
+                        info!("Reconnecting and resubscribing to {} topics", topics_to_resubscribe.len());
+                        for topic in topics_to_resubscribe {
+                            match client_clone.subscribe(&topic, qos).await {
+                                Ok(_) => info!("Resubscribed to topic: {}", topic),
+                                Err(e) => error!("Failed to resubscribe to {}: {:?}", topic, e),
+                            }
                         }
                     }
                 }
+            }
+        }
+    });
+    
+    // Now we can safely use the original topics Arc
+    // Subscribe to all current topics
+    let topics_to_subscribe = {
+        let topics_read = topics.read().await;
+        topics_read.iter().cloned().collect::<Vec<_>>()
+    };
+    
+    for topic in topics_to_subscribe {
+        match client.subscribe(&topic, qos).await {
+            Ok(_) => info!("Subscribed to topic: {}", topic),
+            Err(e) => error!("Failed to subscribe to {}: {:?}", topic, e),
+        }
+    }
+    
+    Ok((client, handle))
+}
+
+// Ensure MQTT connection exists if needed
+async fn ensure_mqtt_connection(state: &Arc<AppState>) -> Result<(), String> {
+    let topics_read = state.topics.read().await;
+    let topics_count = topics_read.len();
+    drop(topics_read);  // Release the read lock
+    
+    // Check if we need a connection
+    if topics_count == 0 {
+        info!("No topics to subscribe to, connection not needed");
+        return Ok(());
+    }
+    
+    let mut connection = state.mqtt_connection.lock().await;
+    
+    // Create connection if needed
+    if connection.client.is_none() {
+        info!("Creating new MQTT connection for {} topics", topics_count);
+        let mqtt_options = state.mqtt_options.clone();
+        let topics = Arc::clone(&state.topics);
+        let message_handlers = Arc::clone(&state.message_handlers);
+        let qos = state.mqtt_qos;
+        
+        match connect_mqtt(mqtt_options, topics, message_handlers, qos).await {
+            Ok((client, handle)) => {
+                connection.client = Some(client);
+                connection.event_loop_handle = Some(handle);
+                info!("MQTT connection established successfully");
             },
             Err(e) => {
-                error!("Connection error: {:?}", e);
-                
-                // If it's a connection error, we might want to reconnect
-                error!("Connection error: {:?}, attempting to reconnect in 5s", e);
-                tokio::time::sleep(Duration::from_secs(5)).await;
-                
-                // Resubscribe to topics after reconnection
-                let topic_list = topics.read().await;
-                if !topic_list.is_empty() {
-                    info!("Reconnected, resubscribing to {} topics", topic_list.len());
-                    // Resubscription logic would go here
-                }
+                error!("Failed to establish MQTT connection: {}", e);
+                return Err(format!("Failed to establish MQTT connection: {}", e));
             }
         }
     }
+    
+    Ok(())
 }
 
 /// Subscribe to a new MQTT topic
@@ -153,13 +248,40 @@ async fn subscribe_to_topic(
         }
     }
     
-    // Subscribe to the topic using AsyncClient
-    match state.mqtt_client.subscribe(&topic, state.mqtt_qos).await {
-        Ok(_) => {
-            // Add to our list of subscribed topics
+    // Add to our list of subscribed topics BEFORE ensuring connection
+    {
+        let mut topics_write = state.topics.write().await;
+        topics_write.insert(topic.clone());
+        info!("Added topic to tracking list: {}", topic);
+    }
+    
+    // Now ensure MQTT connection exists
+    if let Err(e) = ensure_mqtt_connection(&state).await {
+        // If connection fails, remove the topic we just added
+        let mut topics_write = state.topics.write().await;
+        topics_write.remove(&topic);
+        
+        error!("Failed to create MQTT connection: {}", e);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+    
+    // Get the client, which should exist after calling ensure_mqtt_connection
+    let connection_lock = state.mqtt_connection.lock().await;
+    let client = match &connection_lock.client {
+        Some(client) => client,
+        None => {
+            // If still no client, remove the topic we just added
             let mut topics_write = state.topics.write().await;
-            topics_write.insert(topic.clone());
+            topics_write.remove(&topic);
             
+            error!("MQTT client not available after connection attempt");
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+    
+    // Subscribe to the topic
+    match client.subscribe(&topic, state.mqtt_qos).await {
+        Ok(_) => {
             info!("Successfully subscribed to topic: {}", topic);
             Ok(Json(ApiResponse {
                 success: true,
@@ -167,6 +289,10 @@ async fn subscribe_to_topic(
             }))
         },
         Err(e) => {
+            // If subscription fails, remove the topic
+            let mut topics_write = state.topics.write().await;
+            topics_write.remove(&topic);
+            
             error!("Failed to subscribe to topic {}: {:?}", topic, e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
@@ -201,12 +327,31 @@ async fn unsubscribe_from_topic(
         }
     }
     
+    // Get the client if it exists
+    let connection_lock = state.mqtt_connection.lock().await;
+    let client = match &connection_lock.client {
+        Some(client) => client,
+        None => {
+            error!("MQTT client not available");
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+    
     // Unsubscribe from the topic
-    match state.mqtt_client.unsubscribe(&topic).await {
+    match client.unsubscribe(&topic).await {
         Ok(_) => {
             // Remove from our list of subscribed topics
             let mut topics_write = state.topics.write().await;
             topics_write.remove(&topic);
+            drop(topics_write);
+            drop(connection_lock);
+            
+            // Check if we need to close the connection
+            ensure_mqtt_connection(&state).await
+                .map_err(|e| {
+                    error!("Failed to manage MQTT connection: {}", e);
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })?;
             
             info!("Successfully unsubscribed from topic: {}", topic);
             Ok(Json(ApiResponse {
@@ -282,23 +427,23 @@ async fn main() {
     info!("Configuration: Broker={}, Port={}", mqtt_broker, mqtt_port);
     info!("API will be available on port {}", api_port);
     
-    // MQTT client setup
-    let mut mqtt_options = MqttOptions::new(mqtt_client_id.clone(), mqtt_broker.clone(), mqtt_port);
-    mqtt_options.set_keep_alive(Duration::from_secs(60));  // Longer keep-alive
-    mqtt_options.set_clean_session(true);  // Start with a clean session
-
-    // Generate a random client ID to avoid conflicts
-    if mqtt_client_id == "mqtt-subscriber-rust" {
+    // Generate a random client ID
+    let random_client_id = if mqtt_client_id == "mqtt-subscriber-rust" {
         use std::time::SystemTime;
         let timestamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let random_client_id = format!("mqtt-subscriber-rust-{}", timestamp);
-        mqtt_options = MqttOptions::new(random_client_id.clone(), mqtt_broker.clone(), mqtt_port);
-        info!("Using generated client ID: {}", random_client_id);
-    }
-
+        format!("mqtt-subscriber-rust-{}", timestamp)
+    } else {
+        mqtt_client_id
+    };
+    
+    // MQTT options setup
+    let mut mqtt_options = MqttOptions::new(random_client_id.clone(), mqtt_broker, mqtt_port);
+    mqtt_options.set_keep_alive(Duration::from_secs(60));
+    mqtt_options.set_clean_session(true);
+    
     // Set credentials if provided
     if !mqtt_username.is_empty() && !mqtt_password.is_empty() {
         mqtt_options.set_credentials(mqtt_username, mqtt_password);
@@ -307,25 +452,27 @@ async fn main() {
         info!("No MQTT credentials provided");
     }
     
-    // Create MQTT AsyncClient
-    let (client, eventloop) = AsyncClient::new(mqtt_options, 100);
+    info!("Using client ID: {}", random_client_id);
     
-    // Initialize the topic set
-    let topics = HashSet::new();
+    // Create message processing channel
+    let (tx, rx) = mpsc::channel(100);
+    let message_handlers = Arc::new(Mutex::new(vec![tx]));
+    
+    // Start message processing
+    tokio::spawn(async move {
+        process_messages(rx).await;
+    });
     
     // Set up shared state
     let state = Arc::new(AppState {
-        mqtt_client: Arc::new(client),
-        topics: Arc::new(RwLock::new(topics)),
+        mqtt_connection: Arc::new(Mutex::new(MqttConnection {
+            client: None,
+            event_loop_handle: None,
+        })),
+        topics: Arc::new(RwLock::new(HashSet::new())),
+        mqtt_options,
         mqtt_qos,
-    });
-    
-    // Clone state for the MQTT event processor
-    let topics_for_processor = Arc::clone(&state.topics);
-    
-    // Start MQTT event processing in a separate task
-    tokio::spawn(async move {
-        process_mqtt_events(eventloop, topics_for_processor).await;
+        message_handlers,
     });
     
     // Configure CORS
