@@ -178,4 +178,21 @@ impl MqttSubscriber {
 
         Ok(())
     }
+
+    /// Reset metrics to prevent overflow in long-running deployments
+    pub async fn reset_metrics(&self) {
+        let mut metrics_guard = self.metrics.write().await;
+
+        // Create a new metrics instance
+        let mut new_metrics = MessageMetrics::new();
+
+        // Copy over the timestamp fields we want to keep
+        new_metrics.first_message_time = metrics_guard.first_message_time;
+        new_metrics.last_message_time = metrics_guard.last_message_time;
+
+        // Replace the metrics
+        *metrics_guard = new_metrics;
+
+        log::info!("Metrics have been reset");
+    }
 }
