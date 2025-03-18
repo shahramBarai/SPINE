@@ -39,4 +39,18 @@ pub struct MetricsResponse {
     pub processing_errors: usize,
     /// Number of active topics
     pub active_topics: usize,
+    /// Messages per second (recent throughput)
+    pub throughput: f64,
+    /// Average message size in bytes
+    pub average_message_size: usize,
+    /// Maximum message size seen
+    pub max_message_size: usize,
+    /// Average message processing time in milliseconds
+    pub average_processing_time_ms: f64,
+    /// Maximum processing time seen in milliseconds
+    pub max_processing_time_ms: f64,
+    /// Time since first message in seconds (if any)
+    pub uptime_since_first_message: Option<u64>,
+    /// Time of the last message (ISO 8601 format, if any)
+    pub last_message_time: Option<String>,
 }

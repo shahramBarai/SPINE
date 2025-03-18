@@ -5,8 +5,10 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
+use chrono;
 use log::{error, info};
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use super::models::{ApiResponse, MetricsResponse, SubscribeRequest, TopicsResponse};
 use crate::mqtt::subscriber::MqttSubscriber;
@@ -115,11 +117,53 @@ pub async fn get_metrics(State(subscriber): State<Arc<MqttSubscriber>>) -> Json<
     let metrics = subscriber.get_metrics().await;
     let topics = subscriber.get_topics().await;
 
+    // Calculate uptime if we have message timestamps
+    let uptime_since_first_message = metrics.first_message_time.map(|first_time| {
+        SystemTime::now()
+            .duration_since(first_time)
+            .unwrap_or_default()
+            .as_secs()
+    });
+
+    // Format the last message time as ISO 8601 string if available
+    let last_message_time = metrics.last_message_time.map(|time| {
+        // Convert SystemTime to a proper ISO 8601 date time format
+        // First, convert to chrono DateTime
+        let datetime = chrono::DateTime::<chrono::Utc>::from(time);
+        // Format it with ISO 8601 format
+        datetime.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
+    });
+
     Json(MetricsResponse {
         messages_received: metrics.messages_received,
         messages_processed: metrics.messages_processed,
         messages_dropped: metrics.messages_dropped,
         processing_errors: metrics.processing_errors,
         active_topics: topics.len(),
+        throughput: metrics.throughput,
+        average_message_size: metrics.average_message_size,
+        max_message_size: metrics.max_message_size,
+        average_processing_time_ms: metrics.average_processing_time.as_secs_f64() * 1000.0,
+        max_processing_time_ms: metrics.max_processing_time.as_secs_f64() * 1000.0,
+        uptime_since_first_message,
+        last_message_time,
+    })
+}
+
+/// Reset service metrics
+#[utoipa::path(
+    post,
+    path = "/admin/reset-metrics",
+    responses(
+        (status = 200, description = "Metrics reset successfully", body = ApiResponse)
+    ),
+    tag = "MQTT Subscriber Administration"
+)]
+pub async fn reset_metrics(State(subscriber): State<Arc<MqttSubscriber>>) -> Json<ApiResponse> {
+    subscriber.reset_metrics().await;
+
+    Json(ApiResponse {
+        success: true,
+        message: "Metrics have been reset".to_string(),
     })
 }

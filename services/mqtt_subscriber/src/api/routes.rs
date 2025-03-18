@@ -10,7 +10,8 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use super::handlers::{
-    get_metrics, get_topics, health_check, subscribe_to_topic, unsubscribe_from_topic,
+    get_metrics, get_topics, health_check, reset_metrics, subscribe_to_topic,
+    unsubscribe_from_topic,
 };
 use crate::mqtt::subscriber::MqttSubscriber;
 
@@ -22,7 +23,8 @@ use crate::mqtt::subscriber::MqttSubscriber;
         super::handlers::get_topics,
         super::handlers::subscribe_to_topic,
         super::handlers::unsubscribe_from_topic,
-        super::handlers::get_metrics
+        super::handlers::get_metrics,
+        super::handlers::reset_metrics
     ),
     components(
         schemas(super::models::SubscribeRequest, super::models::ApiResponse, super::models::TopicsResponse, super::models::MetricsResponse)
@@ -64,6 +66,7 @@ pub fn create_router(subscriber: Arc<MqttSubscriber>) -> Router {
         .route("/metrics", get(get_metrics))
         .route("/subscribe", post(subscribe_to_topic))
         .route("/unsubscribe/{topic}", delete(unsubscribe_from_topic))
+        .route("/admin/reset-metrics", post(reset_metrics))
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi))
         .layer(cors)
         .with_state(subscriber)

@@ -4,18 +4,28 @@ use log::{error, info};
 use rumqttc::{AsyncClient, Event, MqttOptions, Packet, QoS};
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::{mpsc, Mutex, RwLock};
 
 use crate::models::{MessageMetrics, MqttMessage};
 use crate::processor::handler::process_message;
 
 /// Process incoming messages
-async fn process_message_stream(mut rx: mpsc::Receiver<MqttMessage>) {
+async fn process_message_stream(
+    mut rx: mpsc::Receiver<MqttMessage>,
+    metrics: Arc<RwLock<MessageMetrics>>,
+) {
     while let Some(message) = rx.recv().await {
-        if let Err(e) = process_message(&message).await {
+        // Get a metrics lock for this message processing
+        let mut metrics_guard = metrics.write().await;
+
+        // Process the message and update metrics
+        if let Err(e) = process_message(&message, &mut metrics_guard).await {
             error!("Error processing message: {}", e);
+            metrics_guard.record_processing_error();
         }
+
+        // The metrics_guard will be dropped here, releasing the lock
     }
 }
 
@@ -57,8 +67,9 @@ pub async fn create_connection(
     let (tx, rx) = mpsc::channel::<MqttMessage>(100);
 
     // Start message processor
+    let metrics_for_processor = Arc::clone(&metrics);
     tokio::spawn(async move {
-        process_message_stream(rx).await;
+        process_message_stream(rx, metrics_for_processor).await;
     });
 
     // Clone for use in the event loop
@@ -77,27 +88,34 @@ pub async fn create_connection(
                         Event::Incoming(Packet::Publish(publish)) => {
                             let topic = publish.topic.clone();
                             let payload = publish.payload.to_vec();
+                            let payload_size = payload.len();
                             let qos = publish.qos;
                             let retain = publish.retain;
+                            let current_time = SystemTime::now();
 
-                            // Update metrics
+                            // Update metrics with the received message
                             {
                                 let mut metrics_guard = metrics_clone.write().await;
-                                metrics_guard.messages_received += 1;
+                                metrics_guard.record_message_received(payload_size, current_time);
                             }
 
-                            // Create message
+                            // Create message with both timestamp types
                             let mqtt_message = MqttMessage {
                                 topic: topic.clone(),
                                 payload,
                                 qos,
                                 retain,
-                                received_at: std::time::Instant::now(),
+                                received_at: Instant::now(),
+                                timestamp: current_time,
                             };
 
                             // Send to processor
                             if let Err(e) = tx.send(mqtt_message).await {
                                 error!("Failed to send message to processor: {}", e);
+
+                                // Record the drop in metrics
+                                let mut metrics_guard = metrics_clone.write().await;
+                                metrics_guard.record_message_dropped();
                             }
                         }
                         Event::Incoming(packet) => {
