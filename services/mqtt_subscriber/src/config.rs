@@ -1,9 +1,8 @@
 //! Configuration handling for the MQTT subscriber service
 
-use log::info;
 use rumqttc::{MqttOptions, QoS};
 use std::env;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 /// Get an environment variable or return a default value
 pub fn get_env_or_default(key: &str, default: &str) -> String {
@@ -36,7 +35,7 @@ pub fn load_config() -> (MqttOptions, QoS, u16) {
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
-    let random_client_id = format!("mqtt-subscriber-rust-{}", timestamp);
+    let random_client_id = format!("mqtt-subscriber-{}", timestamp);
 
     // MQTT options setup
     let mut mqtt_options = MqttOptions::new(random_client_id.clone(), mqtt_broker, mqtt_port);

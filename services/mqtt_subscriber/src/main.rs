@@ -6,7 +6,7 @@ mod mqtt;
 use crate::config::load_config;
 use crate::handlers::{get_topics, health_check, subscribe_to_topic, unsubscribe_from_topic};
 use crate::models::{ApiResponse, AppState, MqttConnection, SubscribeRequest, TopicsResponse};
-use crate::mqtt::{process_messages, ensure_mqtt_connection};
+use crate::mqtt::process_messages;
 
 use axum::{routing::{get, post, delete}, Router};
 use dotenv::dotenv;
@@ -21,10 +21,10 @@ use utoipa_swagger_ui::SwaggerUi;
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        health_check,
-        get_topics,
-        subscribe_to_topic,
-        unsubscribe_from_topic
+        handlers::health_check,
+        handlers::get_topics,
+        handlers::subscribe_to_topic,
+        handlers::unsubscribe_from_topic
     ),
     components(
         schemas(SubscribeRequest, ApiResponse, TopicsResponse)
@@ -99,7 +99,7 @@ async fn main() {
         .route("/health", get(health_check))
         .route("/topics", get(get_topics))
         .route("/subscribe", post(subscribe_to_topic))
-        .route("/unsubscribe/:topic", delete(unsubscribe_from_topic))
+        .route("/unsubscribe/{topic}", delete(unsubscribe_from_topic))
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi))
         .layer(cors)
         .with_state(state);

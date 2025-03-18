@@ -10,9 +10,9 @@ use tokio::sync::{mpsc, Mutex, RwLock};
 pub async fn process_messages(mut rx: mpsc::Receiver<(String, Vec<u8>)>) {
     while let Some((topic, payload)) = rx.recv().await {
         let payload_str = String::from_utf8_lossy(&payload);
-        info!("Received message from {}: {}", topic, payload_str);
         
         // TODO: Process message based on topic
+        info!("Received message from {}: {}", topic, payload_str);
     }
 }
 
@@ -43,7 +43,7 @@ pub async fn connect_mqtt(
                         Event::Incoming(Packet::Publish(publish)) => {
                             let topic = publish.topic.clone();
                             let payload = publish.payload.to_vec();
-                            
+
                             // Distribute the message to all handlers
                             let handlers = message_handlers.lock().await;
                             for handler in handlers.iter() {
