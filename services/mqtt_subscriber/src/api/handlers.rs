@@ -104,11 +104,14 @@ pub async fn unsubscribe_from_topic(
 }
 
 /// Get service metrics
+///
+/// Note that throughput and other calculations are based only on completed windows,
+/// so data is at most one minute old.
 #[utoipa::path(
     get,
     path = "/metrics",
     responses(
-        (status = 200, description = "Service metrics", body = MetricsResponse)
+        (status = 200, description = "Service metrics from the last completed minute", body = MetricsResponse)
     ),
     tag = "MQTT Subscriber"
 )]
@@ -117,7 +120,7 @@ pub async fn get_metrics(State(subscriber): State<Arc<MqttSubscriber>>) -> Json<
     let topics = subscriber.get_topics().await;
 
     // Format the last message time as ISO 8601 string if available
-    let last_message_time = metrics.last_message_time.map(|time| {
+    let last_message_time = metrics.window_last_message_time().map(|time| {
         // Convert SystemTime to a proper ISO 8601 date time format
         let datetime = chrono::DateTime::<chrono::Utc>::from(time);
         datetime.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
@@ -125,16 +128,16 @@ pub async fn get_metrics(State(subscriber): State<Arc<MqttSubscriber>>) -> Json<
 
     Json(MetricsResponse {
         window_time_sec: metrics.window_time_sec,
-        messages_received: metrics.messages_received(),
-        messages_processed: metrics.messages_processed(),
-        messages_dropped: metrics.messages_dropped(),
-        processing_errors: metrics.processing_errors(),
+        messages_received: metrics.window_messages_received(),
+        messages_processed: metrics.window_messages_processed(),
+        messages_dropped: metrics.window_messages_dropped(),
+        processing_errors: metrics.window_processing_errors(),
         active_topics: topics.len(),
-        throughput: metrics.throughput(),
-        average_message_size: metrics.average_message_size(),
-        max_message_size: metrics.max_message_size(),
-        average_processing_time_ms: metrics.average_processing_time().as_secs_f64() * 1000.0,
-        max_processing_time_ms: metrics.max_processing_time().as_secs_f64() * 1000.0,
+        throughput: metrics.window_throughput(),
+        average_message_size: metrics.window_average_message_size(),
+        max_message_size: metrics.window_max_message_size(),
+        average_processing_time_ms: metrics.window_average_processing_time().as_secs_f64() * 1000.0,
+        max_processing_time_ms: metrics.window_max_processing_time().as_secs_f64() * 1000.0,
         last_message_time,
     })
 }

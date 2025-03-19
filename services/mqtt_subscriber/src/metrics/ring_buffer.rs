@@ -53,10 +53,10 @@ where
         self.count
     }
 
-    // /// Check if the buffer is empty
-    // pub fn is_empty(&self) -> bool {
-    //     self.count == 0
-    // }
+    /// Check if the buffer is empty
+    pub fn is_empty(&self) -> bool {
+        self.count == 0
+    }
 
     // /// Check if the buffer is full
     // pub fn is_full(&self) -> bool {

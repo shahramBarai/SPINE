@@ -29,28 +29,28 @@ pub struct TopicsResponse {
 /// Response for metrics endpoint
 #[derive(Serialize, ToSchema)]
 pub struct MetricsResponse {
-    /// Time window in seconds
+    /// Time window in seconds (currently 60 seconds/1 minute)
     pub window_time_sec: u64,
-    /// Total number of messages received
+    /// Total number of messages received in completed windows
     pub messages_received: usize,
-    /// Total number of messages processed
+    /// Total number of messages processed in completed windows
     pub messages_processed: usize,
-    /// Number of messages dropped due to errors
+    /// Number of messages dropped due to errors in completed windows
     pub messages_dropped: usize,
-    /// Number of processing errors
+    /// Number of processing errors in completed windows
     pub processing_errors: usize,
     /// Number of active topics
     pub active_topics: usize,
-    /// Messages per second (recent throughput)
+    /// Messages per second (throughput calculated from completed windows)
     pub throughput: f64,
-    /// Average message size in bytes
+    /// Average message size in bytes from completed windows
     pub average_message_size: usize,
-    /// Maximum message size seen
+    /// Maximum message size seen in completed windows
     pub max_message_size: usize,
-    /// Average message processing time in milliseconds
+    /// Average message processing time in milliseconds from completed windows
     pub average_processing_time_ms: f64,
-    /// Maximum processing time seen in milliseconds
+    /// Maximum processing time seen in milliseconds from completed windows
     pub max_processing_time_ms: f64,
-    /// Time of the last message (ISO 8601 format, if any)
+    /// Last message time in ISO 8601 format
     pub last_message_time: Option<String>,
 }

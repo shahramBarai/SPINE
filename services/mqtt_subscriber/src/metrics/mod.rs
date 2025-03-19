@@ -15,8 +15,8 @@ pub use windowed::WindowedMetrics;
 /// The time window duration for each metrics bucket (1 minute)
 pub const WINDOW_DURATION: Duration = Duration::from_secs(60);
 
-/// Number of windows to maintain (5 minutes total)
-pub const NUM_WINDOWS: usize = 5;
+/// Number of windows to maintain (1 minute total)
+pub const NUM_WINDOWS: usize = 1;
 
 // Re-export std::time for convenience
 pub use std::time::{Duration, SystemTime};

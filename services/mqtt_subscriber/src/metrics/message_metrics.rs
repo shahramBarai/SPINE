@@ -5,9 +5,13 @@ use crate::metrics::{Duration, SystemTime, WindowedMetrics, NUM_WINDOWS, WINDOW_
 
 /// Message processing metrics with sliding windows
 ///
-/// IMPORTANT: Only completed windows are included in metric calculations.
-/// The current window (up to the last minute of data) is excluded.
-/// This provides stable metrics but may not reflect the very latest activity (max 1 minute)
+/// IMPORTANT: Only the last completed one-minute window is included in metrics.
+/// The current window (up to one minute of the most recent data) is excluded.
+///
+/// This approach provides stable metrics by using only complete windows,
+/// at the tradeoff of not including the very latest data (max 1 minute lag).
+///
+/// Historical metrics can be implemented in the future by increasing NUM_WINDOWS.
 #[derive(Debug, Clone)]
 pub struct MessageMetrics {
     current_window: WindowedMetrics, // Current window being accumulated
@@ -67,8 +71,17 @@ impl MessageMetrics {
 
     // Combined metrics access methods
 
+    /// Get the last message time or None if no messages have been received
+    pub fn window_last_message_time(&self) -> Option<SystemTime> {
+        if self.windows.is_empty() {
+            self.last_message_time
+        } else {
+            Some(self.windows.get(self.windows.len() - 1).unwrap().end_time)
+        }
+    }
+
     /// Get the total number of messages received across all windows
-    pub fn messages_received(&self) -> usize {
+    pub fn window_messages_received(&self) -> usize {
         self.windows
             .iter()
             .map(|w| w.messages_received)
@@ -76,7 +89,7 @@ impl MessageMetrics {
     }
 
     /// Get the total number of messages processed across all windows
-    pub fn messages_processed(&self) -> usize {
+    pub fn window_messages_processed(&self) -> usize {
         self.windows
             .iter()
             .map(|w| w.messages_processed)
@@ -84,7 +97,7 @@ impl MessageMetrics {
     }
 
     /// Get the total number of messages dropped across all windows
-    pub fn messages_dropped(&self) -> usize {
+    pub fn window_messages_dropped(&self) -> usize {
         self.windows
             .iter()
             .map(|w| w.messages_dropped)
@@ -92,7 +105,7 @@ impl MessageMetrics {
     }
 
     /// Get the total number of processing errors across all windows
-    pub fn processing_errors(&self) -> usize {
+    pub fn window_processing_errors(&self) -> usize {
         self.windows
             .iter()
             .map(|w| w.processing_errors)
@@ -100,7 +113,7 @@ impl MessageMetrics {
     }
 
     /// Get the maximum message size seen in any window
-    pub fn max_message_size(&self) -> usize {
+    pub fn window_max_message_size(&self) -> usize {
         self.windows
             .iter()
             .map(|w| w.max_message_size)
@@ -109,13 +122,13 @@ impl MessageMetrics {
     }
 
     /// Get the average message size across all windows
-    pub fn average_message_size(&self) -> usize {
+    pub fn window_average_message_size(&self) -> usize {
         let total_size = self
             .windows
             .iter()
             .map(|w| w.total_message_size)
             .sum::<usize>();
-        let total_messages = self.messages_received();
+        let total_messages = self.window_messages_received();
 
         if total_messages == 0 {
             return 0;
@@ -124,7 +137,7 @@ impl MessageMetrics {
     }
 
     /// Get the maximum processing time seen in any window
-    pub fn max_processing_time(&self) -> Duration {
+    pub fn window_max_processing_time(&self) -> Duration {
         self.windows
             .iter()
             .map(|w| w.max_processing_time)
@@ -133,11 +146,11 @@ impl MessageMetrics {
     }
 
     /// Get the average processing time across all windows
-    pub fn average_processing_time(&self) -> Duration {
+    pub fn window_average_processing_time(&self) -> Duration {
         let total_time: Duration = self.windows.iter().fold(Duration::from_secs(0), |acc, w| {
             acc + w.total_processing_time
         });
-        let total_processed = self.messages_processed();
+        let total_processed = self.window_messages_processed();
 
         if total_processed == 0 {
             Duration::from_secs(0)
@@ -147,16 +160,32 @@ impl MessageMetrics {
     }
 
     /// Get the combined throughput across all active windows
-    pub fn throughput(&self) -> f64 {
-        let total_messages = self.messages_received();
-        let total_time: Duration = self.windows.iter().fold(Duration::from_secs(0), |acc, w| {
-            acc + w.total_processing_time
-        });
-
-        if total_time.as_secs() == 0 {
+    pub fn window_throughput(&self) -> f64 {
+        // No data, no throughput
+        if self.windows.iter().next().is_none() {
             return 0.0;
         }
 
-        total_messages as f64 / total_time.as_secs_f64()
+        // Get all completed windows
+        let windows: Vec<&WindowedMetrics> = self.windows.iter().collect();
+
+        // Find total messages
+        let total_messages: usize = self.window_messages_received();
+
+        // If we have data, calculate based on wall clock time
+        if total_messages > 0 {
+            // Find time range from start of first window to end of last
+            let start_time = windows[0].start_time;
+            let end_time = windows[windows.len() - 1].end_time;
+
+            if let Ok(duration) = end_time.duration_since(start_time) {
+                if duration.as_secs() > 0 {
+                    return total_messages as f64 / duration.as_secs_f64();
+                }
+            }
+        }
+
+        // Default if we can't calculate
+        0.0
     }
 }
