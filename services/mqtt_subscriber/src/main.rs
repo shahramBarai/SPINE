@@ -34,21 +34,21 @@ async fn main() {
     let config = load_config();
 
     // Create and initialize the MQTT subscriber
-    let subscriber = MqttSubscriber::new(config.mqtt_options, config.mqtt_qos);
+    let subscriber = MqttSubscriber::new(config.mqtt.mqtt_options, config.mqtt.mqtt_qos);
     let subscriber = Arc::new(subscriber);
 
     // Create API router
     let app = create_router(subscriber.clone());
 
     // Start the HTTP server
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.api_port))
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.api.port))
         .await
         .unwrap();
 
-    info!("API server running on http://0.0.0.0:{}", config.api_port);
+    info!("API server running on http://0.0.0.0:{}", config.api.port);
     info!(
         "API documentation available at http://0.0.0.0:{}/docs/",
-        config.api_port
+        config.api.port
     );
 
     axum::serve(listener, app).await.unwrap();

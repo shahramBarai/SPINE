@@ -6,10 +6,25 @@ use std::env;
 use std::time::{Duration, SystemTime};
 
 /// Service configuration
-pub struct Config {
+pub struct MqttConfig {
     pub mqtt_options: MqttOptions,
     pub mqtt_qos: QoS,
-    pub api_port: u16,
+}
+
+pub struct ApiConfig {
+    pub port: u16,
+}
+
+pub struct KafkaConfig {
+    pub broker: String,
+    pub topic: String,
+    pub group_id: String,
+}
+
+pub struct Config {
+    pub mqtt: MqttConfig,
+    pub api: ApiConfig,
+    pub kafka: KafkaConfig,
 }
 
 /// Get an environment variable or return a default value
@@ -18,7 +33,7 @@ fn get_env_or_default(key: &str, default: &str) -> String {
 }
 
 /// Load configuration from environment variables
-pub fn load_config() -> Config {
+pub fn load_mqtt_configs() -> MqttConfig {
     // Load MQTT configuration
     let mqtt_broker = get_env_or_default("MQTT_BROKER", "xrdevmqtt.edu.metropolia.fi");
     let mqtt_port = get_env_or_default("MQTT_PORT", "1883")
@@ -53,16 +68,38 @@ pub fn load_config() -> Config {
         mqtt_options.set_credentials(mqtt_username, mqtt_password);
     }
 
-    // Load API configuration
+    info!("Configuration loaded");
+
+    MqttConfig {
+        mqtt_options,
+        mqtt_qos,
+    }
+}
+
+pub fn load_api_configs() -> ApiConfig {
     let api_port = get_env_or_default("API_PORT", "3000")
         .parse::<u16>()
         .unwrap_or(3000);
 
-    info!("Configuration loaded");
+    ApiConfig { port: api_port }
+}
 
+pub fn load_kafka_configs() -> KafkaConfig {
+    let kafka_broker = get_env_or_default("KAFKA_BROKER", "localhost:9092");
+    let kafka_topic = get_env_or_default("KAFKA_TOPIC", "mqtt_topic");
+    let kafka_group_id = get_env_or_default("KAFKA_GROUP_ID", "mqtt_group");
+
+    KafkaConfig {
+        broker: kafka_broker,
+        topic: kafka_topic,
+        group_id: kafka_group_id,
+    }
+}
+
+pub fn load_config() -> Config {
     Config {
-        mqtt_options,
-        mqtt_qos,
-        api_port,
+        mqtt: load_mqtt_configs(),
+        api: load_api_configs(),
+        kafka: load_kafka_configs(),
     }
 }
