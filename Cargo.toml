@@ -1,0 +1,6 @@
+[workspace]
+members = ["services/mqtt_subscriber"]
+
+[workspace.package]
+name = "IoT Platform Multilevel Digital Twins"
+version = "0.1.0"
