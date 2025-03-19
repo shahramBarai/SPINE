@@ -8,9 +8,18 @@ use axum::{
 use chrono;
 use log::{error, info};
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use super::models::{ApiResponse, MetricsResponse, SubscribeRequest, TopicsResponse};
 use crate::mqtt::subscriber::MqttSubscriber;
+use crate::{kafka::producer::KafkaProducer, metrics::MessageMetrics};
+
+/// State type for API handlers
+pub struct AppState {
+    pub subscriber: Arc<MqttSubscriber>,
+    pub _kafka_producer: Arc<KafkaProducer>,
+    pub metrics: Arc<RwLock<MessageMetrics>>,
+}
 
 /// Health check endpoint
 #[utoipa::path(
@@ -34,8 +43,8 @@ pub async fn health_check() -> &'static str {
     ),
     tag = "MQTT Subscriber"
 )]
-pub async fn get_topics(State(subscriber): State<Arc<MqttSubscriber>>) -> Json<TopicsResponse> {
-    let topics = subscriber.get_topics().await;
+pub async fn get_topics(State(state): State<Arc<AppState>>) -> Json<TopicsResponse> {
+    let topics = state.subscriber.get_topics().await;
     Json(TopicsResponse { topics })
 }
 
@@ -51,12 +60,12 @@ pub async fn get_topics(State(subscriber): State<Arc<MqttSubscriber>>) -> Json<T
     tag = "MQTT Subscriber"
 )]
 pub async fn subscribe_to_topic(
-    State(subscriber): State<Arc<MqttSubscriber>>,
+    State(state): State<Arc<AppState>>,
     Json(req): Json<SubscribeRequest>,
 ) -> Result<Json<ApiResponse>, StatusCode> {
     let topic = req.topic;
 
-    match subscriber.subscribe(&topic).await {
+    match state.subscriber.subscribe(&topic).await {
         Ok(_) => {
             info!("API: Subscribed to topic: {}", topic);
             Ok(Json(ApiResponse {
@@ -85,10 +94,10 @@ pub async fn subscribe_to_topic(
     tag = "MQTT Subscriber"
 )]
 pub async fn unsubscribe_from_topic(
-    State(subscriber): State<Arc<MqttSubscriber>>,
+    State(state): State<Arc<AppState>>,
     Path(topic): Path<String>,
 ) -> Result<Json<ApiResponse>, StatusCode> {
-    match subscriber.unsubscribe(&topic).await {
+    match state.subscriber.unsubscribe(&topic).await {
         Ok(_) => {
             info!("API: Unsubscribed from topic: {}", topic);
             Ok(Json(ApiResponse {
@@ -115,29 +124,30 @@ pub async fn unsubscribe_from_topic(
     ),
     tag = "MQTT Subscriber"
 )]
-pub async fn get_metrics(State(subscriber): State<Arc<MqttSubscriber>>) -> Json<MetricsResponse> {
-    let metrics = subscriber.get_metrics().await;
-    let topics = subscriber.get_topics().await;
+pub async fn get_metrics(State(state): State<Arc<AppState>>) -> Json<MetricsResponse> {
+    let metrics_read = state.metrics.read().await;
+    let topics = state.subscriber.get_topics().await;
 
     // Format the last message time as ISO 8601 string if available
-    let last_message_time = metrics.window_last_message_time().map(|time| {
+    let last_message_time = metrics_read.window_last_message_time().map(|time| {
         // Convert SystemTime to a proper ISO 8601 date time format
         let datetime = chrono::DateTime::<chrono::Utc>::from(time);
         datetime.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
     });
 
     Json(MetricsResponse {
-        window_time_sec: metrics.window_time_sec,
-        messages_received: metrics.window_messages_received(),
-        messages_processed: metrics.window_messages_processed(),
-        messages_dropped: metrics.window_messages_dropped(),
-        processing_errors: metrics.window_processing_errors(),
+        window_time_sec: metrics_read.window_time_sec,
+        messages_received: metrics_read.window_messages_received(),
+        messages_processed: metrics_read.window_messages_processed(),
+        messages_dropped: metrics_read.window_messages_dropped(),
+        processing_errors: metrics_read.window_processing_errors(),
         active_topics: topics.len(),
-        throughput: metrics.window_throughput(),
-        average_message_size: metrics.window_average_message_size(),
-        max_message_size: metrics.window_max_message_size(),
-        average_processing_time_ms: metrics.window_average_processing_time().as_secs_f64() * 1000.0,
-        max_processing_time_ms: metrics.window_max_processing_time().as_secs_f64() * 1000.0,
+        throughput: metrics_read.window_throughput(),
+        average_message_size: metrics_read.window_average_message_size(),
+        max_message_size: metrics_read.window_max_message_size(),
+        average_processing_time_ms: metrics_read.window_average_processing_time().as_secs_f64()
+            * 1000.0,
+        max_processing_time_ms: metrics_read.window_max_processing_time().as_secs_f64() * 1000.0,
         last_message_time,
     })
 }

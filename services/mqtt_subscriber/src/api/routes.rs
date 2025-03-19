@@ -10,9 +10,8 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use super::handlers::{
-    get_metrics, get_topics, health_check, subscribe_to_topic, unsubscribe_from_topic,
+    get_metrics, get_topics, health_check, subscribe_to_topic, unsubscribe_from_topic, AppState,
 };
-use crate::mqtt::subscriber::MqttSubscriber;
 
 /// Define API documentation
 #[derive(OpenApi)]
@@ -47,7 +46,7 @@ use crate::mqtt::subscriber::MqttSubscriber;
 struct ApiDoc;
 
 /// Create and configure the API router
-pub fn create_router(subscriber: Arc<MqttSubscriber>) -> Router {
+pub fn create_router(state: Arc<AppState>) -> Router {
     // Configure CORS
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -66,5 +65,5 @@ pub fn create_router(subscriber: Arc<MqttSubscriber>) -> Router {
         .route("/unsubscribe/{topic}", delete(unsubscribe_from_topic))
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", openapi))
         .layer(cors)
-        .with_state(subscriber)
+        .with_state(state)
 }
