@@ -1,7 +1,7 @@
 //! MQTT Subscriber Service
 
 use dotenv::dotenv;
-use log::info;
+use log::{info, warn};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -39,14 +39,14 @@ async fn main() {
     // Load configurations
     let configs = load_config();
 
-    // TODO: Add logic to check if the Kafka producer is connected
-    // TODO: Add logic to handle kafka connection errors (e.g. temporary save to disk)
-
-    // Create and initialize the Kafka producer
-    let kafka_producer = Arc::new(KafkaProducer::new(
-        &configs.kafka.broker,
-        &configs.kafka.topic,
-    ));
+    // Create and initialize the Kafka producer,
+    let kafka_producer = match KafkaProducer::new(&configs.kafka.broker).await {
+        Ok(producer) => Arc::new(producer),
+        Err(e) => {
+            warn!("Failed to create Kafka producer: {}", e);
+            return;
+        }
+    };
 
     // Create and initialize the metrics
     let metrics = Arc::new(RwLock::new(MessageMetrics::new()));
@@ -55,8 +55,6 @@ async fn main() {
     let (subscriber, event_loop) =
         MqttSubscriber::new(configs.mqtt.mqtt_options, configs.mqtt.mqtt_qos);
     let subscriber = Arc::new(subscriber);
-
-    // TODO: Add a endpoints to check connection to kafka and mqtt, service performance metrics
 
     // Start the message processor in a background task
     let processor_metrics = Arc::clone(&metrics);
@@ -77,7 +75,7 @@ async fn main() {
     let app_state = Arc::new(AppState {
         subscriber: Arc::clone(&subscriber),
         metrics: Arc::clone(&metrics),
-        _kafka_producer: Arc::clone(&kafka_producer),
+        kafka_producer: Arc::clone(&kafka_producer),
     });
 
     // Create API router
