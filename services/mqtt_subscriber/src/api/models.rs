@@ -3,6 +3,15 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+/// Health response
+#[derive(Serialize, ToSchema)]
+pub struct HealthResponse {
+    /// Whether the MQTT client is connected
+    pub mqtt_connected: bool,
+    /// Whether the Kafka producer is connected
+    pub kafka_connected: bool,
+}
+
 /// Request for subscribing to a topic
 #[derive(Deserialize, ToSchema)]
 pub struct SubscribeRequest {

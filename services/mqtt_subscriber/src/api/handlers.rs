@@ -10,14 +10,16 @@ use log::{error, info};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use super::models::{ApiResponse, MetricsResponse, SubscribeRequest, TopicsResponse};
+use super::models::{
+    ApiResponse, HealthResponse, MetricsResponse, SubscribeRequest, TopicsResponse,
+};
 use crate::mqtt::subscriber::MqttSubscriber;
 use crate::{kafka::producer::KafkaProducer, metrics::MessageMetrics};
 
 /// State type for API handlers
 pub struct AppState {
     pub subscriber: Arc<MqttSubscriber>,
-    pub _kafka_producer: Arc<KafkaProducer>,
+    pub kafka_producer: Arc<KafkaProducer>,
     pub metrics: Arc<RwLock<MessageMetrics>>,
 }
 
@@ -30,8 +32,12 @@ pub struct AppState {
     ),
     tag = "MQTT Subscriber"
 )]
-pub async fn health_check() -> &'static str {
-    "MQTT Subscriber is running"
+pub async fn health_check(State(state): State<Arc<AppState>>) -> Json<HealthResponse> {
+    let health_response = HealthResponse {
+        mqtt_connected: state.subscriber.is_connected(),
+        kafka_connected: state.kafka_producer.is_connected(),
+    };
+    Json(health_response)
 }
 
 /// Get a list of all subscribed topics
