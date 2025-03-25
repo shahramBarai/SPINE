@@ -79,6 +79,10 @@ pub async fn start_message_processor(
                             }
                         });
                     }
+                    Event::Incoming(Packet::ConnAck(_)) => {
+                        // Update the connection status
+                        mqtt_subscriber.update_connection_status(true);
+                    }
                     Event::Incoming(packet) => {
                         debug!("Received MQTT control packet: {:?}", packet);
                     }
@@ -87,28 +91,13 @@ pub async fn start_message_processor(
                     }
                 }
             }
-            Err(e) => {
-                error!("MQTT connection error: {:?}", e);
+            Err(_) => {
+                // Update the connection status
+                mqtt_subscriber.update_connection_status(false);
                 tokio::time::sleep(Duration::from_secs(5)).await;
 
-                // Try to reconnect
-                let topics_to_resubscribe = {
-                    let topics = mqtt_subscriber.get_topics().await;
-                    topics.iter().cloned().collect::<Vec<_>>()
-                };
-
-                if !topics_to_resubscribe.is_empty() {
-                    info!(
-                        "Reconnecting and resubscribing to {} topics",
-                        topics_to_resubscribe.len()
-                    );
-                    for topic in topics_to_resubscribe {
-                        match mqtt_subscriber.subscribe(&topic).await {
-                            Ok(_) => info!("Resubscribed to topic: {}", topic),
-                            Err(e) => error!("Failed to resubscribe to {}: {:?}", topic, e),
-                        }
-                    }
-                }
+                // Try to reconnect and resubscribe to topics
+                mqtt_subscriber.resubscribe_to_topics().await;
             }
         }
     }
@@ -147,7 +136,7 @@ pub async fn process_message(
         }
         Err(e) => {
             // Just log the error, don't fail the whole message processing
-            if kafka_producer.check_connection() {
+            if kafka_producer.is_connected() {
                 // Only log detailed errors if we thought we were connected
                 warn!("Failed to send to Kafka: {}", e);
             } else {
