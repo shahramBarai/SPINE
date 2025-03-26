@@ -16,7 +16,8 @@ pub struct ApiConfig {
 
 pub struct KafkaConfig {
     pub broker: String,
-    pub topic: String,
+    pub topic_sensor_data: String,
+    pub topic_service_metrics: String,
 }
 
 pub struct Config {
@@ -82,11 +83,14 @@ pub fn load_api_configs() -> ApiConfig {
 
 pub fn load_kafka_configs() -> KafkaConfig {
     let kafka_broker = get_env_or_default("KAFKA_BROKER", "localhost:9092");
-    let kafka_topic = get_env_or_default("KAFKA_TOPIC", "mqtt_topic");
+    let kafka_topic_sensor_data = get_env_or_default("KAFKA_TOPIC_SENSOR_DATA", "smartlab-data");
+    let kafka_topic_service_metrics =
+        get_env_or_default("KAFKA_TOPIC_SERVICE_METRICS", "smartlab-subscriber-metrics");
 
     KafkaConfig {
         broker: kafka_broker,
-        topic: kafka_topic,
+        topic_sensor_data: kafka_topic_sensor_data,
+        topic_service_metrics: kafka_topic_service_metrics,
     }
 }
 

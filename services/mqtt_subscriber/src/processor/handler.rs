@@ -119,7 +119,7 @@ pub async fn process_message(
     // TODO: Add logic to validate message and populate message with additional fields
 
     // Send to Kafka with graceful error handling
-    match kafka_producer.send(&message.topic, &message.payload).await {
+    match kafka_producer.send_sensor_data(&message.payload).await {
         Ok(_) => {
             // Message sent successfully
             debug!("Successfully sent message to Kafka");
