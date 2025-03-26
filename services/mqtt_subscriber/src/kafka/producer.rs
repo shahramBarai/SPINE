@@ -15,13 +15,19 @@ pub struct KafkaProducer {
     bootstrap_servers: String,
     connection_status: Arc<AtomicBool>,
     available_topics: Vec<String>,
+    sensor_data_topic: String,
+    service_metrics_topic: String,
     health_check_interval: Duration,
     reconnect_backoff_ms: Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl KafkaProducer {
     /// Create a new Kafka producer
-    pub async fn new(bootstrap_servers: &str) -> Result<Self, KafkaError> {
+    pub async fn new(
+        bootstrap_servers: &str,
+        sensor_data_topic: &str,
+        service_metrics_topic: &str,
+    ) -> Result<Self, KafkaError> {
         let reconnect_attempts = 5;
         let health_check_interval = Duration::from_secs(30);
 
@@ -33,6 +39,8 @@ impl KafkaProducer {
             bootstrap_servers: bootstrap_servers.to_string(),
             connection_status: Arc::new(AtomicBool::new(connection_status)),
             available_topics,
+            sensor_data_topic: sensor_data_topic.to_string(),
+            service_metrics_topic: service_metrics_topic.to_string(),
             health_check_interval,
             reconnect_backoff_ms: Arc::new(std::sync::atomic::AtomicU64::new(1000)),
         };
@@ -180,34 +188,68 @@ impl KafkaProducer {
         self.connection_status.load(Ordering::Relaxed)
     }
 
-    /// Send a message to Kafka with graceful fallback
-    pub async fn send(&self, topic: &str, payload: &[u8]) -> Result<(), String> {
+    /// Send a message to the sensor data topic
+    pub async fn send_sensor_data(&self, payload: &[u8]) -> Result<(), String> {
         if !self.connection_status.load(Ordering::SeqCst) {
             return Err("Skipped sending to Kafka (known disconnected)".to_string());
         }
 
-        if !self.available_topics.contains(&topic.to_string()) {
+        if !self.available_topics.contains(&self.sensor_data_topic) {
             return Err(format!(
                 "Skipped sending to Kafka (topic {} not available)",
-                topic
+                self.sensor_data_topic
             ));
         }
 
-        let record = FutureRecord::to(topic).key(topic).payload(payload);
+        // FIXME: Add key to the record (e.g. device id)
+        let record = FutureRecord::to(self.sensor_data_topic.as_str())
+            .key(self.sensor_data_topic.as_str())
+            .payload(payload);
 
         match self.producer.send(record, Duration::from_secs(1)).await {
-            Ok(_) => {
-                // Update connection status on success
-                self.connection_status.store(true, Ordering::Relaxed);
-                debug!("Message sent to Kafka topic {}", topic);
-                Ok(())
-            }
+            Ok(_) => Ok(()),
             Err((e, _)) => {
+                // Update connection status on failure
                 if self.connection_status.load(Ordering::SeqCst) {
                     self.connection_status.store(false, Ordering::Relaxed);
                     return Err(format!("Failed to send to Kafka: {}", e));
                 } else {
-                    debug!("Still unable to send to Kafka: {}", e);
+                    debug!("Still unable to send sensor data to Kafka: {}", e);
+                    return Err(format!(
+                        "Skipped sending to Kafka (known disconnected): {}",
+                        e
+                    ));
+                }
+            }
+        }
+    }
+
+    /// Send a message to the service metrics topic
+    pub async fn send_service_metrics(&self, payload: &[u8]) -> Result<(), String> {
+        if !self.connection_status.load(Ordering::SeqCst) {
+            return Err("Skipped sending to Kafka (known disconnected)".to_string());
+        }
+
+        if !self.available_topics.contains(&self.service_metrics_topic) {
+            return Err(format!(
+                "Skipped sending to Kafka (topic {} not available)",
+                self.service_metrics_topic
+            ));
+        }
+
+        let record = FutureRecord::to(self.service_metrics_topic.as_str())
+            .key(self.service_metrics_topic.as_str())
+            .payload(payload);
+
+        match self.producer.send(record, Duration::from_secs(1)).await {
+            Ok(_) => Ok(()),
+            Err((e, _)) => {
+                // Update connection status on failure
+                if self.connection_status.load(Ordering::SeqCst) {
+                    self.connection_status.store(false, Ordering::Relaxed);
+                    return Err(format!("Failed to send to Kafka: {}", e));
+                } else {
+                    debug!("Still unable to send service metrics to Kafka: {}", e);
                     return Err(format!(
                         "Skipped sending to Kafka (known disconnected): {}",
                         e

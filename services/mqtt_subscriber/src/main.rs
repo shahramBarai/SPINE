@@ -40,7 +40,13 @@ async fn main() {
     let configs = load_config();
 
     // Create and initialize the Kafka producer,
-    let kafka_producer = match KafkaProducer::new(&configs.kafka.broker).await {
+    let kafka_producer = match KafkaProducer::new(
+        &configs.kafka.broker,
+        &configs.kafka.topic_sensor_data,
+        &configs.kafka.topic_service_metrics,
+    )
+    .await
+    {
         Ok(producer) => Arc::new(producer),
         Err(e) => {
             warn!("Failed to create Kafka producer: {}", e);
