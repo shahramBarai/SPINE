@@ -200,7 +200,7 @@ impl KafkaProducer {
         if !self.available_topics.contains(&topic.to_string()) {
             return Err(format!(
                 "Skipped sending to Kafka (topic {} not available)",
-                topic
+                self.sensor_data_topic
             ));
         }
 
