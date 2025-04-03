@@ -1,3 +1,4 @@
+.cursor
 .env
 target/
 Cargo.lock
