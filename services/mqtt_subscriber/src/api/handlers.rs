@@ -28,7 +28,7 @@ pub struct AppState {
     get,
     path = "/health",
     responses(
-        (status = 200, description = "Service is healthy", content_type = "text/plain")
+        (status = 200, description = "Service is healthy", body = HealthResponse)
     ),
     tag = "MQTT Subscriber"
 )]

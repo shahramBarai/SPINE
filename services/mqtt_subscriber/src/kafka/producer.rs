@@ -9,6 +9,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::models::SensorData;
+
 /// Kafka producer for sending MQTT messages to Kafka
 pub struct KafkaProducer {
     producer: FutureProducer,
@@ -190,7 +192,7 @@ impl KafkaProducer {
     }
 
     /// Internal method to send a message to a Kafka topic
-    async fn send_to_topic(&self, topic: &str, key: &str, payload: &[u8]) -> Result<(), String> {
+    async fn send_to_topic(&self, topic: &str, key: &str, payload: &str) -> Result<(), String> {
         // Check connection status
         if !self.connection_status.load(Ordering::SeqCst) {
             return Err("Skipped sending to Kafka (known disconnected)".to_string());
@@ -229,19 +231,19 @@ impl KafkaProducer {
     }
 
     /// Send a message to the sensor data topic
-    pub async fn send_sensor_data(&self, payload: &[u8]) -> Result<(), String> {
-        // FIXME: Add key to the record (e.g. device id when appropriate)
-        self.send_to_topic(&self.sensor_data_topic, &self.sensor_data_topic, payload)
+    pub async fn send_sensor_data(&self, data: SensorData) -> Result<(), String> {
+        let payload = serde_json::to_string(&data).unwrap();
+        self.send_to_topic(&self.sensor_data_topic, &self.sensor_data_topic, &payload)
             .await
     }
 
     /// Send a message to the service metrics topic
-    pub async fn send_service_metrics(&self, payload: &[u8]) -> Result<(), String> {
-        // FIXME: Add key to the record (e.g. service name when appropriate)
+    pub async fn send_service_metrics(&self, data: &[u8]) -> Result<(), String> {
+        let payload = serde_json::to_string(data).unwrap();
         self.send_to_topic(
             &self.service_metrics_topic,
             &self.service_metrics_topic,
-            payload,
+            &payload,
         )
         .await
     }
