@@ -21,7 +21,7 @@ impl MqttSubscriber {
         info!("Creating new MQTT client");
 
         // Create MQTT client and event loop
-        let (client, event_loop) = AsyncClient::new(mqtt_options, 100);
+        let (client, event_loop) = AsyncClient::new(mqtt_options, 10);
 
         let subscriber = Self {
             client,

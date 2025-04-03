@@ -67,16 +67,6 @@ async fn main() {
     let processor_subscriber = Arc::clone(&subscriber);
     let processor_kafka = Arc::clone(&kafka_producer);
 
-    tokio::spawn(async move {
-        start_message_processor(
-            event_loop,
-            processor_subscriber,
-            processor_kafka,
-            processor_metrics,
-        )
-        .await;
-    });
-
     // Create application state for API
     let app_state = Arc::new(AppState {
         subscriber: Arc::clone(&subscriber),
@@ -98,5 +88,17 @@ async fn main() {
         configs.api.port
     );
 
-    axum::serve(listener, app).await.unwrap();
+    // Start the HTTP server in a separate task
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+
+    // Start the message processor
+    start_message_processor(
+        event_loop,
+        processor_subscriber,
+        processor_kafka,
+        processor_metrics,
+    )
+    .await;
 }

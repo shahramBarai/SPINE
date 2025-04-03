@@ -8,7 +8,7 @@ use tokio::sync::RwLock;
 
 use crate::kafka::producer::KafkaProducer;
 use crate::metrics::MessageMetrics;
-use crate::models::MqttMessage;
+use crate::models::{MqttMessage, SensorData};
 use crate::mqtt::subscriber::MqttSubscriber;
 
 /// Start the MQTT message processor
@@ -117,9 +117,14 @@ pub async fn process_message(
     kafka_producer: &Arc<KafkaProducer>,
 ) -> Result<(), String> {
     // TODO: Add logic to validate message and populate message with additional fields
+    let sensor_data = SensorData {
+        sensor_id: message.topic.clone(),
+        message: String::from_utf8(message.payload.clone()).unwrap(),
+        sensor_timestamp: message.timestamp,
+    };
 
     // Send to Kafka with graceful error handling
-    match kafka_producer.send_sensor_data(&message.payload).await {
+    match kafka_producer.send_sensor_data(sensor_data).await {
         Ok(_) => {
             // Message sent successfully
             debug!("Successfully sent message to Kafka");
