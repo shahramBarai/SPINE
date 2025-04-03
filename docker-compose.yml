@@ -1,6 +1,21 @@
 version: '3'
 
 services:
+  # ------ TimescaleDB ------- #
+  timescaledb:
+    image: timescale/timescaledb:2.17.2-pg16
+    container_name: timescaledb
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: myllypuro-campus
+    volumes:
+      - ./databases/timescaledb:/docker-entrypoint-initdb.d
+      - timescaledb_data:/var/lib/postgresql/data
+    profiles: ["infra", "database", "timescaledb"]
+
   # ------ Kafka ------- #
   kafka:
     image: bitnami/kafka:latest
@@ -17,9 +32,7 @@ services:
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=false
-    volumes:
-      - ./configs/kafka/create_topics.sh:/configs/create_topics.sh
-      - ../shared/topics.json:/configs/topics.json
+    profiles: ["infra", "kafka"]
 
   # ------ Kafka UI ------- #
   kafka-ui:
@@ -28,10 +41,9 @@ services:
     ports:
       - '8080:8080'
     environment:
-      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_NAME: metropolia
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-    depends_on:
-      - kafka
+    profiles: ["infra", "kafka"]
 
   # ------ MQTT Subscriber ------- #
   mqtt-subscriber:
@@ -54,5 +66,25 @@ services:
       - RUST_LOG=info
     ports:
       - '3000:3000'
-    depends_on:
-      - kafka
+    profiles: ["connectors", "mqtt-subscriber"]
+
+  # ------ Timescale Writer ------- #
+  timescale-writer:
+    container_name: timescale-writer
+    build:
+      context: .
+      dockerfile: ./services/timescale-writer/Dockerfile
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_TOPICS=smartlab-sensor-data
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=myllypuro-campus
+      - POSTGRES_HOST=timescaledb
+      - POSTGRES_PORT=5432
+    volumes:
+      - ./services/timescale-writer:/app
+    profiles: ["connectors", "timescale-writer"]
+
+volumes:
+  timescaledb_data:
