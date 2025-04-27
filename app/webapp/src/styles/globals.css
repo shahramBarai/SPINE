@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+:root {
+  --background: #FFFFFF;
+  --foreground: #1D1F25;
+  --surface: #F4f6f9;
+  --surface-foreground: #2D2F39;
+  --muted: #F4F6F9;
+  --muted-foreground: #8087A8;
+  --primary: #FF6900;
+  --primary-foreground: #FFFFFF;
+  --secondary: #FFB86A;
+  --secondary-foreground: #7E2A0C;
+  --danger: #DC2626;
+  --danger-foreground: #FFFFFF;
+  --danger-light: #fecaca;
+  --danger-light-foreground: #991B1B;
+  --warning: #D08700;
+  --warning-foreground: #FFFFFF;
+  --warning-light: #FFF085;
+  --warning-light-foreground: #894B00;
+  --success: #16A34A;
+  --success-foreground: #FFFFFF;
+  --success-light: #BBF7D0;
+  --success-light-foreground: #166534;
+  --border: #5B6078;
+}
+
+.dark {
+  --background: #1D1F25;
+  --foreground: #ECEFF3;
+  --surface: #2D2F39;
+  --surface-foreground: #DCE1E9;
+  --muted: #2D2F39;
+  --muted-foreground: #98A1BC;
+  --primary: #FF6900;
+  --primary-foreground: #FFFFFF;
+  --secondary: #FFB86A;
+  --secondary-foreground: #7E2A0C;
+  --danger: #DC2626;
+  --danger-foreground: #FFFFFF;
+  --danger-light: #fecaca;
+  --danger-light-foreground: #991B1B;
+  --warning: #D08700;
+  --warning-foreground: #FFFFFF;
+  --warning-light: #FFF085;
+  --warning-light-foreground: #894B00;
+  --success: #16A34A;
+  --success-foreground: #FFFFFF;
+  --success-light: #BBF7D0;
+  --success-light-foreground: #166534;
+  --border: #C6CEDB;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-light: var(--danger-light);
+  --color-danger-light-foreground: var(--danger-light-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-light: var(--warning-light);
+  --color-warning-light-foreground: var(--warning-light-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-light: var(--success-light);
+  --color-success-light-foreground: var(--success-light-foreground);
+  --color-border: var(--border);
+}
+
+
+
