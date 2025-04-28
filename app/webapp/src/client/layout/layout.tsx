@@ -7,13 +7,13 @@ export default function AppLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="dark">
+    <div className="">
       <Head>
         <title>Webapp</title>
         <meta name="description" content="Webapp" />
         <link rel="icon" href="/globe.svg" />
       </Head>
-      <main className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
+      <main className="flex min-h-screen bg-background text-foreground">
         {children}
       </main>
     </div>
