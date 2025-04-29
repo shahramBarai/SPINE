@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { Node, NodeProps, Position } from "@xyflow/react";
 import CustomHandle from "../CustomHandle";
+import { KafkaSourceFormValues } from "../../PropertyPanel/KafkaSource/schemas";
 
 const KafkaLogo = () => {
   return (
@@ -18,31 +19,12 @@ const KafkaLogo = () => {
 };
 
 export interface KafkaSourceData extends Node {
-  data: {
-    // Kakfa consumer specific properties
-    topic?: string;
-    bootstrapServers?: string;
-    groupId?: string;
-    properties?: string;
-    startupMode?: string;
-    // Offset specific properties
-    offsetMode?: string;
-    sampleSize?: number;
-    partitions?: string;
-    // Deserialization specific properties
-    format?: string; // "none", "protobuf", "json"
-    // Field specific properties
-    fields?: { key: string; value: string }[];
-    // Event-time specific properties
-    eventTimeField?: string;
-    watermarkStrategy?: string;
-    delayMs?: number;
-  };
+  data: KafkaSourceFormValues;
 }
 
-const KafkaSource = memo(({}: NodeProps<KafkaSourceData>) => {
+const KafkaSource = memo((props: NodeProps<KafkaSourceData>) => {
   const handleClick = () => {
-    console.log("clicked");
+    console.log("Node clicked:", props.id);
   };
 
   return (

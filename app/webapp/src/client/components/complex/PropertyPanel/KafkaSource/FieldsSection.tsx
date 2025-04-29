@@ -1,12 +1,11 @@
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
 import {
-  CheckIcon,
   ArrowPathIcon,
   DocumentArrowDownIcon,
 } from "@heroicons/react/16/solid";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/16/solid";
-import { Button } from "@/client/components/basics/button";
+import { ActionButton, Button } from "@/client/components/basics/Button";
 import { Input } from "@/client/components/basics/input";
 import {
   FormControl,
@@ -17,19 +16,31 @@ import {
 import {
   AccordionContent,
   AccordionItem,
-  AccordionTrigger,
 } from "@/client/components/basics/accordion";
 import { KafkaSourceFormValues } from "./schemas";
+import { useFormState } from "@/client/hooks/useFormState";
+import { SectionHeader } from "../SectionHeader";
 
 interface FieldsSectionProps {
   form: UseFormReturn<KafkaSourceFormValues>;
-  onApply: () => void;
+  data: KafkaSourceFormValues;
+  onApply: () => Promise<boolean>;
 }
 
 export const FieldsSection: React.FC<FieldsSectionProps> = ({
   form,
+  data,
   onApply,
 }) => {
+  // Fields to watch for this section
+  const watchFields: (keyof KafkaSourceFormValues)[] = ["fields"];
+
+  const { status, handleChange, hasChanges } = useFormState(
+    form,
+    watchFields,
+    data
+  );
+
   // Handler to add a new field
   const addField = () => {
     const currentFields = form.getValues("fields") || [];
@@ -47,12 +58,11 @@ export const FieldsSection: React.FC<FieldsSectionProps> = ({
 
   return (
     <AccordionItem value="fields">
-      <AccordionTrigger className="flex-1 px-4">
-        <div className="flex items-center gap-1">
-          <CheckIcon className="size-4 text-green-500" />
-          <span className="text-sm font-medium">Field mappings</span>
-        </div>
-      </AccordionTrigger>
+      <SectionHeader
+        title="Field mappings"
+        status={status}
+        hasChanges={hasChanges()}
+      />
       <AccordionContent>
         <div className="flex flex-col space-y-3 px-6">
           {form.watch("fields")?.map((_, index) => (
@@ -82,48 +92,30 @@ export const FieldsSection: React.FC<FieldsSectionProps> = ({
                   </FormItem>
                 )}
               />
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => removeField(index)}
-                type="button"
-              >
+              <Button color="danger-light" onClick={() => removeField(index)}>
                 <XMarkIcon className="size-4" />
               </Button>
             </div>
           ))}
 
           <div className="flex items-center gap-2 mt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={addField}
-              type="button"
-            >
+            <Button variant="outline" onClick={addField}>
               <PlusIcon className="size-4 mr-1" /> Add Field
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {}}
-              type="button"
-              disabled
-            >
+            <Button variant="outline" onClick={() => {}} disabled>
               <DocumentArrowDownIcon className="size-4" />
               Kafka schema
             </Button>
-            <div className="w-full">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={onApply}
-                type="button"
-                className="w-full"
-              >
-                <ArrowPathIcon className="size-4 mr-1" />
-                Apply
-              </Button>
-            </div>
+            <ActionButton
+              className="flex-1"
+              DefaultIcon={ArrowPathIcon}
+              status={status}
+              onClick={() => handleChange(onApply)}
+              disabled={!hasChanges()}
+              variant="secondary"
+            >
+              Apply
+            </ActionButton>
           </div>
         </div>
       </AccordionContent>

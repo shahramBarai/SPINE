@@ -1,7 +1,7 @@
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
-import { CheckIcon, ArrowPathIcon } from "@heroicons/react/16/solid";
-import { Button } from "@/client/components/basics/button";
+import { ArrowPathIcon } from "@heroicons/react/16/solid";
+import { ActionButton } from "@/client/components/basics/Button";
 import { Input } from "@/client/components/basics/input";
 import {
   FormControl,
@@ -12,27 +12,38 @@ import {
 import {
   AccordionContent,
   AccordionItem,
-  AccordionTrigger,
 } from "@/client/components/basics/accordion";
 import { KafkaSourceFormValues } from "./schemas";
+import { useFormState } from "@/client/hooks/useFormState";
+import { SectionHeader } from "../SectionHeader";
 
 interface OffsetSectionProps {
   form: UseFormReturn<KafkaSourceFormValues>;
-  onApply: () => void;
+  data: KafkaSourceFormValues;
+  onApply: () => Promise<boolean>;
 }
 
 export const OffsetSection: React.FC<OffsetSectionProps> = ({
   form,
+  data,
   onApply,
 }) => {
+  // Fields to watch for this section
+  const watchFields: (keyof KafkaSourceFormValues)[] = ["offsetMode"];
+
+  const { status, handleChange, hasChanges } = useFormState(
+    form,
+    watchFields,
+    data
+  );
+
   return (
     <AccordionItem value="offset">
-      <AccordionTrigger className="flex-1 px-4">
-        <div className="flex items-center gap-1">
-          <CheckIcon className="size-4 text-green-500" />
-          <span className="text-sm font-medium">Offset configuration</span>
-        </div>
-      </AccordionTrigger>
+      <SectionHeader
+        title="Offset configuration"
+        status={status}
+        hasChanges={hasChanges()}
+      />
       <AccordionContent>
         <div className="flex flex-col gap-3 mt-2 px-6">
           <FormField
@@ -80,10 +91,15 @@ export const OffsetSection: React.FC<OffsetSectionProps> = ({
             )}
           />
 
-          <Button size="sm" variant="secondary" onClick={onApply} type="button">
-            <ArrowPathIcon className="size-4 mr-1" />
+          <ActionButton
+            DefaultIcon={ArrowPathIcon}
+            status={status}
+            onClick={() => handleChange(onApply)}
+            disabled={!hasChanges()}
+            variant="secondary"
+          >
             Apply
-          </Button>
+          </ActionButton>
         </div>
       </AccordionContent>
     </AccordionItem>

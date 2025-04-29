@@ -1,7 +1,7 @@
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
-import { CheckIcon, ArrowPathIcon } from "@heroicons/react/16/solid";
-import { Button } from "@/client/components/basics/button";
+import { ArrowPathIcon } from "@heroicons/react/16/solid";
+import { ActionButton } from "@/client/components/basics/Button";
 import { Input } from "@/client/components/basics/input";
 import {
   FormControl,
@@ -12,27 +12,45 @@ import {
 import {
   AccordionContent,
   AccordionItem,
-  AccordionTrigger,
 } from "@/client/components/basics/accordion";
 import { KafkaSourceFormValues } from "./schemas";
+import { useFormState } from "@/client/hooks/useFormState";
+import { SectionHeader } from "../SectionHeader";
 
 interface ConsumerSectionProps {
   form: UseFormReturn<KafkaSourceFormValues>;
-  onApply: () => void;
+  data: KafkaSourceFormValues;
+  onApply: () => Promise<boolean>;
 }
 
 export const ConsumerSection: React.FC<ConsumerSectionProps> = ({
   form,
+  data,
   onApply,
 }) => {
+  // Fields to watch for this section
+  const watchFields: (keyof KafkaSourceFormValues)[] = [
+    "topic",
+    "bootstrapServers",
+    "groupId",
+    "properties",
+    "startupMode",
+  ];
+
+  // Use the apply status hook
+  const { status, handleChange, hasChanges } = useFormState(
+    form,
+    watchFields,
+    data
+  );
+
   return (
     <AccordionItem value="consumer">
-      <AccordionTrigger className="flex-1 px-4">
-        <div className="flex items-center gap-1">
-          <CheckIcon className="size-4 text-green-500" />
-          <span className="text-sm font-medium">Kafka consumer spec.</span>
-        </div>
-      </AccordionTrigger>
+      <SectionHeader
+        title="Kafka consumer spec."
+        status={status}
+        hasChanges={hasChanges()}
+      />
       <AccordionContent>
         <div className="flex flex-col gap-3 mt-2 px-6">
           <FormField
@@ -44,7 +62,11 @@ export const ConsumerSection: React.FC<ConsumerSectionProps> = ({
                   Topic
                 </FormLabel>
                 <FormControl>
-                  <Input className="w-full" {...field} />
+                  <Input
+                    className="w-full"
+                    placeholder="e.g. my-topic"
+                    {...field}
+                  />
                 </FormControl>
               </FormItem>
             )}
@@ -59,7 +81,11 @@ export const ConsumerSection: React.FC<ConsumerSectionProps> = ({
                   Bootstrap servers
                 </FormLabel>
                 <FormControl>
-                  <Input className="w-full" {...field} />
+                  <Input
+                    className="w-full"
+                    placeholder="e.g. kafka:9092"
+                    {...field}
+                  />
                 </FormControl>
               </FormItem>
             )}
@@ -74,7 +100,11 @@ export const ConsumerSection: React.FC<ConsumerSectionProps> = ({
                   Group ID
                 </FormLabel>
                 <FormControl>
-                  <Input className="w-full" {...field} />
+                  <Input
+                    className="w-full"
+                    placeholder="e.g. my-group"
+                    {...field}
+                  />
                 </FormControl>
               </FormItem>
             )}
@@ -89,7 +119,11 @@ export const ConsumerSection: React.FC<ConsumerSectionProps> = ({
                   Properties
                 </FormLabel>
                 <FormControl>
-                  <Input className="w-full" {...field} />
+                  <Input
+                    className="w-full"
+                    placeholder="e.g. key1=value1,key2=value2,..."
+                    {...field}
+                  />
                 </FormControl>
               </FormItem>
             )}
@@ -104,16 +138,25 @@ export const ConsumerSection: React.FC<ConsumerSectionProps> = ({
                   Startup mode
                 </FormLabel>
                 <FormControl>
-                  <Input className="w-full" {...field} />
+                  <Input
+                    className="w-full"
+                    placeholder="e.g. earliest, latest, specific"
+                    {...field}
+                  />
                 </FormControl>
               </FormItem>
             )}
           />
 
-          <Button size="sm" variant="secondary" onClick={onApply} type="button">
-            <ArrowPathIcon className="size-4 mr-1" />
+          <ActionButton
+            DefaultIcon={ArrowPathIcon}
+            status={status}
+            onClick={() => handleChange(onApply)}
+            disabled={!hasChanges()}
+            variant="secondary"
+          >
             Apply
-          </Button>
+          </ActionButton>
         </div>
       </AccordionContent>
     </AccordionItem>

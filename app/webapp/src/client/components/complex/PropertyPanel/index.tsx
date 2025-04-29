@@ -1,6 +1,7 @@
-import { Button } from "@/client/components/basics/button";
+import { Button } from "@/client/components/basics/Button";
 import KafkaSource from "./KafkaSource/index";
 import { cn } from "@/client/utils";
+import { BookmarkIcon } from "@heroicons/react/16/solid";
 
 export * from "./KafkaSource/index";
 
@@ -11,7 +12,10 @@ export const PropertyPanel = ({ className }: { className?: string }) => {
         <span className="text-base font-medium text-foreground">
           {`Kafka Source (<topicName>)`}
         </span>
-        <Button variant="default">Save</Button>
+        <Button>
+          <BookmarkIcon className="size-4 mr-1" />
+          Save
+        </Button>
       </div>
       <div className="flex-1 overflow-y-auto">
         <KafkaSource />

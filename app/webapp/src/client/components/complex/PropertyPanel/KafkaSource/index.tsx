@@ -12,11 +12,11 @@ import { Accordion } from "@/client/components/basics/accordion";
 
 interface KafkaSourceProps {
   data?: KafkaSourceFormValues;
-  onUpdate?: (data: KafkaSourceFormValues) => void;
+  onUpdate?: (data: KafkaSourceFormValues) => Promise<boolean>;
 }
 
 export const KafkaSource: React.FC<KafkaSourceProps> = ({
-  data = {},
+  data = {} as KafkaSourceFormValues,
   onUpdate,
 }) => {
   // Initialize the form with react-hook-form and zod validation
@@ -40,12 +40,17 @@ export const KafkaSource: React.FC<KafkaSourceProps> = ({
   });
 
   // Handler for applying changes
-  const handleApply = (section: string) => {
+  const handleApply = async (section: string) => {
     console.log("Handle Apply for section: ", section);
     const values = form.getValues();
     if (onUpdate) {
-      onUpdate(values);
+      return await onUpdate(values);
     }
+
+    // Wait for 1 second to simulate a network request
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    return true;
   };
 
   return (
@@ -58,16 +63,27 @@ export const KafkaSource: React.FC<KafkaSourceProps> = ({
         >
           <ConsumerSection
             form={form}
+            data={data}
             onApply={() => handleApply("consumer")}
           />
-          <OffsetSection form={form} onApply={() => handleApply("offset")} />
+          <OffsetSection
+            form={form}
+            data={data}
+            onApply={() => handleApply("offset")}
+          />
           <DeserializationSection
             form={form}
+            data={data}
             onApply={() => handleApply("deserialization")}
           />
-          <FieldsSection form={form} onApply={() => handleApply("fields")} />
+          <FieldsSection
+            form={form}
+            data={data}
+            onApply={() => handleApply("fields")}
+          />
           <EventTimeSection
             form={form}
+            data={data}
             onApply={() => handleApply("eventTime")}
           />
         </Accordion>
