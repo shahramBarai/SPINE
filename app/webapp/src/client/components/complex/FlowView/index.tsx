@@ -1,11 +1,16 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  Dispatch,
+  SetStateAction,
+} from "react";
 import "@xyflow/react/dist/style.css";
 import {
   ReactFlow,
   MiniMap,
   Controls,
   Background,
-  useNodesState,
   useEdgesState,
   addEdge,
   Node,
@@ -13,21 +18,30 @@ import {
   Connection,
   BackgroundVariant,
   ReactFlowInstance,
+  OnNodesChange,
 } from "@xyflow/react";
 import { edgeStyles, animatedEdgeStyles } from "./utils/nodeStyles";
 import Sidebar from "./Sidebar";
 import { nodeTypes } from "./nodes";
 import { cn } from "@/client/utils";
 
-// Initial nodes using our custom node types
-const initialNodes: Node[] = [];
-
 // Rest of your component remains largely the same
 const initialEdges: Edge[] = [];
 
-export default function FlowView({ className }: { className?: string }) {
+export default function FlowView({
+  className,
+  nodes,
+  setNodes,
+  onNodesChange,
+  selectNode,
+}: {
+  className?: string;
+  nodes: Node[];
+  setNodes: Dispatch<SetStateAction<Node[]>>;
+  onNodesChange: OnNodesChange<Node>;
+  selectNode: (node: Node | null) => void;
+}) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance | null>(null);
@@ -63,7 +77,7 @@ export default function FlowView({ className }: { className?: string }) {
 
       if (!dataStr) return;
 
-      const { type, label } = JSON.parse(dataStr);
+      const { type } = JSON.parse(dataStr);
 
       // Calculate position from mouse event
       const position = reactFlowInstance.screenToFlowPosition({
@@ -71,28 +85,42 @@ export default function FlowView({ className }: { className?: string }) {
         y: event.clientY,
       });
 
-      // Prepare data based on node type
-      const data: {
-        label: string;
-        topic?: string;
-        condition?: string;
-        fields?: string[];
-        windowType?: string;
-        duration?: string;
-        query?: string;
-        index?: string;
-        pattern?: string;
-        joinKey?: string;
-        timeWindow?: string;
-      } = { label };
+      // Initialize data as a non-undefined object
+      let data: Record<string, unknown> = {};
 
       // Add default properties based on node type
       switch (type) {
         case "kafkaSource":
-          data.topic = "new-new-topic";
+          data = {
+            consumer: {
+              topic: "new-topic",
+              bootstrapServers: "localhost:9092",
+              groupId: "default-group",
+              properties: "",
+              startupMode: "latest",
+            },
+            preview: {
+              offsetMode: "latest",
+              sampleSize: 100,
+              partitions: "",
+            },
+            deserialization: {
+              format: "none",
+            },
+            schema: {
+              fields: [],
+            },
+            eventTime: {
+              eventTimeField: "",
+              watermarkStrategy: "",
+              delayMs: 0,
+            },
+          };
           break;
         case "filter":
-          data.condition = "value > 0";
+          data = {
+            condition: "value > 0",
+          };
           break;
       }
 
@@ -100,13 +128,44 @@ export default function FlowView({ className }: { className?: string }) {
         id: `${type}-${Date.now()}`,
         type,
         position,
-        data,
+        data: data as Record<string, unknown>,
       };
 
       setNodes((nds) => nds.concat(newNode));
     },
     [reactFlowInstance, setNodes]
   );
+
+  const onNodeClick = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      // Prevent event from bubbling up to parent elements
+      event.stopPropagation();
+
+      // Update the selected node
+      selectNode(node);
+
+      // Optionally highlight the selected node
+      setNodes((nds) =>
+        nds.map((n) => ({
+          ...n,
+          selected: n.id === node.id,
+        }))
+      );
+    },
+    [selectNode, setNodes]
+  );
+
+  const onPaneClick = useCallback(() => {
+    selectNode(null);
+
+    // Clear selection
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        selected: false,
+      }))
+    );
+  }, [selectNode, setNodes]);
 
   return (
     <div className={cn("flex size-full overflow-hidden", className)}>
@@ -128,6 +187,8 @@ export default function FlowView({ className }: { className?: string }) {
             style: edgeStyles,
           }}
           proOptions={{ hideAttribution: true }}
+          onNodeClick={onNodeClick}
+          onPaneClick={onPaneClick}
         >
           <Controls className="bg-surface text-foreground" />
           <MiniMap

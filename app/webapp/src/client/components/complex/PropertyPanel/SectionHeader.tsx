@@ -7,19 +7,13 @@ type StatusType = "none" | "loading" | "success" | "error" | "changed";
 interface SectionHeaderProps {
   title: string;
   status: StatusType;
-  hasChanges?: boolean;
 }
 
 export const SectionHeader: React.FC<SectionHeaderProps> = ({
   title,
   status,
-  hasChanges,
 }) => {
   const getStateIcon = () => {
-    if (!hasChanges && status !== "none") {
-      return <CheckIcon className="size-4 text-green-500" />;
-    }
-
     switch (status) {
       case "success":
         return <CheckIcon className="size-4 text-green-500" />;
@@ -39,7 +33,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
       <div className="flex items-center gap-1">
         {getStateIcon()}
         <span className="text-sm font-medium">{title}</span>
-        {hasChanges && (
+        {status === "changed" && (
           <span className="text-xs bg-amber-100 text-amber-800 px-1 py-0.5 rounded">
             modified
           </span>

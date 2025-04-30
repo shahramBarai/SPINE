@@ -24,7 +24,7 @@ export interface KafkaSourceData extends Node {
 
 const KafkaSource = memo((props: NodeProps<KafkaSourceData>) => {
   const handleClick = () => {
-    console.log("Node clicked:", props.id);
+    console.log("Node clicked:", props);
   };
 
   return (
