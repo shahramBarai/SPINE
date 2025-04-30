@@ -78,6 +78,7 @@ type ActionButtonProps = {
   DefaultIcon?: typeof CheckIcon;
   status: StatusType;
   disabled?: boolean;
+  isLoading?: boolean;
 };
 
 export function ActionButton({
@@ -105,7 +106,7 @@ export function ActionButton({
   return (
     <Button
       color="secondary"
-      disabled={disabled || status === "loading"}
+      disabled={disabled || status !== "changed"}
       {...props}
     >
       {getStateIcon()}
