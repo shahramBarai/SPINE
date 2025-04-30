@@ -1,7 +1,9 @@
 import React, { memo } from "react";
 import { Node, NodeProps, Position } from "@xyflow/react";
-import CustomHandle from "../CustomHandle";
-import { KafkaSourceFormValues } from "../../PropertyPanel/KafkaSource/schemas";
+import { KafkaSourceFormValues } from "../PropertyPanel/KafkaSource/schemas";
+import CustomHandle from "./CustomHandle";
+import { AdjustmentsHorizontalIcon } from "@heroicons/react/24/solid";
+import { cn } from "@/client/utils";
 
 const KafkaLogo = () => {
   return (
@@ -18,27 +20,40 @@ const KafkaLogo = () => {
   );
 };
 
-export interface KafkaSourceData extends Node {
+export interface CustomNodeData extends Node {
   data: KafkaSourceFormValues;
 }
 
-const KafkaSource = memo((props: NodeProps<KafkaSourceData>) => {
-  const handleClick = () => {
-    console.log("Node clicked:", props);
-  };
-
+function CustomNode({ data, selected }: NodeProps<CustomNodeData>) {
   return (
     <div
-      className="flex flex-col items-center justify-center bg-surface p-4 w-32 rounded-md"
-      onClick={handleClick}
+      className={cn(
+        "flex flex-col items-center justify-center bg-surface p-4 w-32 rounded-md border-2",
+        selected ? "border-primary" : "border-border"
+      )}
     >
-      <KafkaLogo />
-      <div className="text-sm text-foreground font-medium">Kafka Source</div>
-      <CustomHandle type="source" position={Position.Right} />
+      {data.label === "Kafka Source" && <KafkaLogo />}
+      {data.label === "Filter" && (
+        <AdjustmentsHorizontalIcon className="w-10 h-10" />
+      )}
+      <div className={cn("text-sm font-medium text-foreground")}>
+        {data.label}
+      </div>
+      {data.label !== "Kafka Source" && (
+        <CustomHandle
+          type="target"
+          position={Position.Left}
+          connectionCount={1}
+          selected={selected}
+        />
+      )}
+      <CustomHandle
+        type="source"
+        position={Position.Right}
+        selected={selected}
+      />
     </div>
   );
-});
+}
 
-KafkaSource.displayName = "KafkaSource";
-
-export default KafkaSource;
+export default memo(CustomNode);

@@ -1,18 +1,18 @@
+import { cn } from "@/client/utils";
 import { Handle, HandleProps, useNodeConnections } from "@xyflow/react";
 import { memo } from "react";
 
 const CustomHandle = memo(
   ({
     type,
-    connectionCount,
     isConnectable,
     position,
-  }: HandleProps & { connectionCount?: number }) => {
+    connectionCount,
+    selected,
+  }: HandleProps & { connectionCount?: number; selected?: boolean }) => {
     const connections = useNodeConnections({
       handleType: type,
     });
-
-    console.log(connections.length);
 
     return (
       <Handle
@@ -21,18 +21,14 @@ const CustomHandle = memo(
         isConnectable={
           connectionCount ? connections.length < connectionCount : isConnectable
         }
-        style={{
-          width: 18,
-          height: 18,
-          background:
-            connections.length !== connectionCount
-              ? "var(--foreground)"
-              : "var(--surface)",
-          border:
-            connections.length !== connectionCount
-              ? "3px solid var(--surface)"
-              : "1px solid var(--foreground)",
-        }}
+        className={cn(
+          "!z-10 !w-2 !h-6 !rounded-none !border-2",
+          selected
+            ? "!bg-primary !border-surface"
+            : connections.length !== connectionCount
+            ? "!bg-primary !border-muted"
+            : "!bg-surface !border-border"
+        )}
       />
     );
   }

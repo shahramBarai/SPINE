@@ -20,10 +20,15 @@ import {
   ReactFlowInstance,
   OnNodesChange,
 } from "@xyflow/react";
-import { edgeStyles, animatedEdgeStyles } from "./utils/nodeStyles";
 import Sidebar from "./Sidebar";
-import { nodeTypes } from "./nodes";
 import { cn } from "@/client/utils";
+import CustomNode from "./CustomNode";
+import ConnectionLine from "./ConnectionLine";
+
+// Define node types mapping for React Flow
+const nodeTypes = {
+  CustomNode: CustomNode,
+};
 
 // Rest of your component remains largely the same
 const initialEdges: Edge[] = [];
@@ -52,7 +57,11 @@ export default function FlowView({
         addEdge(
           {
             ...params,
-            style: animatedEdgeStyles,
+            animated: true,
+            style: {
+              stroke: "var(--surface-foreground)",
+              strokeWidth: 1.5,
+            },
           },
           eds
         )
@@ -77,7 +86,7 @@ export default function FlowView({
 
       if (!dataStr) return;
 
-      const { type } = JSON.parse(dataStr);
+      const { type, label } = JSON.parse(dataStr);
 
       // Calculate position from mouse event
       const position = reactFlowInstance.screenToFlowPosition({
@@ -86,46 +95,12 @@ export default function FlowView({
       });
 
       // Initialize data as a non-undefined object
-      let data: Record<string, unknown> = {};
-
-      // Add default properties based on node type
-      switch (type) {
-        case "kafkaSource":
-          data = {
-            consumer: {
-              topic: "new-topic",
-              bootstrapServers: "localhost:9092",
-              groupId: "default-group",
-              properties: "",
-              startupMode: "latest",
-            },
-            preview: {
-              offsetMode: "latest",
-              sampleSize: 100,
-              partitions: "",
-            },
-            deserialization: {
-              format: "none",
-            },
-            schema: {
-              fields: [],
-            },
-            eventTime: {
-              eventTimeField: "",
-              watermarkStrategy: "",
-              delayMs: 0,
-            },
-          };
-          break;
-        case "filter":
-          data = {
-            condition: "value > 0",
-          };
-          break;
-      }
+      const data: Record<string, unknown> = {
+        label,
+      };
 
       const newNode: Node = {
-        id: `${type}-${Date.now()}`,
+        id: `node-${Date.now()}`,
         type,
         position,
         data: data as Record<string, unknown>,
@@ -158,7 +133,7 @@ export default function FlowView({
   const onPaneClick = useCallback(() => {
     selectNode(null);
 
-    // Clear selection
+    // Clear node selection
     setNodes((nds) =>
       nds.map((n) => ({
         ...n,
@@ -166,6 +141,16 @@ export default function FlowView({
       }))
     );
   }, [selectNode, setNodes]);
+
+  // Custom edge options with styling
+  const defaultEdgeOptions = {
+    animated: true,
+    style: {
+      stroke: "var(--primary)",
+      strokeWidth: 1.5,
+      transition: "stroke 0.3s, stroke-width 0.3s",
+    },
+  };
 
   return (
     <div className={cn("flex size-full overflow-hidden", className)}>
@@ -182,13 +167,12 @@ export default function FlowView({
           onDragOver={onDragOver}
           nodeTypes={nodeTypes}
           fitView
-          colorMode="light"
-          defaultEdgeOptions={{
-            style: edgeStyles,
-          }}
-          proOptions={{ hideAttribution: true }}
+          colorMode={"light"}
+          defaultEdgeOptions={defaultEdgeOptions}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
+          connectionLineComponent={ConnectionLine}
+          proOptions={{ hideAttribution: true }}
         >
           <Controls className="bg-surface text-foreground" />
           <MiniMap

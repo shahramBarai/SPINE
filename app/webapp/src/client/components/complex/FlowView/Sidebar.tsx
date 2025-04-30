@@ -1,14 +1,13 @@
 import React from "react";
-import { getNodeStyle, NodeTypeStyle } from "./utils/nodeStyles";
+import { getNodeStyle, NodeTypeStyle } from "./styles";
 
 // Define the different node types available in sidebar
 export const sidebarNodeTypes = [
   {
-    type: "kafkaSource",
     category: NodeTypeStyle.SOURCE,
-    label: "Kafka source",
+    label: "Kafka Source",
   },
-  { type: "filter", category: NodeTypeStyle.PROCESS, label: "Filter" },
+  { category: NodeTypeStyle.PROCESS, label: "Filter" },
 ];
 
 export function Sidebar() {
@@ -32,9 +31,11 @@ export function Sidebar() {
           const style = getNodeStyle(node.category);
           return (
             <div
-              key={node.type}
+              key={node.label}
               className="cursor-grab rounded overflow-hidden"
-              onDragStart={(event) => onDragStart(event, node.type, node.label)}
+              onDragStart={(event) =>
+                onDragStart(event, "CustomNode", node.label)
+              }
               draggable
             >
               <div
