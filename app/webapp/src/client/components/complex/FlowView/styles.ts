@@ -44,6 +44,6 @@ export const edgeStyles = {
 
 export const animatedEdgeStyles = {
   ...edgeStyles,
-  stroke: "#FFFFFF",
-  strokeWidth: 3,
+  stroke: "#000000",
+  strokeWidth: 2,
 };

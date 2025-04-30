@@ -158,3 +158,15 @@
   }
 }
 
+/* Edge hover effect */
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--primary) !important;
+  stroke-width: 2px !important;
+  cursor: pointer;
+}
+
+/* Selected edge effect */
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--primary) !important;
+  stroke-width: 2.5px !important;
+}
