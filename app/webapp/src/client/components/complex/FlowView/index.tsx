@@ -1,24 +1,18 @@
-import React, {
-  useState,
-  useRef,
-  useCallback,
-  Dispatch,
-  SetStateAction,
-} from "react";
+import React, { useState, useRef, useCallback } from "react";
 import "@xyflow/react/dist/style.css";
 import {
   ReactFlow,
   MiniMap,
   Controls,
   Background,
-  useEdgesState,
-  addEdge,
   Node,
   Edge,
   Connection,
   BackgroundVariant,
   ReactFlowInstance,
-  OnNodesChange,
+  useNodesState,
+  useEdgesState,
+  addEdge,
 } from "@xyflow/react";
 import Sidebar from "./Sidebar";
 import { cn } from "@/client/utils";
@@ -30,44 +24,23 @@ const nodeTypes = {
   CustomNode: CustomNode,
 };
 
-// Rest of your component remains largely the same
+// Initial nodes and edges using our custom node types
+const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
 
 export default function FlowView({
   className,
-  nodes,
-  setNodes,
-  onNodesChange,
   selectNode,
 }: {
   className?: string;
-  nodes: Node[];
-  setNodes: Dispatch<SetStateAction<Node[]>>;
-  onNodesChange: OnNodesChange<Node>;
   selectNode: (node: Node | null) => void;
 }) {
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance | null>(null);
-
-  const onConnect = useCallback(
-    (params: Connection) =>
-      setEdges((eds) =>
-        addEdge(
-          {
-            ...params,
-            animated: true,
-            style: {
-              stroke: "var(--surface-foreground)",
-              strokeWidth: 1.5,
-            },
-          },
-          eds
-        )
-      ),
-    [setEdges]
-  );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -141,6 +114,25 @@ export default function FlowView({
       }))
     );
   }, [selectNode, setNodes]);
+
+  const onConnect = useCallback(
+    (params: Connection) => {
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...params,
+            animated: true,
+            style: {
+              stroke: "var(--surface-foreground)",
+              strokeWidth: 1.5,
+            },
+          },
+          eds
+        )
+      );
+    },
+    [setEdges]
+  );
 
   // Custom edge options with styling
   const defaultEdgeOptions = {

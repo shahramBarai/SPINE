@@ -1,16 +1,8 @@
-import React from "react";
-import { getNodeStyle, NodeTypeStyle } from "./styles";
+import React, { memo } from "react";
+import { cn } from "@/client/utils";
+import { nodeItems, NodeType, getNodeIcon } from "../utils";
 
-// Define the different node types available in sidebar
-export const sidebarNodeTypes = [
-  {
-    category: NodeTypeStyle.SOURCE,
-    label: "Kafka Source",
-  },
-  { category: NodeTypeStyle.PROCESS, label: "Filter" },
-];
-
-export function Sidebar() {
+const Sidebar = memo(() => {
   const onDragStart = (
     event: React.DragEvent,
     nodeType: string,
@@ -27,8 +19,7 @@ export function Sidebar() {
         Components
       </div>
       <div className="space-y-2">
-        {sidebarNodeTypes.map((node) => {
-          const style = getNodeStyle(node.category);
+        {nodeItems.map((node) => {
           return (
             <div
               key={node.label}
@@ -39,13 +30,31 @@ export function Sidebar() {
               draggable
             >
               <div
-                style={{
-                  background: style.background,
-                  borderColor: style.borderColor,
-                }}
-                className="p-2 text-xs border flex items-center gap-2"
+                className={cn(
+                  "text-xs border-2 border-border rounded-md flex items-center mx-1",
+                  "border-border hover:border-primary group"
+                )}
               >
-                <span className="font-medium">{node.label}</span>
+                {node.type !== NodeType.SOURCE && (
+                  <div
+                    className={cn(
+                      "z-10 w-2 h-5 rounded-none border-2 bg-primary/70 border-surface group-hover:bg-primary",
+                      "ml-[-6px]"
+                    )}
+                  />
+                )}
+                <div className="flex items-center gap-2 w-full p-2">
+                  {getNodeIcon(node.label, "sm")}
+                  <span className="font-medium">{node.label}</span>
+                </div>
+                {node.type !== NodeType.SINK && (
+                  <div
+                    className={cn(
+                      "z-10 w-2 h-5 rounded-none border-2 bg-primary/70 border-surface group-hover:bg-primary",
+                      "mr-[-6px]"
+                    )}
+                  />
+                )}
               </div>
             </div>
           );
@@ -53,6 +62,8 @@ export function Sidebar() {
       </div>
     </aside>
   );
-}
+});
+
+Sidebar.displayName = "Sidebar";
 
 export default Sidebar;
