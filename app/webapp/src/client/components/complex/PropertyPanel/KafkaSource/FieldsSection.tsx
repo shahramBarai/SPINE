@@ -19,32 +19,46 @@ import {
   AccordionItem,
 } from "@/client/components/basics/accordion";
 import { SectionHeader } from "../SectionHeader";
-import { KafkaSourceFormValuesSchema, kafkaSourceSchema } from "./schemas";
+import {
+  fieldTypes,
+  KafkaSourceFormValuesTargetSchema,
+  kafkaSourceSchema,
+} from "./schemas";
 import { useFormState } from "@/client/hooks/useFormState";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/client/components/basics/select";
 
 export const FieldsSection = ({
   data,
   onApply,
 }: {
-  data: KafkaSourceFormValuesSchema;
-  onApply: (data: KafkaSourceFormValuesSchema) => Promise<boolean>;
+  data: KafkaSourceFormValuesTargetSchema;
+  onApply: (data: KafkaSourceFormValuesTargetSchema) => Promise<boolean>;
 }) => {
   // Initialize form with properly typed data
-  const form = useForm<KafkaSourceFormValuesSchema>({
-    resolver: zodResolver(kafkaSourceSchema.shape.schema),
+  const form = useForm<KafkaSourceFormValuesTargetSchema>({
+    resolver: zodResolver(kafkaSourceSchema.shape.targetSchema),
     defaultValues: data,
   });
 
   const { status, handleSubmit, setStatus } = useFormState(form);
 
-  const handleApply = async (values: KafkaSourceFormValuesSchema) => {
+  const handleApply = async (values: KafkaSourceFormValuesTargetSchema) => {
     await handleSubmit(values, onApply);
   };
 
   // Handler to add a new field
   const addField = () => {
     const currentFields = form.getValues().fields || [];
-    form.setValue("fields", [...currentFields, { key: "", value: "" }]);
+    form.setValue("fields", [
+      ...currentFields,
+      { key: "", type: fieldTypes.STRING },
+    ]);
   };
 
   // Handler to remove a field
@@ -75,22 +89,35 @@ export const FieldsSection = ({
                   control={form.control}
                   name={`fields.${index}.key`}
                   render={({ field }) => (
-                    <FormItem className="w-2/5">
+                    <FormItem className="w-3/5">
                       <FormControl>
                         <Input {...field} placeholder="Field key" />
                       </FormControl>
                     </FormItem>
                   )}
                 />
-                <span className="text-muted-foreground">→</span>
                 <FormField
                   control={form.control}
-                  name={`fields.${index}.value`}
+                  name={`fields.${index}.type`}
                   render={({ field }) => (
                     <FormItem className="w-2/5">
-                      <FormControl>
-                        <Input {...field} placeholder="Field value" />
-                      </FormControl>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl className="w-full truncate">
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Object.values(fieldTypes).map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </FormItem>
                   )}
                 />
