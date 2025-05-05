@@ -1,5 +1,15 @@
 import * as z from "zod";
 
+export enum fieldTypes {
+  STRING = "string",
+  INTEGER = "integer",
+  FLOAT = "float",
+  BOOLEAN = "boolean",
+  TIMESTAMP = "timestamp",
+  ARRAY = "array",
+  OBJECT = "object",
+}
+
 export const kafkaSourceSchema = z.object({
   label: z.string().default("Kafka Source"),
   // Kafka consumer specific properties
@@ -30,12 +40,12 @@ export const kafkaSourceSchema = z.object({
   }),
 
   // Field specific properties
-  schema: z.object({
+  targetSchema: z.object({
     fields: z
       .array(
         z.object({
           key: z.string(),
-          value: z.string(),
+          type: z.nativeEnum(fieldTypes),
         })
       )
       .optional(),
@@ -59,9 +69,16 @@ export type KafkaSourceFormValuesPreview = z.infer<
 export type KafkaSourceFormValuesDeserialization = z.infer<
   typeof kafkaSourceSchema.shape.deserialization
 >;
-export type KafkaSourceFormValuesSchema = z.infer<
-  typeof kafkaSourceSchema.shape.schema
+export type KafkaSourceFormValuesTargetSchema = z.infer<
+  typeof kafkaSourceSchema.shape.targetSchema
 >;
 export type KafkaSourceFormValuesEventTime = z.infer<
   typeof kafkaSourceSchema.shape.eventTime
 >;
+
+export type TargetSchema = {
+  fields: {
+    key: string;
+    type: fieldTypes;
+  }[];
+};

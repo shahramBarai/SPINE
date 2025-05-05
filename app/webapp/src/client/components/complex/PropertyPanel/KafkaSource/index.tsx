@@ -5,7 +5,7 @@ import {
   KafkaSourceFormValuesPreview,
   KafkaSourceFormValuesDeserialization,
   KafkaSourceFormValuesEventTime,
-  KafkaSourceFormValuesSchema,
+  KafkaSourceFormValuesTargetSchema,
 } from "./schemas";
 import { ConsumerSection } from "./ConsumerSection";
 import { PreviewSection } from "./PreviewSection";
@@ -16,23 +16,23 @@ import { Accordion } from "@/client/components/basics/accordion";
 
 interface KafkaSourceProps {
   data: KafkaSourceFormValues;
-  setData: (data: KafkaSourceFormValues) => Promise<boolean>;
+  setData: (data: KafkaSourceFormValues) => void;
 }
 
 export const KafkaSource: React.FC<KafkaSourceProps> = ({ data, setData }) => {
   // Handler for applying changes
   const handleApply = async (
     section: string,
-    consumerData:
+    sectionData:
       | KafkaSourceFormValuesConsumer
       | KafkaSourceFormValuesPreview
       | KafkaSourceFormValuesDeserialization
-      | KafkaSourceFormValuesSchema
+      | KafkaSourceFormValuesTargetSchema
       | KafkaSourceFormValuesEventTime
   ) => {
-    await setData({
+    setData({
       ...data,
-      [section]: consumerData,
+      [section]: sectionData,
     });
 
     // For demo purposes
@@ -61,9 +61,9 @@ export const KafkaSource: React.FC<KafkaSourceProps> = ({ data, setData }) => {
         }
       />
       <FieldsSection
-        data={data.schema}
-        onApply={(data: KafkaSourceFormValuesSchema) =>
-          handleApply("schema", data)
+        data={data.targetSchema}
+        onApply={(data: KafkaSourceFormValuesTargetSchema) =>
+          handleApply("targetSchema", data)
         }
       />
       <EventTimeSection
