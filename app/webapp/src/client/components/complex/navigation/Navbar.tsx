@@ -1,6 +1,5 @@
 "use client";
 
-import { Fragment } from "react";
 import { Button } from "../../basics/Button";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/16/solid";
 import {
@@ -23,7 +22,7 @@ export default function Navbar({ navigation }: NavbarProps) {
   const { asPath: currentPath } = useRouter();
 
   return (
-    <Disclosure as={Fragment}>
+    <Disclosure as="div">
       {({ open, close }) => (
         <>
           {/* Navbar raw content */}
@@ -62,7 +61,7 @@ export default function Navbar({ navigation }: NavbarProps) {
             </div>
 
             {/* Mobile menu button */}
-            <DisclosureButton as={Fragment}>
+            <DisclosureButton as="div">
               <Button
                 variant="ghost"
                 size="icon"
