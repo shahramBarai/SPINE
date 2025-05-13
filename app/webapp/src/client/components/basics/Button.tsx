@@ -1,31 +1,27 @@
-import * as React from "react";
+import { forwardRef } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import {
-  type ButtonProps as HeadlessButtonProps,
-  Button as HeadlessButton,
-} from "@headlessui/react";
+import { type ButtonProps as HeadlessButtonProps } from "@headlessui/react";
 import { CheckIcon, XMarkIcon, ArrowPathIcon } from "@heroicons/react/16/solid";
 import { cn, StatusType } from "@/client/utils";
+import Link from "next/link";
 
 // ----------------------- Button -----------------------
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-danger/20 dark:aria-invalid:ring-danger/40 aria-invalid:border-danger",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-danger/20 dark:aria-invalid:ring-danger/40 aria-invalid:border-danger cursor-pointer",
   {
     variants: {
       variant: {
-        outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
-        ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+        outline: "border bg-background shadow-xs hover:bg-muted",
+        ghost: "hover:bg-none hover:text-primary",
         link: "text-primary underline-offset-4 hover:underline",
         primary:
-          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
+          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/90",
-        danger: "bg-danger text-danger-foreground shadow-xs hover:bg-danger/90",
+          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/90",
+        danger: "bg-danger text-danger-foreground shadow-sm hover:bg-danger/90",
         "danger-light":
-          "bg-danger-light text-danger-light-foreground shadow-xs hover:bg-danger-light/80",
+          "bg-danger-light text-danger-light-foreground shadow-sm hover:bg-danger-light/80",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
@@ -41,22 +37,38 @@ const buttonVariants = cva(
   }
 );
 
-export function Button({
-  className,
-  variant,
-  size,
-  children,
-  ...props
-}: React.ComponentProps<"button"> & VariantProps<typeof buttonVariants>) {
-  return (
-    <HeadlessButton
-      {...(props as HeadlessButtonProps)}
-      className={cn(buttonVariants({ variant, size }), className)}
-    >
-      <TouchTarget>{children}</TouchTarget>
-    </HeadlessButton>
-  );
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  href?: string;
 }
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, children, href, ...props }, ref) => {
+    if (href) {
+      return (
+        <Link
+          href={href}
+          className={cn(buttonVariants({ variant, size }), className)}
+        >
+          <TouchTarget>{children}</TouchTarget>
+        </Link>
+      );
+    }
+
+    return (
+      <button
+        {...(props as HeadlessButtonProps)}
+        className={cn(buttonVariants({ variant, size }), className)}
+        ref={ref}
+      >
+        <TouchTarget>{children}</TouchTarget>
+      </button>
+    );
+  }
+);
+
+Button.displayName = "Button";
 
 // ----------------------- Touch Target -----------------------
 
