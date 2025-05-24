@@ -1,0 +1,6 @@
+Dockerfile.dev
+Dockerfile.prod
+node_modules
+generated
+README.md
+.git

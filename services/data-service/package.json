@@ -1,0 +1,41 @@
+{
+    "name": "data-service",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "tsx watch src/server.ts",
+        "lint": "eslint src --ext .ts",
+        "build": "tsup src/server.ts --format cjs,esm --dts",
+        "start": "node dist/server.js",
+        "prod": "pnpm build && pnpm start",
+        "db:generate": "prisma generate --schema=prisma/schema.prisma",
+        "db:push": "prisma db push --schema=prisma/schema.prisma",
+        "db:init": "pnpm db:push && pnpm db:generate",
+        "db-timescale:generate": "prisma generate --schema=prisma-timescale/schema.prisma",
+        "db-timescale:push": "prisma db push --schema=prisma-timescale/schema.prisma",
+        "db-timescale:init": "pnpm db-timescale:push && tsx scripts/init-timescale.ts && pnpm db-timescale:generate",
+        "db:studio": "prisma studio --schema=prisma/schema.prisma",
+        "db-timescale:studio": "prisma studio --schema=prisma-timescale/schema.prisma"
+    },
+    "dependencies": {
+        "@fastify/cors": "^8.0.0",
+        "@prisma/client": "^5.0.0",
+        "dotenv": "^16.0.0",
+        "fastify": "^4.0.0",
+        "pino": "^8.0.0",
+        "pino-pretty": "^13.0.0",
+        "zod": "^3.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^18.0.0",
+        "@typescript-eslint/eslint-plugin": "^5.0.0",
+        "@typescript-eslint/parser": "^5.0.0",
+        "eslint": "^8.0.0",
+        "pg": "^8.16.0",
+        "prisma": "^5.0.0",
+        "tsup": "^7.0.0",
+        "tsx": "^3.0.0",
+        "typescript": "^5.0.0"
+    },
+    "packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977"
+}

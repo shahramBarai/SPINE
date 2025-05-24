@@ -1,0 +1,37 @@
+FROM node:20-alpine3.17
+
+# Install necessary system libraries
+RUN apk add --no-cache libc6-compat openssl
+
+WORKDIR /app
+
+# Copy all package management files
+COPY package.json pnpm-lock.yaml ./
+
+# Enable pnpm with specific version
+RUN corepack enable
+RUN corepack prepare pnpm@latest --activate
+
+# Install dependencies
+RUN pnpm install
+
+# Copy prisma schemas first
+COPY prisma ./prisma
+COPY prisma-timescale ./prisma-timescale
+
+# Create generated directory
+RUN mkdir -p generated/platform generated/timescale
+
+# Generate Prisma clients
+RUN pnpm db:generate && pnpm db-timescale:generate
+
+# Copy the rest of the application
+COPY . .
+
+# Copy and setup entrypoint
+COPY scripts/docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
+CMD ["pnpm", "run", "dev"]

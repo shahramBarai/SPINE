@@ -1,0 +1,26 @@
+generator client {
+    provider      = "prisma-client-js"
+    output        = "../generated/timescale"
+    binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL_TIMESCALE")
+}
+
+model SensorReading {
+    id              String   @default(uuid())
+    sensorId        String
+    topic           String
+    schemaRef       String
+    payload         Json
+    sensorTimestamp DateTime @map("sensor_timestamp") @db.Timestamptz(6)
+
+    @@id([sensorId, sensorTimestamp])
+    @@unique([id, sensorTimestamp])
+    @@index([topic])
+    @@index([schemaRef])
+    @@index([sensorTimestamp])
+    @@map("sensor_readings")
+}
