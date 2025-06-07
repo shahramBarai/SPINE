@@ -1,0 +1,289 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Flink Job Submission API",
+        "description": "API for submitting, monitoring, and managing Flink jobs",
+        "version": "1.0.0",
+        "contact": {
+            "name": "IoT Platform Team"
+        }
+    },
+    "servers": [
+        {
+            "url": "/"
+        }
+    ],
+    "paths": {
+        "/": {
+            "get": {
+                "summary": "Root endpoint",
+                "description": "Returns basic API information",
+                "responses": {
+                    "200": {
+                        "description": "API information",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "version": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "summary": "Health check",
+                "description": "Checks the health of the API and Flink connection",
+                "responses": {
+                    "200": {
+                        "description": "Health status",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "healthy",
+                                                "unhealthy"
+                                            ]
+                                        },
+                                        "flink_status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "connected",
+                                                "disconnected"
+                                            ]
+                                        },
+                                        "flink_version": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/jobs": {
+            "get": {
+                "summary": "List jobs",
+                "description": "Lists all Flink jobs",
+                "responses": {
+                    "200": {
+                        "description": "List of jobs",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/jobs/{jobId}": {
+            "get": {
+                "summary": "Get job",
+                "description": "Gets details for a specific job",
+                "parameters": [
+                    {
+                        "name": "jobId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Job ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/upload": {
+            "post": {
+                "summary": "Upload file",
+                "description": "Uploads a JAR file to the Flink cluster",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "File uploaded successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "oneOf": [
+                                        {
+                                            "properties": {
+                                                "jar_id": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "properties": {
+                                                "file_id": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/run": {
+            "post": {
+                "summary": "Run JAR",
+                "description": "Runs a previously uploaded JAR file",
+                "requestBody": {
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "jar_id"
+                                ],
+                                "properties": {
+                                    "jar_id": {
+                                        "type": "string",
+                                        "description": "JAR ID from upload response"
+                                    },
+                                    "entry_class": {
+                                        "type": "string",
+                                        "description": "Entry class name"
+                                    },
+                                    "program_args": {
+                                        "type": "string",
+                                        "description": "Program arguments"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Job started successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "job_id": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/stop/{jobId}": {
+            "post": {
+                "summary": "Stop job",
+                "description": "Stops a running job",
+                "parameters": [
+                    {
+                        "name": "jobId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Job ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job stopped successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/logs/{jobId}": {
+            "get": {
+                "summary": "Get job logs",
+                "description": "Gets logs for a specific job",
+                "parameters": [
+                    {
+                        "name": "jobId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Job ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job logs",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
