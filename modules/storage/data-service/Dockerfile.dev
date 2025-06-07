@@ -25,10 +25,7 @@ RUN mkdir -p generated/platform generated/timescale
 # Generate Prisma clients
 RUN pnpm db:generate && pnpm db-timescale:generate
 
-# Copy the rest of the application
-COPY . .
-
-# Copy and setup entrypoint
+# Copy and setup entrypoint (but not source code - will be mounted as volume)
 COPY scripts/docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
 

@@ -29,10 +29,10 @@ services:
   flink-cep:
     container_name: flink-cep
     build:
-      context: ./services/flink-cep
+      context: ./flink-cep
       dockerfile: Dockerfile
     volumes:
-      - ./services/flink-cep:/opt/flink/job
+      - ./flink-cep:/opt/flink/job
     depends_on:
       - flink-jobmanager
       - flink-taskmanager
@@ -42,12 +42,17 @@ services:
   job-submission-service:
     container_name: job-submission-service
     build:
-      context: ./services/job-submission-service
-      dockerfile: Dockerfile
+      context: ./job-submission-service
+      dockerfile: Dockerfile.dev
     ports:
-      - "9000:80"
+      - "9000:3000"
     environment:
       - FLINK_REST_URL=http://flink-jobmanager:8081
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./job-submission-service:/app
+      - /app/node_modules
     depends_on:
       - flink-jobmanager
     profiles: ["analytics", "full"]
