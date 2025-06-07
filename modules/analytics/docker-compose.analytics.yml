@@ -1,0 +1,53 @@
+services:
+# ------ Flink Job Manager ------- #
+  flink-jobmanager:
+    image: flink:latest
+    container_name: flink-jobmanager
+    command: jobmanager
+    ports:
+      - '8081:8081'  # Flink Web UI
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=flink-jobmanager
+    profiles: ["analytics", "full"]
+
+  # ------ Flink Task Manager ------- #
+  flink-taskmanager:
+    image: flink:latest
+    command: taskmanager
+    deploy:
+      replicas: 1
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 8
+    depends_on:
+      - flink-jobmanager
+    profiles: ["analytics", "full"]
+
+  # ------ Flink CEP ------ #
+  flink-cep:
+    container_name: flink-cep
+    build:
+      context: ./services/flink-cep
+      dockerfile: Dockerfile
+    volumes:
+      - ./services/flink-cep:/opt/flink/job
+    depends_on:
+      - flink-jobmanager
+      - flink-taskmanager
+    profiles: ["analytics", "full"]
+
+  # ------ Job Submission Service ------ #
+  job-submission-service:
+    container_name: job-submission-service
+    build:
+      context: ./services/job-submission-service
+      dockerfile: Dockerfile
+    ports:
+      - "9000:80"
+    environment:
+      - FLINK_REST_URL=http://flink-jobmanager:8081
+    depends_on:
+      - flink-jobmanager
+    profiles: ["analytics", "full"]

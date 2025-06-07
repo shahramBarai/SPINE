@@ -1,0 +1,12 @@
+services:
+  # ------ Webapp ------ #
+  webapp:
+    container_name: webapp
+    build:
+      context: ./webapp
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5433/myllypuro-campus
+    profiles: ["app", "full"]

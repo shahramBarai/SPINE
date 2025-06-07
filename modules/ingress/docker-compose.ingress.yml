@@ -1,0 +1,23 @@
+services:
+  # ------ MQTT Subscriber ------- #
+  mqtt-subscriber:
+    container_name: mqtt-subscriber
+    build:
+      context: .
+      dockerfile: ./mqtt_subscriber/Dockerfile
+    environment:
+      - MQTT_BROKER=xrdevmqtt.edu.metropolia.fi
+      - MQTT_PORT=1883
+      - MQTT_CLIENT_ID=mqtt-subscriber
+      - MQTT_USERNAME=
+      - MQTT_PASSWORD=
+      - MQTT_QOS=0
+      - MQTT_KEEP_ALIVE=30
+      - KAFKA_BROKER=kafka:9092
+      - KAFKA_TOPIC_SENSOR_DATA=smartlab-sensor-data
+      - KAFKA_TOPIC_SERVICE_METRICS=smartlab-subscriber-metrics
+      - API_PORT=3000
+      - RUST_LOG=info
+    ports:
+      - '3000:3000'
+    profiles: ["ingress", "full"]

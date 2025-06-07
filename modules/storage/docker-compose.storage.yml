@@ -1,0 +1,65 @@
+services:
+  # ------ PostgreSQL ------- #
+  postgres:
+    image: postgres:16.8-bookworm
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: myllypuro-campus
+    command: -p 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  
+  # ------ TimescaleDB ------- #
+  timescaledb:
+    image: timescale/timescaledb:2.17.2-pg16
+    container_name: timescaledb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: myllypuro-campus
+    command: -p 5433
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+
+  # ------ Data Service ------- #
+  data-service:
+    container_name: data-service
+    build:
+      context: ./data-service
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3010:3010"
+    volumes:
+      - ./data-service:/app
+      - data-service_node_modules:/app/node_modules
+      - data-service_generated:/app/generated
+    depends_on:
+      - timescaledb
+      - postgres
+
+  # # ------ Timescale Writer ------- #
+  # timescale-writer:
+  #   container_name: timescale-writer
+  #   build:
+  #     context: .
+  #     dockerfile: ./timescale-writer/Dockerfile.dev
+  #   environment:
+  #     - KAFKA_BROKERS=kafka:9092
+  #     - KAFKA_TOPICS=smartlab-sensor-data
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=password
+  #     - POSTGRES_DB=myllypuro-campus
+  #     - POSTGRES_HOST=timescaledb
+  #     - POSTGRES_PORT=5433
+  #   depends_on:
+  #     - timescaledb
+  #   volumes:
+  #     - ./timescale-writer:/app
+
+volumes:
+  timescaledb_data:
+  postgres_data:
+  data-service_node_modules:
+  data-service_generated:

@@ -1,0 +1,9 @@
+# TODO: Add egress module services here
+# When you add services, make sure to include profiles like this:
+# 
+# services:
+#   example-egress-service:
+#     image: your-image
+#     container_name: example-egress-service
+#     profiles: ["egress", "full"]
+#     # ... other service configuration
