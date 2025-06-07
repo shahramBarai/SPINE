@@ -38,6 +38,14 @@ services:
       - LOG_LEVEL="info" 
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
+      # Database connection configuration for entrypoint script
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - TIMESCALE_HOST=timescaledb
+      - TIMESCALE_PORT=5433
+      # Auth configuration
+      - AUTH_ENABLED=false
+      - DISTRIBUTED_DEPLOYMENT=false
     volumes:
       - ./data-service:/app
       - /app/node_modules

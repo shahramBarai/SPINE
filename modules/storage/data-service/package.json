@@ -5,6 +5,7 @@
     "scripts": {
         "dev": "tsx watch src/server.ts",
         "lint": "eslint src --ext .ts",
+        "type-check": "tsc --noEmit",
         "build": "tsup src/server.ts --format cjs,esm --dts",
         "start": "node dist/server.js",
         "prod": "pnpm build && pnpm start",
@@ -19,9 +20,11 @@
     },
     "dependencies": {
         "@fastify/cors": "^8.0.0",
+        "@fastify/multipart": "^9.0.3",
         "@prisma/client": "^5.0.0",
         "dotenv": "^16.0.0",
         "fastify": "^4.0.0",
+        "minio": "^8.0.5",
         "pino": "^8.0.0",
         "pino-pretty": "^13.0.0",
         "zod": "^3.0.0"
