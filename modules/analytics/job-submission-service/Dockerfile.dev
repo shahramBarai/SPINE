@@ -1,7 +1,7 @@
 FROM node:20-alpine3.17
 
 # Install necessary system libraries
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat netcat-openbsd
 
 WORKDIR /app
 
@@ -11,4 +11,4 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "dev"] 

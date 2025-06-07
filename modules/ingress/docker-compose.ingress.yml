@@ -4,7 +4,7 @@ services:
     container_name: mqtt-subscriber
     build:
       context: .
-      dockerfile: ./mqtt_subscriber/Dockerfile
+      dockerfile: ./mqtt_subscriber/Dockerfile.dev
     environment:
       - MQTT_BROKER=xrdevmqtt.edu.metropolia.fi
       - MQTT_PORT=1883
@@ -19,5 +19,13 @@ services:
       - API_PORT=3000
       - RUST_LOG=info
     ports:
-      - '3000:3000'
+      - '3001:3000'
+    volumes:
+      - ./services/mqtt_subscriber:/app
+      - mqtt_subscriber_target:/app/target
+    depends_on:
+      - kafka
     profiles: ["ingress", "full"]
+
+volumes:
+  mqtt_subscriber_target:

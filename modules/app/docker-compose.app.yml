@@ -4,9 +4,16 @@ services:
     container_name: webapp
     build:
       context: ./webapp
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://postgres:password@postgres:5433/myllypuro-campus
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/myllypuro-campus
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./webapp:/app
+      - /app/node_modules
+      - /app/.next
     profiles: ["app", "full"]

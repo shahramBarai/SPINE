@@ -1,0 +1,28 @@
+# Define the Rust version and the application name
+ARG RUST_VERSION=1.83.0
+ARG APP_NAME=mqtt-subscriber
+
+FROM rust:${RUST_VERSION}-alpine3.21 AS development
+
+# Set the working directory
+WORKDIR /app
+
+# Install dependencies (compilation tools and libraries)
+RUN apk add build-base musl-dev \
+    zlib-dev zlib-static \
+    bash protoc netcat-openbsd --no-cache
+
+# Copy Cargo files for dependency caching
+COPY ./services/mqtt_subscriber/Cargo.toml ./services/mqtt_subscriber/Cargo.lock ./
+
+# Create a dummy src/main.rs to build dependencies
+RUN mkdir -p ./src && echo "fn main() {}" > ./src/main.rs
+
+# Build dependencies (this layer will be cached)
+RUN cargo build
+
+# Remove the dummy file
+RUN rm ./src/main.rs
+
+# Development command with auto-reload
+CMD ["cargo", "run"] 
