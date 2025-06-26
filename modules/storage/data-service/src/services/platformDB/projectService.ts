@@ -5,6 +5,7 @@ import {
   ConflictError,
   ValidationError,
   DatabaseError,
+  ServiceError,
 } from "../../utils/errors";
 
 export interface CreateProjectData {
@@ -113,8 +114,27 @@ export class ProjectService {
     }
   }
 
-  // Create project
+  // Create new project
   static async createProject(data: CreateProjectData) {
+    // Validate that all member users exist if members are provided
+    if (data.members && data.members.length > 0) {
+      for (const member of data.members) {
+        try {
+          const user = await platformDb.user.findUnique({
+            where: { id: member.userId },
+          });
+          if (!user) {
+            throw EntityNotFoundError("User", member.userId);
+          }
+        } catch (error: any) {
+          if (error.name === "ServiceError") {
+            throw error;
+          }
+          throw EntityNotFoundError("User", member.userId);
+        }
+      }
+    }
+
     try {
       return await platformDb.project.create({
         data: {
@@ -218,6 +238,21 @@ export class ProjectService {
     // Check if project exists
     await this.getProjectById(projectId);
 
+    // Check if user exists
+    try {
+      const user = await platformDb.user.findUnique({
+        where: { id: data.userId },
+      });
+      if (!user) {
+        throw EntityNotFoundError("User", data.userId);
+      }
+    } catch (error: any) {
+      if (error.name === "ServiceError") {
+        throw error;
+      }
+      throw DatabaseError("getUserForProjectMember", error);
+    }
+
     // Check if user is already a member of the project
     const isAlreadyMember = await this.isProjectMember(projectId, data.userId);
     if (isAlreadyMember) {
@@ -261,7 +296,11 @@ export class ProjectService {
     // Check if user is a member of the project
     const isMember = await this.isProjectMember(projectId, userId);
     if (!isMember) {
-      throw EntityNotFoundError("ProjectMember", `${projectId}:${userId}`);
+      throw new ServiceError(
+        "NOT_FOUND",
+        `User with ID ${userId} is not a member of project ${projectId}`,
+        { userId, projectId }
+      );
     }
 
     try {
@@ -299,7 +338,11 @@ export class ProjectService {
     // Check if user is a member of the project
     const isMember = await this.isProjectMember(projectId, userId);
     if (!isMember) {
-      throw EntityNotFoundError("ProjectMember", `${projectId}:${userId}`);
+      throw new ServiceError(
+        "NOT_FOUND",
+        `User with ID ${userId} is not a member of project ${projectId}`,
+        { userId, projectId }
+      );
     }
 
     try {
@@ -347,7 +390,7 @@ export class ProjectService {
           role: true,
         },
       });
-      return member?.role;
+      return member?.role || null;
     } catch (error: any) {
       throw DatabaseError("getUserRoleInProject", error);
     }

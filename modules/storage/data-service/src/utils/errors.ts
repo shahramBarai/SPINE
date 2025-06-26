@@ -58,11 +58,10 @@ export const EntityNotFoundError = (
   entity: string,
   identifier: string | number
 ) =>
-  new ServiceError(
-    "NOT_FOUND",
-    `${entity} with identifier ${identifier} not found`,
-    { entity, identifier }
-  );
+  new ServiceError("NOT_FOUND", `${entity} with ID ${identifier} not found`, {
+    entity,
+    identifier,
+  });
 
 export const ValidationError = (field: string, reason: string, value?: any) =>
   new ServiceError(
@@ -206,4 +205,10 @@ export const asyncHandler = (fn: Function) => {
       reply.code(statusCode).send(response);
     }
   };
+};
+
+// Helper function to handle service errors in controllers
+export const handleServiceError = (error: unknown, reply: any) => {
+  const { statusCode, response } = formatErrorResponse(error);
+  return reply.code(statusCode).send(response);
 };
