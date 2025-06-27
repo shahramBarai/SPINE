@@ -1,5 +1,4 @@
 import { initTRPC, TRPCError } from "@trpc/server";
-import { prisma } from "@/server/prisma";
 import { getServerSession } from "@/server/auth/iron-session";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -14,7 +13,6 @@ export async function createContext({
   const session = await getServerSession(req, res);
 
   return {
-    prisma,
     session,
     req,
     res,

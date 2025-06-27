@@ -1,14 +1,19 @@
 import { SignInForm } from "@/client/components/complex/auth/SignInForm";
+import { DevSignInForm } from "@/client/components/complex/auth/DevSignInForm";
 import Image from "next/image";
 import { getServerSession } from "@/server/auth/iron-session";
 import { GetServerSidePropsContext } from "next";
 
-const AuthPage = () => {
+interface AuthPageProps {
+  isDevelopment: boolean;
+}
+
+const AuthPage = ({ isDevelopment }: AuthPageProps) => {
   return (
     <div className="flex flex-col xl:flex-row items-center justify-center h-screen">
       {/* Left | Top side - Form */}
       <div className="w-full flex items-center justify-center py-56 xl:py-0">
-        <SignInForm />
+        {isDevelopment ? <DevSignInForm /> : <SignInForm />}
       </div>
 
       {/* Right side - Image */}
@@ -42,6 +47,8 @@ export const getServerSideProps = async (
   }
 
   return {
-    props: {},
+    props: {
+      isDevelopment: process.env.NODE_ENV === "development",
+    },
   };
 };
