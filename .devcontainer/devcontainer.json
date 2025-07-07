@@ -1,0 +1,19 @@
+// For more information, see https://containers.dev
+{
+  "name": "IoT Platform",
+  "dockerComposeFile": ["../docker-compose.yml", "docker-compose.yml"],
+  "service": "app",
+  "workspaceFolder": "/app/${localWorkspaceFolderBasename}",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "github.copilot",
+        "prisma.prisma",
+        "bradlc.vscode-tailwindcss",
+        "eamodio.gitlens",
+        "esbenp.prettier-vscode",
+        "humao.rest-client"
+      ]
+    }
+  }
+}
