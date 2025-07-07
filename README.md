@@ -81,3 +81,7 @@ The [Timescale writer](./services/timescale-writer) service is responsible for w
 - Connects to a Kafka broker to consume messages related to sensor data.
 - Validates the incoming sensor data, ensuring that timestamps are correctly formatted.
 - Inserts valid sensor data into the `sensor_data` table in TimescaleDB.
+
+Add this features:
+
+- GraphQl

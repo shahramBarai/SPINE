@@ -84,3 +84,38 @@ The Storage Module integrates with other platform modules through:
 - **Audit Logging**: Complete operation tracking for governance
 
 This modular approach enables independent scaling, technology optimization, and operational flexibility while maintaining consistent data governance across the entire platform.
+
+## Troubleshooting
+
+### Database Authentication Errors
+
+If you encounter authentication errors like "password authentication failed for user postgres", this usually means the database volumes contain old data with different passwords.
+
+#### Solution 1: Reset Database Passwords (Recommended for existing data)
+```bash
+# Reset passwords to match docker-compose configuration
+docker exec -it postgres psql -U postgres -c "ALTER USER postgres PASSWORD 'postgres';"
+docker exec -it timescaledb psql -U postgres -c "ALTER USER postgres PASSWORD 'postgres';"
+
+# Restart data-service
+docker restart data-service
+```
+
+#### Solution 2: Clean Volumes (WARNING: Deletes all data)
+```bash
+# Stop all services
+docker compose down
+
+# Remove database volumes
+docker volume rm iot-platform-multilevel-digital-twins_postgres_data
+docker volume rm iot-platform-multilevel-digital-twins_timescaledb_data
+
+# Start services again (databases will be initialized fresh)
+docker compose up -d
+```
+
+### Common Issues
+
+1. **Port conflicts**: Ensure ports 5432, 5433, and 3010 are not in use
+2. **Memory issues**: TimescaleDB requires adequate memory for efficient operation
+3. **Connection timeouts**: Health checks ensure databases are ready before data-service starts
