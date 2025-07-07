@@ -12,6 +12,11 @@ services:
     command: -p 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d myllypuro-campus"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   
   # ------ TimescaleDB ------- #
   timescaledb:
@@ -26,6 +31,11 @@ services:
     command: -p 5432
     volumes:
       - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d myllypuro-campus"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # ------ Data Service ------- #
   data-service:
@@ -55,8 +65,10 @@ services:
       - /app/node_modules
       - ./data-service/generated:/app/generated
     depends_on:
-      - timescaledb
-      - postgres
+      postgres:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
 
   # # ------ Timescale Writer ------- #
   # timescale-writer:
