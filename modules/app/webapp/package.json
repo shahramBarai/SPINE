@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:kafka": "tsx test/kafka-connection.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.2",
@@ -27,6 +28,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "iron-session": "^8.0.4",
+    "kafkajs": "^2.2.4",
     "lucide-react": "^0.503.0",
     "next": "15.3.1",
     "react": "^19.0.0",
@@ -38,6 +40,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@testcontainers/kafka": "^11.2.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -45,6 +48,8 @@
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.3",
     "tw-animate-css": "^1.2.8",
     "typescript": "^5"
   }
