@@ -28,16 +28,26 @@ services:
     depends_on:
       - kafka
 
-  # ------ Kafka Rest ------- #
+  # ------ Custom Kafka Rest API ------- #
   kafka-rest:
-    image: confluentinc/cp-kafka-rest:latest
+    build:
+      context: ./kafka-rest
+      dockerfile: Dockerfile
     container_name: kafka-rest
     ports:
-      - '8082:8082'
+      - '3002:3002'
     environment:
-      - KAFKA_REST_BOOTSTRAP_SERVERS=kafka:9092
-      - KAFKA_REST_LISTENERS=http://0.0.0.0:8082
-      - KAFKA_REST_HOST_NAME=kafka-rest
-      - KAFKA_REST_CONSUMER_REQUEST_TIMEOUT_MS=30000
+      - PORT=3002
+      - HOST=0.0.0.0
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_CLIENT_ID=kafka-rest-service
+      - LOG_LEVEL=info
+      - CORS_ORIGIN=http://localhost:3000
     depends_on:
       - kafka
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/api/v1/health', (res) => res.statusCode === 200 ? process.exit(0) : process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
