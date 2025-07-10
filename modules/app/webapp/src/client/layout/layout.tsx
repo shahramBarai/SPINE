@@ -1,11 +1,11 @@
 import Head from "next/head";
-import "../../styles/globals.css";
 import Navbar from "../components/complex/navigation/Navbar";
 import { useTheme } from "@/client/hooks/useTheme";
 import { AuthProvider } from "../context/AuthProvider";
 const navigation = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Projects", href: "/projects" },
+  { name: "Kafka", href: "/kafka" },
 ];
 
 export default function AppLayout({
