@@ -1,4 +1,14 @@
-import { Kafka, Admin, ITopicConfig, ConfigResourceTypes } from 'kafkajs';
+import {
+  ConsumerGroupsResponse,
+  KafkaClusterInfo,
+} from "@/server/schemas/kafka";
+import {
+  Kafka,
+  Admin,
+  ITopicConfig,
+  ConfigResourceTypes,
+  GroupDescription,
+} from "kafkajs";
 
 interface KafkaConfig {
   clientId: string;
@@ -17,8 +27,10 @@ export class KafkaAdminService {
 
   constructor(config?: Partial<KafkaConfig>) {
     this.config = {
-      clientId: config?.clientId || 'webapp-kafka-client',
-      brokers: config?.brokers || (process.env.KAFKA_BROKERS || 'localhost:9092').split(','),
+      clientId: config?.clientId || "webapp-kafka-client",
+      brokers:
+        config?.brokers ||
+        (process.env.KAFKA_BROKERS || "localhost:9092").split(","),
       connectionTimeout: config?.connectionTimeout || 10000,
       requestTimeout: config?.requestTimeout || 30000,
       retry: {
@@ -41,9 +53,9 @@ export class KafkaAdminService {
   async connect(): Promise<void> {
     try {
       await this.admin.connect();
-      console.info('Kafka admin client connected successfully');
+      console.info("Kafka admin client connected successfully");
     } catch (error) {
-      console.error('Failed to connect to Kafka admin client', error);
+      console.error("Failed to connect to Kafka admin client", error);
       throw error;
     }
   }
@@ -51,9 +63,9 @@ export class KafkaAdminService {
   async disconnect(): Promise<void> {
     try {
       await this.admin.disconnect();
-      console.info('Kafka admin client disconnected');
+      console.info("Kafka admin client disconnected");
     } catch (error) {
-      console.error('Failed to disconnect Kafka admin client', error);
+      console.error("Failed to disconnect Kafka admin client", error);
       throw error;
     }
   }
@@ -63,17 +75,19 @@ export class KafkaAdminService {
       const topics = await this.admin.listTopics();
       return topics;
     } catch (error) {
-      console.error('Failed to list topics', error);
+      console.error("Failed to list topics", error);
       throw error;
     }
   }
 
-  async getTopicMetadata(topics?: string[]): Promise<any> {
+  async getTopicMetadata(topics?: string[]): Promise<unknown> {
     try {
-      const metadata = await this.admin.fetchTopicMetadata({ topics: topics || [] });
+      const metadata = await this.admin.fetchTopicMetadata({
+        topics: topics || [],
+      });
       return metadata;
     } catch (error) {
-      console.error('Failed to fetch topic metadata', error);
+      console.error("Failed to fetch topic metadata", error);
       throw error;
     }
   }
@@ -86,7 +100,7 @@ export class KafkaAdminService {
       });
       return result;
     } catch (error) {
-      console.error('Failed to create topic', error);
+      console.error("Failed to create topic", error);
       throw error;
     }
   }
@@ -103,7 +117,7 @@ export class KafkaAdminService {
     }
   }
 
-  async getTopicConfiguration(topicName: string): Promise<any> {
+  async getTopicConfiguration(topicName: string): Promise<unknown> {
     try {
       const configs = await this.admin.describeConfigs({
         includeSynonyms: false,
@@ -116,37 +130,43 @@ export class KafkaAdminService {
       });
       return configs.resources[0]?.configEntries || [];
     } catch (error) {
-      console.error(`Failed to get configuration for topic ${topicName}`, error);
+      console.error(
+        `Failed to get configuration for topic ${topicName}`,
+        error
+      );
       throw error;
     }
   }
 
-  async getClusterInfo(): Promise<any> {
+  async getClusterInfo(): Promise<KafkaClusterInfo> {
     try {
       const cluster = await this.admin.describeCluster();
       return cluster;
     } catch (error) {
-      console.error('Failed to get cluster info', error);
+      console.error("Failed to get cluster info", error);
       throw error;
     }
   }
 
-  async getConsumerGroups(): Promise<any> {
+  async getConsumerGroups(): Promise<ConsumerGroupsResponse> {
     try {
       const groups = await this.admin.listGroups();
       return groups;
     } catch (error) {
-      console.error('Failed to list consumer groups', error);
+      console.error("Failed to list consumer groups", error);
       throw error;
     }
   }
 
-  async getConsumerGroupDetails(groupId: string): Promise<any> {
+  async getConsumerGroupDetails(groupId: string): Promise<GroupDescription> {
     try {
       const groupDetails = await this.admin.describeGroups([groupId]);
       return groupDetails.groups[0];
     } catch (error) {
-      console.error(`Failed to get consumer group details for ${groupId}`, error);
+      console.error(
+        `Failed to get consumer group details for ${groupId}`,
+        error
+      );
       throw error;
     }
   }

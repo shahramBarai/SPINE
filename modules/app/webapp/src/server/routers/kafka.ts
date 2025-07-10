@@ -7,9 +7,34 @@ import {
   topicMetadataSchema,
   getConsumerGroupDetailsSchema,
   getTopicConfigurationSchema,
+  KafkaHealthResponse,
+  KafkaClusterInfo,
 } from "../schemas/kafka";
 
 export const kafkaRouter = router({
+  // Check Kafka connection status
+  healthCheck: protectedProcedure.query(
+    async (): Promise<KafkaHealthResponse> => {
+      try {
+        const kafkaAdmin = getKafkaAdminService();
+        await kafkaAdmin.connect();
+        const cluster = (await kafkaAdmin.getClusterInfo()) as KafkaClusterInfo;
+        await kafkaAdmin.disconnect();
+        return {
+          status: "connected",
+          brokersCount: cluster.brokers?.length || 0,
+          controllerId: cluster.controller || undefined,
+          clusterId: cluster.clusterId,
+        };
+      } catch (error) {
+        return {
+          status: "disconnected",
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    }
+  ),
+
   // List all topics
   listTopics: protectedProcedure.query(async () => {
     try {
@@ -53,17 +78,17 @@ export const kafkaRouter = router({
       try {
         const kafkaAdmin = getKafkaAdminService();
         await kafkaAdmin.connect();
-        
+
         const topicConfig = {
           topic: input.topic,
           numPartitions: input.numPartitions,
           replicationFactor: input.replicationFactor,
           configEntries: input.configEntries,
         };
-        
+
         const result = await kafkaAdmin.createTopic(topicConfig);
         await kafkaAdmin.disconnect();
-        
+
         return { success: result, topic: input.topic };
       } catch (error) {
         throw new TRPCError({
@@ -83,7 +108,7 @@ export const kafkaRouter = router({
         await kafkaAdmin.connect();
         await kafkaAdmin.deleteTopic(input.topic);
         await kafkaAdmin.disconnect();
-        
+
         return { success: true, topic: input.topic };
       } catch (error) {
         throw new TRPCError({
@@ -154,7 +179,9 @@ export const kafkaRouter = router({
       try {
         const kafkaAdmin = getKafkaAdminService();
         await kafkaAdmin.connect();
-        const groupDetails = await kafkaAdmin.getConsumerGroupDetails(input.groupId);
+        const groupDetails = await kafkaAdmin.getConsumerGroupDetails(
+          input.groupId
+        );
         await kafkaAdmin.disconnect();
         return groupDetails;
       } catch (error) {
