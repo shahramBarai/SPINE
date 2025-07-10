@@ -3,9 +3,7 @@ import FlowView from "@/client/components/complex/flink-pipeline/FlowView";
 import { ReactFlowProvider, Node } from "@xyflow/react";
 import PropertyPanel from "@/client/components/complex/flink-pipeline/PropertyPanel";
 import { useState } from "react";
-import { withAuthSSR } from "@/server/auth/authenticated-ssr";
 import { BreadCrumb } from "@/client/components/complex/navigation";
-import { InferGetServerSidePropsType } from "next";
 
 function Project() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
