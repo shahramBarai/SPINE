@@ -1,0 +1,46 @@
+{
+  "type": "record",
+  "name": "SensorData",
+  "namespace": "com.iotplatform.messaging",
+  "doc": "IoT sensor data schema for the messaging module",
+  "fields": [
+    {
+      "name": "sensor_id",
+      "type": "string",
+      "doc": "Unique identifier for the sensor"
+    },
+    {
+      "name": "timestamp",
+      "type": "long",
+      "doc": "Unix timestamp in milliseconds when the reading was taken"
+    },
+    {
+      "name": "value",
+      "type": "double",
+      "doc": "The sensor reading value"
+    },
+    {
+      "name": "unit",
+      "type": "string",
+      "doc": "Unit of measurement (e.g., celsius, fahrenheit, lux, etc.)"
+    },
+    {
+      "name": "location",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Optional location identifier where the sensor is installed"
+    },
+    {
+      "name": "metadata",
+      "type": [
+        "null",
+        {
+          "type": "map",
+          "values": "string"
+        }
+      ],
+      "default": null,
+      "doc": "Optional metadata as key-value pairs for additional sensor information"
+    }
+  ]
+}

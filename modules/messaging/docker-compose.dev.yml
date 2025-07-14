@@ -1,0 +1,120 @@
+# Development Kafka Configuration
+# Single broker setup for local development with minimal resource usage
+
+version: '3.8'
+
+services:
+  # Development Kafka (KRaft mode - single broker)
+  kafka-dev:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka-dev
+    container_name: kafka-dev
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    environment:
+      # KRaft Configuration
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-dev:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka-dev:29092,CONTROLLER://kafka-dev:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-dev:29093'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      
+      # Cluster Configuration
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      
+      # Development-specific settings (relaxed for faster startup)
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_IN_SYNC_REPLICAS: 1
+      
+      # Topic defaults for development
+      KAFKA_NUM_PARTITIONS: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'  # Disabled for consistent behavior with production
+      
+      # Performance settings for development
+      KAFKA_LOG_RETENTION_HOURS: 168  # 7 days
+      KAFKA_LOG_RETENTION_BYTES: 1073741824  # 1GB
+      KAFKA_LOG_SEGMENT_BYTES: 104857600  # 100MB
+      KAFKA_LOG_CLEANUP_POLICY: 'delete'
+      
+      # Memory settings for development
+      KAFKA_HEAP_OPTS: '-Xmx512M -Xms512M'
+      
+      # JMX for monitoring (development)
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      
+      # Development logging
+      KAFKA_LOG4J_LOGGERS: 'kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO'
+      KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
+      
+      # Security (disabled for development)
+      # KAFKA_SECURITY_INTER_BROKER_PROTOCOL: PLAINTEXT  # Commented out to avoid conflict with inter.broker.listener.name
+      # KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+    volumes:
+      - kafka-dev-data:/var/lib/kafka/data
+      - ./kafka/configs/dev:/etc/kafka/configs
+    healthcheck:
+      test: kafka-broker-api-versions --bootstrap-server kafka-dev:29092 || exit 1
+      start_period: 30s
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - iot-platform-dev
+
+  # Schema Registry for development
+  schema-registry-dev:
+    image: confluentinc/cp-schema-registry:7.5.0
+    hostname: schema-registry-dev
+    container_name: schema-registry-dev
+    restart: unless-stopped
+    depends_on:
+      - kafka-dev
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry-dev
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka-dev:29092'
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
+      SCHEMA_REGISTRY_DEBUG: 'true'
+    networks:
+      - iot-platform-dev
+
+
+  # Kafka UI for development
+  kafka-ui-dev:
+    image: provectuslabs/kafka-ui:latest
+    hostname: kafka-ui-dev
+    container_name: kafka-ui-dev
+    restart: unless-stopped
+    depends_on:
+      - kafka-dev
+      - schema-registry-dev
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: dev-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-dev:29092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry-dev:8081
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    networks:
+      - iot-platform-dev
+
+volumes:
+  kafka-dev-data:
+    driver: local
+
+networks:
+  iot-platform-dev:
+    driver: bridge
+    name: iot-platform-dev

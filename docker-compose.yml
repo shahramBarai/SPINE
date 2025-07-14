@@ -2,7 +2,7 @@ name: campus-dev
 
 include:
   # Core services - always included (no profile needed)
-  - ./modules/data-streaning/docker-compose.datastreaming.yml
+  - ./modules/messaging/docker-compose.dev.yml
   - ./modules/storage/docker-compose.storage.yml
   - ./modules/ingress/docker-compose.ingress.yml
   

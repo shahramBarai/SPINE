@@ -1,0 +1,330 @@
+# Production Kafka Configuration
+# Multi-broker setup with high availability, fault tolerance, and security
+
+version: '3.8'
+
+services:
+  # Production Kafka Broker 1
+  kafka-1:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka-1
+    container_name: kafka-1
+    restart: always
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    environment:
+      # KRaft Configuration
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,SSL:SSL'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-1:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka-1:29092,CONTROLLER://kafka-1:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-1:29093,2@kafka-2:29093,3@kafka-3:29093'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      
+      # Cluster Configuration
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      
+      # Production replication settings
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 3000
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_IN_SYNC_REPLICAS: 2
+      
+      # Topic defaults for production
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'  # Disable for production
+      
+      # Performance settings for production
+      KAFKA_LOG_RETENTION_HOURS: 720  # 30 days
+      KAFKA_LOG_RETENTION_BYTES: 10737418240  # 10GB
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824  # 1GB
+      KAFKA_LOG_CLEANUP_POLICY: 'delete'
+      KAFKA_COMPRESSION_TYPE: 'snappy'
+      
+      # Memory settings for production
+      KAFKA_HEAP_OPTS: '-Xmx2G -Xms2G'
+      
+      # JMX for monitoring
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: kafka-1
+      
+      # Production logging
+      KAFKA_LOG4J_LOGGERS: 'kafka.controller=WARN,kafka.producer.async.DefaultEventHandler=WARN,state.change.logger=WARN'
+      KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
+      
+      # Performance tuning
+      KAFKA_SOCKET_SEND_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_RECEIVE_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
+      KAFKA_NUM_NETWORK_THREADS: 8
+      KAFKA_NUM_IO_THREADS: 8
+      KAFKA_BACKGROUND_THREADS: 20
+      
+      # Durability settings
+      KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: 'false'
+      KAFKA_LOG_FLUSH_INTERVAL_MESSAGES: 10000
+      KAFKA_LOG_FLUSH_INTERVAL_MS: 1000
+      
+      # Security settings (commented out to avoid conflict with inter.broker.listener.name)
+      # KAFKA_SECURITY_INTER_BROKER_PROTOCOL: PLAINTEXT
+      # KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+    volumes:
+      - kafka-1-data:/var/lib/kafka/data
+      - ./kafka/configs/prod:/etc/kafka/configs
+      - ./kafka/security:/etc/kafka/security
+    healthcheck:
+      test: kafka-broker-api-versions --bootstrap-server kafka-1:29092 || exit 1
+      start_period: 45s
+      interval: 30s
+      timeout: 15s
+      retries: 5
+    networks:
+      - iot-platform-prod
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+  # Production Kafka Broker 2
+  kafka-2:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka-2
+    container_name: kafka-2
+    restart: always
+    ports:
+      - "9093:9093"
+      - "9102:9102"
+    environment:
+      # KRaft Configuration
+      KAFKA_NODE_ID: 2
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,SSL:SSL'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-2:29092,PLAINTEXT_HOST://localhost:9093'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka-2:29092,CONTROLLER://kafka-2:29093,PLAINTEXT_HOST://0.0.0.0:9093'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-1:29093,2@kafka-2:29093,3@kafka-3:29093'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      
+      # Cluster Configuration
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      
+      # Production replication settings
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 3000
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_IN_SYNC_REPLICAS: 2
+      
+      # Topic defaults for production
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      
+      # Performance settings for production
+      KAFKA_LOG_RETENTION_HOURS: 720  # 30 days
+      KAFKA_LOG_RETENTION_BYTES: 10737418240  # 10GB
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824  # 1GB
+      KAFKA_LOG_CLEANUP_POLICY: 'delete'
+      KAFKA_COMPRESSION_TYPE: 'snappy'
+      
+      # Memory settings for production
+      KAFKA_HEAP_OPTS: '-Xmx2G -Xms2G'
+      
+      # JMX for monitoring
+      KAFKA_JMX_PORT: 9102
+      KAFKA_JMX_HOSTNAME: kafka-2
+      
+      # Production logging
+      KAFKA_LOG4J_LOGGERS: 'kafka.controller=WARN,kafka.producer.async.DefaultEventHandler=WARN,state.change.logger=WARN'
+      KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
+      
+      # Performance tuning
+      KAFKA_SOCKET_SEND_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_RECEIVE_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
+      KAFKA_NUM_NETWORK_THREADS: 8
+      KAFKA_NUM_IO_THREADS: 8
+      KAFKA_BACKGROUND_THREADS: 20
+      
+      # Durability settings
+      KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: 'false'
+      KAFKA_LOG_FLUSH_INTERVAL_MESSAGES: 10000
+      KAFKA_LOG_FLUSH_INTERVAL_MS: 1000
+      
+      # Security settings (commented out to avoid conflict with inter.broker.listener.name)
+      # KAFKA_SECURITY_INTER_BROKER_PROTOCOL: PLAINTEXT
+      # KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+    volumes:
+      - kafka-2-data:/var/lib/kafka/data
+      - ./kafka/configs/prod:/etc/kafka/configs
+      - ./kafka/security:/etc/kafka/security
+    healthcheck:
+      test: kafka-broker-api-versions --bootstrap-server kafka-2:29092 || exit 1
+      start_period: 45s
+      interval: 30s
+      timeout: 15s
+      retries: 5
+    networks:
+      - iot-platform-prod
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+  # Production Kafka Broker 3
+  kafka-3:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka-3
+    container_name: kafka-3
+    restart: always
+    ports:
+      - "9094:9094"
+      - "9103:9103"
+    environment:
+      # KRaft Configuration
+      KAFKA_NODE_ID: 3
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,SSL:SSL'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-3:29092,PLAINTEXT_HOST://localhost:9094'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka-3:29092,CONTROLLER://kafka-3:29093,PLAINTEXT_HOST://0.0.0.0:9094'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-1:29093,2@kafka-2:29093,3@kafka-3:29093'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      
+      # Cluster Configuration
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      
+      # Production replication settings
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 3000
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_IN_SYNC_REPLICAS: 2
+      
+      # Topic defaults for production
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      
+      # Performance settings for production
+      KAFKA_LOG_RETENTION_HOURS: 720  # 30 days
+      KAFKA_LOG_RETENTION_BYTES: 10737418240  # 10GB
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824  # 1GB
+      KAFKA_LOG_CLEANUP_POLICY: 'delete'
+      KAFKA_COMPRESSION_TYPE: 'snappy'
+      
+      # Memory settings for production
+      KAFKA_HEAP_OPTS: '-Xmx2G -Xms2G'
+      
+      # JMX for monitoring
+      KAFKA_JMX_PORT: 9103
+      KAFKA_JMX_HOSTNAME: kafka-3
+      
+      # Production logging
+      KAFKA_LOG4J_LOGGERS: 'kafka.controller=WARN,kafka.producer.async.DefaultEventHandler=WARN,state.change.logger=WARN'
+      KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
+      
+      # Performance tuning
+      KAFKA_SOCKET_SEND_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_RECEIVE_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
+      KAFKA_NUM_NETWORK_THREADS: 8
+      KAFKA_NUM_IO_THREADS: 8
+      KAFKA_BACKGROUND_THREADS: 20
+      
+      # Durability settings
+      KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: 'false'
+      KAFKA_LOG_FLUSH_INTERVAL_MESSAGES: 10000
+      KAFKA_LOG_FLUSH_INTERVAL_MS: 1000
+      
+      # Security settings (commented out to avoid conflict with inter.broker.listener.name)
+      # KAFKA_SECURITY_INTER_BROKER_PROTOCOL: PLAINTEXT
+      # KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+    volumes:
+      - kafka-3-data:/var/lib/kafka/data
+      - ./kafka/configs/prod:/etc/kafka/configs
+      - ./kafka/security:/etc/kafka/security
+    healthcheck:
+      test: kafka-broker-api-versions --bootstrap-server kafka-3:29092 || exit 1
+      start_period: 45s
+      interval: 30s
+      timeout: 15s
+      retries: 5
+    networks:
+      - iot-platform-prod
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+  # Schema Registry for production (clustered)
+  schema-registry-1:
+    image: confluentinc/cp-schema-registry:7.5.0
+    hostname: schema-registry-1
+    container_name: schema-registry-1
+    restart: always
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry-1
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka-1:29092,kafka-2:29092,kafka-3:29092'
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 3
+      SCHEMA_REGISTRY_LEADER_ELIGIBILITY: 'true'
+      SCHEMA_REGISTRY_MODE_MUTABILITY: 'true'
+      SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: WARN
+    networks:
+      - iot-platform-prod
+
+
+  # Load Balancer for Kafka (HAProxy)
+  kafka-lb:
+    image: haproxy:2.8
+    hostname: kafka-lb
+    container_name: kafka-lb
+    restart: always
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    ports:
+      - "9095:9095"  # Load balanced Kafka port
+      - "8404:8404"  # HAProxy stats
+    volumes:
+      - ./kafka/configs/prod/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - iot-platform-prod
+
+volumes:
+  kafka-1-data:
+    driver: local
+  kafka-2-data:
+    driver: local
+  kafka-3-data:
+    driver: local
+
+networks:
+  iot-platform-prod:
+    driver: bridge
+    name: iot-platform-prod
