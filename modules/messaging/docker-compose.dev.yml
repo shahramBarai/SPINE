@@ -1,14 +1,11 @@
 # Development Kafka Configuration
 # Single broker setup for local development with minimal resource usage
-
-version: '3.8'
-
 services:
   # Development Kafka (KRaft mode - single broker)
-  kafka-dev:
+  kafka:
     image: confluentinc/cp-kafka:7.5.0
-    hostname: kafka-dev
-    container_name: kafka-dev
+    hostname: kafka
+    container_name: kafka
     restart: unless-stopped
     ports:
       - "9092:9092"
@@ -17,11 +14,11 @@ services:
       # KRaft Configuration
       KAFKA_NODE_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-dev:29092,PLAINTEXT_HOST://localhost:9092'
-      KAFKA_LISTENERS: 'PLAINTEXT://kafka-dev:29092,CONTROLLER://kafka-dev:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-dev:29093'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
       KAFKA_PROCESS_ROLES: 'broker,controller'
       
       # Cluster Configuration
@@ -60,61 +57,50 @@ services:
       # KAFKA_SECURITY_INTER_BROKER_PROTOCOL: PLAINTEXT  # Commented out to avoid conflict with inter.broker.listener.name
       # KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
     volumes:
-      - kafka-dev-data:/var/lib/kafka/data
+      - kafka-data:/var/lib/kafka/data
       - ./kafka/configs/dev:/etc/kafka/configs
     healthcheck:
-      test: kafka-broker-api-versions --bootstrap-server kafka-dev:29092 || exit 1
+      test: kafka-broker-api-versions --bootstrap-server kafka:29092 || exit 1
       start_period: 30s
       interval: 30s
       timeout: 10s
       retries: 3
-    networks:
-      - iot-platform-dev
 
   # Schema Registry for development
-  schema-registry-dev:
+  schema-registry:
     image: confluentinc/cp-schema-registry:7.5.0
-    hostname: schema-registry-dev
-    container_name: schema-registry-dev
+    hostname: schema-registry
+    container_name: schema-registry
     restart: unless-stopped
     depends_on:
-      - kafka-dev
+      - kafka
     ports:
       - "8081:8081"
     environment:
-      SCHEMA_REGISTRY_HOST_NAME: schema-registry-dev
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka-dev:29092'
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka:29092'
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
       SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
       SCHEMA_REGISTRY_DEBUG: 'true'
-    networks:
-      - iot-platform-dev
 
 
   # Kafka UI for development
-  kafka-ui-dev:
+  kafka-ui:
     image: provectuslabs/kafka-ui:latest
-    hostname: kafka-ui-dev
-    container_name: kafka-ui-dev
+    hostname: kafka-ui
+    container_name: kafka-ui
     restart: unless-stopped
     depends_on:
-      - kafka-dev
-      - schema-registry-dev
+      - kafka
+      - schema-registry
     ports:
       - "8080:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: dev-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-dev:29092
-      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry-dev:8081
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
       DYNAMIC_CONFIG_ENABLED: 'true'
-    networks:
-      - iot-platform-dev
 
 volumes:
-  kafka-dev-data:
+  kafka-data:
     driver: local
-
-networks:
-  iot-platform-dev:
-    driver: bridge
-    name: iot-platform-dev

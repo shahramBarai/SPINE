@@ -83,8 +83,6 @@ services:
       interval: 30s
       timeout: 15s
       retries: 5
-    networks:
-      - iot-platform-prod
     deploy:
       resources:
         limits:
@@ -173,8 +171,6 @@ services:
       interval: 30s
       timeout: 15s
       retries: 5
-    networks:
-      - iot-platform-prod
     deploy:
       resources:
         limits:
@@ -263,8 +259,6 @@ services:
       interval: 30s
       timeout: 15s
       retries: 5
-    networks:
-      - iot-platform-prod
     deploy:
       resources:
         limits:
@@ -294,8 +288,6 @@ services:
       SCHEMA_REGISTRY_LEADER_ELIGIBILITY: 'true'
       SCHEMA_REGISTRY_MODE_MUTABILITY: 'true'
       SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: WARN
-    networks:
-      - iot-platform-prod
 
 
   # Load Balancer for Kafka (HAProxy)
@@ -313,8 +305,6 @@ services:
       - "8404:8404"  # HAProxy stats
     volumes:
       - ./kafka/configs/prod/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
-    networks:
-      - iot-platform-prod
 
 volumes:
   kafka-1-data:
@@ -323,8 +313,3 @@ volumes:
     driver: local
   kafka-3-data:
     driver: local
-
-networks:
-  iot-platform-prod:
-    driver: bridge
-    name: iot-platform-prod

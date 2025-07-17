@@ -12,10 +12,10 @@ include:
   - ./modules/egress/docker-compose.egress.yml
 
 # Global networks that can be shared across modules
-networks:
-  iot-platform-network:
-    driver: bridge
-    name: iot-platform-network
+# networks:
+#   iot-platform-network:
+#     driver: bridge
+#     name: iot-platform-network
 
 # Global volumes that can be shared across modules
 volumes:
