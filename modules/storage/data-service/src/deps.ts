@@ -1,6 +1,6 @@
 // Core dependencies
 import Fastify from "fastify";
-import fastifyCors from "@fastify/cors";
+import cors from "@fastify/cors";
 import { z } from "zod";
 
 // Types
@@ -14,7 +14,7 @@ import type {
 // Export dependencies
 export {
   Fastify,
-  fastifyCors,
+  cors,
   z,
   type FastifyInstance,
   type FastifyRequest,

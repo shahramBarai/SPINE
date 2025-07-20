@@ -1,4 +1,4 @@
-import { Fastify, fastifyCors } from "./deps";
+import { Fastify, cors } from "./deps";
 import { logger } from "./utils/logger";
 // import { initMinioConnection } from "./db/minio";
 import { errorHandlerPlugin } from "./utils/errors";
@@ -44,7 +44,7 @@ const server = Fastify({
 server.register(errorHandlerPlugin);
 
 // Register CORS for cross-origin requests
-server.register(import("@fastify/cors"), {
+server.register(cors, {
   origin: true,
 });
 
