@@ -6,6 +6,7 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Projects", href: "/projects" },
   { name: "Kafka", href: "/kafka" },
+  { name: "Schemas", href: "/schemas" },
 ];
 
 export default function AppLayout({
