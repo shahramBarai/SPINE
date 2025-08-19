@@ -2,3 +2,6 @@
 .env
 target/
 Cargo.lock
+node_modules
+docs
+test
