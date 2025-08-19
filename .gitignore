@@ -1,7 +1,12 @@
-.cursor
-.env
+# Dependencies
+node_modules/
+.pnpm-store/
 target/
 Cargo.lock
-node_modules
-docs
-test
+.turbo
+
+# Local env files
+.env
+
+# Custom test files
+test/
