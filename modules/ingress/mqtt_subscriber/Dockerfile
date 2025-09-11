@@ -12,7 +12,7 @@ RUN apk add build-base musl-dev \
     zlib-dev zlib-static \
     bash protoc --no-cache
 # Copy the source code
-COPY ./services/mqtt_subscriber .
+COPY ./mqtt_subscriber .
 # Build the application in release mode
 RUN cargo install --path .
 

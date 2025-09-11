@@ -21,10 +21,8 @@ services:
     ports:
       - '3001:3000'
     volumes:
-      - ./services/mqtt_subscriber:/app
+      - ./mqtt_subscriber:/app
       - mqtt_subscriber_target:/app/target
-    depends_on:
-      - kafka
     profiles: ["ingress", "full"]
 
 volumes:

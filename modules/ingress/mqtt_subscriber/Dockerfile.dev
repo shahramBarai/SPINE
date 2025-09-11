@@ -13,7 +13,7 @@ RUN apk add build-base musl-dev \
     bash protoc netcat-openbsd --no-cache
 
 # Copy Cargo files for dependency caching
-COPY ./services/mqtt_subscriber/Cargo.toml ./services/mqtt_subscriber/Cargo.lock ./
+COPY ./mqtt_subscriber/Cargo.toml ./
 
 # Create a dummy src/main.rs to build dependencies
 RUN mkdir -p ./src && echo "fn main() {}" > ./src/main.rs
