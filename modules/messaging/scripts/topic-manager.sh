@@ -62,7 +62,7 @@ get_container_name() {
     local env=$1
     case $env in
         "dev")
-            echo "kafka-dev"
+            echo "kafka"
             ;;
         "prod")
             echo "kafka-1"
