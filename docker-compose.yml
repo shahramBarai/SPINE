@@ -3,12 +3,12 @@ name: campus-dev
 include:
   # Core services - always included (no profile needed)
   - ./modules/messaging/docker-compose.dev.yml
-  - ./modules/storage/docker-compose.storage.yml
-  - ./modules/ingress/docker-compose.ingress.yml
+  - ./modules/storage/docker-compose.dev.yml
   
   # Optional services - controlled by profiles defined in their respective files
-  - ./modules/analytics/docker-compose.analytics.yml
-  - ./modules/app/docker-compose.app.yml
+  - ./modules/ingress/docker-compose.dev.yml
+  - ./modules/analytics/docker-compose.dev.yml
+  - ./modules/app/docker-compose.dev.yml
   - ./modules/egress/docker-compose.egress.yml
 
 # Global networks that can be shared across modules
