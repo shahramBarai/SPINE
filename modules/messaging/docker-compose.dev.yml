@@ -58,7 +58,6 @@ services:
       # KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
     volumes:
       - kafka-data:/var/lib/kafka/data
-      - ./kafka/configs/dev:/etc/kafka/configs
     healthcheck:
       test: kafka-broker-api-versions --bootstrap-server kafka:29092 || exit 1
       start_period: 30s
