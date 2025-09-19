@@ -7,11 +7,9 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=development
-      - DATA_SERVICE_URL=http://data-service:3010
-      - NEXT_TELEMETRY_DISABLED=1
-      - CHOKIDAR_USEPOLLING=true
+    env_file:
+      - path: ./webapp/.env.example
+        required: true
     volumes:
       - ./webapp:/app
       - /app/node_modules
