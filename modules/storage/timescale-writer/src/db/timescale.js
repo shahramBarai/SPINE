@@ -1,14 +1,14 @@
 import { Sequelize } from "sequelize";
 
-const POSTGRES_USER = process.env.POSTGRES_USER || "postgres";
-const POSTGRES_PASSWORD = process.env.POSTGRES_PASSWORD || "password";
-const POSTGRES_HOST = process.env.POSTGRES_HOST || "timescaledb";
-const POSTGRES_PORT = process.env.POSTGRES_PORT || 5432;
-const POSTGRES_DB = process.env.POSTGRES_DB || "myllypuro-campus";
+const DATABASE_URL_TIMESCALE = process.env.DATABASE_URL_TIMESCALE;
+
+if (!DATABASE_URL_TIMESCALE) {
+  throw new Error("DATABASE_URL_TIMESCALE is not set in the environment variables. Please check the .env file.");
+}
 
 // TimescaleDB connection configuration
 const sequelize = new Sequelize(
-  `postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}`,
+  DATABASE_URL_TIMESCALE,
   {
     dialect: "postgres",
     protocol: "postgres",

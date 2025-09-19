@@ -3,17 +3,17 @@ services:
   postgres:
     image: postgres:16.8-bookworm
     container_name: postgres
-    ports:
-      - "5432:5432"
+    expose:
+      - 5432
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: myllypuro-campus
+      POSTGRES_DB: platform
     command: -p 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d myllypuro-campus"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d platform"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,17 +22,17 @@ services:
   timescaledb:
     image: timescale/timescaledb:2.17.2-pg16
     container_name: timescaledb
-    ports:
-      - "5433:5432"
+    expose:
+      - 5432
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: myllypuro-campus
+      POSTGRES_DB: timescale
     command: -p 5432
     volumes:
       - timescaledb_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d myllypuro-campus"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d timescale"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -43,23 +43,11 @@ services:
     build:
       context: ./data-service
       dockerfile: Dockerfile.dev
+    env_file:
+      - path: ./data-service/.env.example
+        required: true
     ports:
       - "3010:3010"
-    environment:
-      - DATABASE_URL_PLATFORM=postgresql://postgres:postgres@postgres:5432/myllypuro-campus
-      - DATABASE_URL_TIMESCALE=postgresql://postgres:postgres@timescaledb:5432/myllypuro-campus
-      - PORT=3010
-      - LOG_LEVEL="info" 
-      - NODE_ENV=development
-      - CHOKIDAR_USEPOLLING=true
-      # Database connection configuration for entrypoint script
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - TIMESCALE_HOST=timescaledb
-      - TIMESCALE_PORT=5432
-      # Auth configuration
-      - AUTH_ENABLED=false
-      - DISTRIBUTED_DEPLOYMENT=false
     volumes:
       - ./data-service:/app
       - /app/node_modules
@@ -76,22 +64,16 @@ services:
   #   build:
   #     context: ./timescale-writer
   #     dockerfile: Dockerfile.dev
-  #   environment:
-  #     - KAFKA_BROKERS=kafka:9092
-  #     - KAFKA_TOPICS=smartlab-sensor-data
-  #     - POSTGRES_USER=postgres
-  #     - POSTGRES_PASSWORD=postgres
-  #     - POSTGRES_DB=myllypuro-campus
-  #     - POSTGRES_HOST=timescaledb
-  #     - POSTGRES_PORT=5433
-  #     - NODE_ENV=development
+  #   env_file:
+  #     - path: ./timescale-writer/.env.example
+  #       required: true
   #   volumes:
   #     - ./timescale-writer:/app
   #     - /app/node_modules
   #   depends_on:
   #     - timescaledb
   #     - kafka
-  #   profiles: ["storage", "full"]
+  #   profiles: ["timescale-writer", "storage", "full"]
 
 volumes:
   timescaledb_data:

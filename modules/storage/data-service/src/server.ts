@@ -109,8 +109,16 @@ server.get("/", async () => {
 
 const start = async () => {
   try {
-    const port = parseInt(process.env.PORT || "3010", 10);
-    const host = process.env.HOST || "0.0.0.0";
+
+    const PORT = process.env.PORT;
+    const HOST = process.env.HOST;
+
+    if (!PORT || !HOST) {
+      throw new Error("PORT or HOST is not set in the environment variables. Please check the .env file.");
+    }
+
+    const port = parseInt(PORT, 10);
+    const host = HOST;
 
     await server.listen({ port, host });
 
