@@ -30,69 +30,85 @@ SPINE follows a modular, microservices architecture with clear separation of con
 - **Application**: Next.js 15 web interface with tRPC
 - **Egress**: API gateway and data export services
 
+Check [Architecture Guide](./docs/architecture.md) for more details.
+
 ## 3. Quick Start
 
 ### Prerequisites
 
-- Docker & Docker Compose (v2.20+)
-- Node.js 20+ with pnpm
-- Git
+- Docker & Docker Compose (v2.20+) ([link](https://docs.docker.com/compose/install/))
+- [Node.js 20+](https://nodejs.org/en/download) with [pnpm](https://pnpm.io/installation#using-other-package-managers)
+- [Git](https://git-scm.com/downloads)
 
 ### Installation
 
-1. **Clone the repository**
+Clone the repository:
 
 ```bash
-git clone https://github.com/your-org/spine.git
-cd spine
+git clone https://github.com/shahramBarai/SPINE.git
+cd SPINE
 ```
 
-2. **Configure environment**
-
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-```
 
 ## 4. Development Setup
 
-### Using Dev Containers (Recommended)
+### Using Dev Container
 
-SPINE includes VS Code Dev Container configuration for a consistent development environment:
+SPINE includes VS Code Dev Container configuration for a consistent development environment.
+
+****Note:** Currently, it runs the [webapp](./modules/app/webapp) service and the core modules [messaging](./modules/messaging) and [storage](./modules/storage) to get you started.
 
 1. Install [VS Code](https://code.visualstudio.com/) and [Remote Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 2. Open the project in VS Code
-3. Click "Reopen in Container" when prompted
+3. Click "Reopen in Container" when prompted (or press `Ctrl+Shift+P` and type `Remote-Containers: Reopen in Container` then select it).
 
-### Manual Development Setup
+After the container is built (it will take a few minutes), you need to run the following command to start the services:
 
-````bash
+```bash
 # Install dependencies
 pnpm install
 
 # Generate Prisma clients
-pnpm turbo db:generate
+pnpm db:generate 
 
-# Start development servers
-pnpm turbo dev  # In each service directory
+# Start the webapp service
+pnpm dev
+```
 
-## 5. Configuration
+You can then access the webapp at `http://localhost:3000`.
 
-### Docker Compose Profiles
+### Manual Development Setup
 
-```bash
-# Core infrastructure (databases, Kafka, MinIO)
-docker compose --profile infra up -d
+1. **Using Docker Compose:**
+You can also run each module separately using Docker Compose (check module's README for more details) or using the profiles in the `docker-compose.yml` file.
 
-# Data connectors and ingestion
-docker compose --profile connectors up -d
+    ```bash
+    # Core modules (messaging, storage)
+    docker compose up -d
+    
+    # Core + ingress
+    docker compose --profile ingress up -d
 
-# Stream processing and analytics
-docker compose --profile analytics up -d
+    # Core + analytics
+    docker compose --profile analytics up -d
 
-# Complete platform
-docker compose --profile full up -d
-````
+    # Core + app
+    docker compose --profile app up -d
+
+    # Core + egress
+    docker compose --profile egress up -d
+
+    # Full platform
+    docker compose --profile full up -d
+
+    # You can also combine profiles (e.g. core + ingress + analytics)
+    docker compose --profile ingress --profile analytics up -d
+    ```
+
+2. **Running Specific Service Locally:** Also, you can run specific service locally if you want to test it (check service's README file for more details).
+
+
+
 
 ## 5. Documentation
 
@@ -101,15 +117,7 @@ docker compose --profile full up -d
 - [Deployment Guide](./docs/deployment.md)
 - [Contributing Guidelines](./CONTRIBUTING.md)
 
-## 6. Security
-
-- **Authentication**: JWT-based with iron-session
-- **Authorization**: Role-based access control (RBAC)
-- **Data Validation**: Schema validation at ingestion
-- **Network Security**: TLS/SSL for all connections
-- **Secrets Management**: Environment-based configuration
-
-## 7. Performance
+## 6. Performance
 
 SPINE is designed for high-throughput, low-latency operations:
 
@@ -118,7 +126,7 @@ SPINE is designed for high-throughput, low-latency operations:
 - **Query Performance**: Sub-second for recent data
 - **Horizontal Scaling**: All components support clustering
 
-## 8. Contributing
+## 7. Contributing
 
 Contributions are welcome! Please read our [Contributing Guidelines](./CONTRIBUTING.md) for details.
 
@@ -131,13 +139,13 @@ Contributions are welcome! Please read our [Contributing Guidelines](./CONTRIBUT
 5. Run linting and tests
 6. Submit a pull request
 
-## 9. License
+## 8. License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](./LICENSE) file for details.
 
 This project was developed in Metropolia AMK, Finland as part of the RADIAL project sponsored by ERDF and the Helsinki-Uusimaa Regional Council. See the [NOTICE](./NOTICE) file for additional information.
 
-## 10. Acknowledgments
+## 9. Acknowledgments
 
 - Metropolia University of Applied Sciences for supporting this project
 - The open-source community for the amazing tools and libraries
