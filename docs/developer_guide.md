@@ -1,27 +1,87 @@
-# Developer Guide
+# 📚 Developer Guide
 
 This guide contains detailed technical standards and best practices for contributing code to SPINE.
 
+**Note:** This guide is a work in progress and will be updated regularly.
+
 ## Table of Contents
 
-- [Project Architecture](#project-architecture)
-- [Coding Standards](#coding-standards)
-- [Testing Guidelines](#testing-guidelines)
-- [API Design](#api-design)
-- [Database Guidelines](#database-guidelines)
-- [Performance Considerations](#performance-considerations)
-- [Security Best Practices](#security-best-practices)
+- [🛠️ Development Setup](#development-setup)
+- [🗂️ Project Structure](#project-structure)
+- [🧩 Coding Standards](#coding-standards)
+- [🧪 Testing Guidelines](#testing-guidelines)
+- [🔧 API Design](#api-design)
+- [💾 Database Guidelines](#database-guidelines)
+- [🚀 Performance Considerations](#performance-considerations)
+- [🔒 Security Best Practices](#security-best-practices)
 
-## Project Architecture
+## 🛠️ Development Setup
 
-SPINE follows a modular microservices architecture. For detailed setup instructions, see [README.md](../../README.md#development-setup).
+### 1. Using Dev Container
 
-### Module Structure
+SPINE includes VS Code Dev Container configuration for a consistent development environment.
 
-Each module should follow this structure:
+****Note:** Currently, it runs the [webapp](./modules/app/webapp) service and the core modules [messaging](./modules/messaging) and [storage](./modules/storage) to get you started.
+
+1. Install [VS Code](https://code.visualstudio.com/) and [Remote Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+2. Open the project in VS Code
+3. Click "Reopen in Container" when prompted (or press `Ctrl+Shift+P` and type `Remote-Containers: Reopen in Container` then select it).
+
+After the container is built (it will take a few minutes), you need to run the following command to start the services:
+
+```bash
+# Install dependencies
+pnpm install
+
+# Generate Prisma clients
+pnpm db:generate 
+
+# Start the webapp service
+pnpm dev
+```
+
+You can then access the webapp at `http://localhost:3000`.
+
+### 2. Manual Development Setup
+
+1. **Using Docker Compose:**
+You can also run each module separately using Docker Compose (check module's README for more details) or using the profiles in the `docker-compose.yml` file.
+
+    ```bash
+    # Core modules (messaging, storage)
+    docker compose up -d
+    
+    # Core + ingress
+    docker compose --profile ingress up -d
+
+    # Core + analytics
+    docker compose --profile analytics up -d
+
+    # Core + app
+    docker compose --profile app up -d
+
+    # Core + egress
+    docker compose --profile egress up -d
+
+    # Full platform
+    docker compose --profile full up -d
+
+    # You can also combine profiles (e.g. core + ingress + analytics)
+    docker compose --profile ingress --profile analytics up -d
+    ```
+
+2. **Running Specific Service Locally:** Also, you can run specific service locally if you want to test it (check service's README file for more details).
+
+## 🗂️ Project Structure
+
+SPINE follows a modular microservices architecture. For detailed setup instructions, see [Architecture Guide](./architecture.md).
+
+### Service Structure
+
+Each service should follow this structure:
 
 ```
-modules/service-name/
+[module_name]/[service_name]/
 ├── src/                 # Source code
 ├── tests/              # Test files
 │   ├── unit/           # Unit tests
@@ -31,7 +91,7 @@ modules/service-name/
 └── README.md           # Service-specific documentation
 ```
 
-## Coding Standards
+## 🧩 Coding Standards
 
 ### TypeScript/Node.js (Backend Services)
 
@@ -262,7 +322,7 @@ async fn sensor_processor() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## Testing Guidelines
+## 🧪 Testing Guidelines
 
 ### Test Organization
 
@@ -378,7 +438,7 @@ describe("POST /api/users", () => {
 - **Assertions**: Use descriptive assertions and meaningful error messages
 - **Setup/Teardown**: Clean up resources after tests
 
-## API Design
+## 🔧 API Design
 
 ### REST API Guidelines
 
@@ -475,7 +535,7 @@ export const userRouter = router({
 });
 ```
 
-## Database Guidelines
+## 💾 Database Guidelines
 
 ### Prisma Schema Design
 
@@ -561,7 +621,7 @@ await prisma.$transaction(async (tx) => {
 });
 ```
 
-## Performance Considerations
+## 🚀 Performance Considerations
 
 ### Backend Optimization
 
@@ -622,7 +682,7 @@ const ExpensiveComponent = ({ data }: { data: DataPoint[] }) => {
 };
 ```
 
-## Security Best Practices
+## 🔒 Security Best Practices
 
 ### Input Validation
 
