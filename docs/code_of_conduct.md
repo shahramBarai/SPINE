@@ -1,10 +1,10 @@
-# Code of Conduct
+# 📜 Code of Conduct
 
-## Our Commitment
+## 🤝 Our Commitment
 
-We want SPINE to be a welcoming place for everyone. We're committed to providing a friendly, safe, and harassment-free experience for all contributors, regardless of experience level, gender identity, sexual orientation, disability, personal appearance, body size, race, ethnicity, age, religion, nationality, or other similar characteristics.
+We want `SPINE` to be a welcoming place for everyone. We're committed to providing a friendly, safe, and harassment-free experience for all contributors, regardless of experience level, gender identity, sexual orientation, disability, personal appearance, body size, race, ethnicity, age, religion, nationality, or other similar characteristics.
 
-## Our Standards
+## 📜 Our Standards
 
 ### What we encourage:
 - Being respectful and inclusive in discussions
@@ -19,7 +19,7 @@ We want SPINE to be a welcoming place for everyone. We're committed to providing
 - Publishing others' private information without permission
 - Any conduct that would be inappropriate in a professional setting
 
-## Scope
+## 🔬 Scope
 
 This Code of Conduct applies to all project spaces, including:
 - GitHub repositories, issues, and pull requests
@@ -27,7 +27,7 @@ This Code of Conduct applies to all project spaces, including:
 - Public events where the project is represented
 - Direct communication between contributors about project matters
 
-## Reporting
+## 📝 Reporting
 
 If you experience or witness behavior that violates this Code of Conduct, please report it by:
 - Opening a confidential issue in the repository
@@ -36,7 +36,7 @@ If you experience or witness behavior that violates this Code of Conduct, please
 
 All reports will be handled confidentially and reviewed promptly.
 
-## Consequences
+## ⛓️ Consequences
 
 Contributors who violate this Code of Conduct may receive:
 - A private warning from maintainers
@@ -45,6 +45,6 @@ Contributors who violate this Code of Conduct may receive:
 
 The response will be proportional to the violation and focused on protecting the community.
 
-## Attribution
+## 📖 Attribution
 
 This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org/), version 2.1.
