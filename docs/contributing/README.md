@@ -59,7 +59,7 @@ git checkout -b fix/issue-number-description
 
 ### 3. Making Changes
 
-- **Follow our coding standards** (see [Developer Guide](./developer_guide.md))
+- **Follow our coding standards** (see [Developer Guide](../developer_guide.md))
 - **Write clear commit messages**
 - **Add tests** for new functionality
 - **Update documentation** as needed
@@ -151,7 +151,7 @@ For new feature ideas:
 
 - **GitHub Issues** - For bugs and feature requests
 - **GitHub Discussions** - For questions and community chat
-- **Code of Conduct** - Our [community standards](./code_of_conduct.md)
+- **Code of Conduct** - Our [community standards](../code_of_conduct.md)
 
 ## 🙏 Thank You!
 
