@@ -256,6 +256,12 @@ class ServiceSchemaManager {
      */
     async initialize(): Promise<void> {
         try {
+            console.log("Initializing service schemas...");
+            while ((await this.schemaRegistry.healthCheck()).status !== "connected") {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                console.log("Waiting for schema registry to be connected...");
+            }
+            console.log("Schema registry connected, initializing service schemas...");
             const schemas =
                 await this.schemaRegistry.initializeServiceSchemas();
             this.inputSchema = schemas.inputSchema;
