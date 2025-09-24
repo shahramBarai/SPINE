@@ -1,17 +1,4 @@
-interface SchemaRegistryConfig {
-    url: string;
-    auth?: {
-        username: string;
-        password: string;
-    };
-}
-
-interface ServiceSchemaConfig {
-    inputSubject: string;
-    outputSubject: string;
-    inputSchemaId?: number;
-    outputSchemaId?: number;
-}
+import { getSchemaRegistryConfig, SchemaRegistryConfig } from "../config";
 
 interface SchemaVersion {
     id: number;
@@ -35,20 +22,7 @@ class SchemaRegistryService {
     private config: SchemaRegistryConfig;
 
     constructor() {
-        const URL = process.env.SCHEMA_REGISTRY_URL || "http://localhost:8081";
-        const USERNAME = process.env.SCHEMA_REGISTRY_USERNAME;
-        const PASSWORD = process.env.SCHEMA_REGISTRY_PASSWORD;
-
-        this.config = {
-            url: URL,
-            auth:
-                USERNAME && PASSWORD
-                    ? {
-                          username: USERNAME,
-                          password: PASSWORD,
-                      }
-                    : undefined,
-        };
+        this.config = getSchemaRegistryConfig();
     }
 
     private async makeRequest<T>(
@@ -88,7 +62,7 @@ class SchemaRegistryService {
     /**
      * Get schema by its unique ID
      */
-    async getSchemaById(id: number): Promise<SchemaVersion> {
+    async getSchemaById(id: string): Promise<SchemaVersion> {
         try {
             return await this.makeRequest(`/schemas/ids/${id}`);
         } catch (error) {
@@ -204,7 +178,7 @@ class SchemaRegistryService {
     /**
      * Initialize service schemas - get input and output schemas for the service
      */
-    async initializeServiceSchemas(config: ServiceSchemaConfig): Promise<{
+    async initializeServiceSchemas(): Promise<{
         inputSchema: SchemaVersion;
         outputSchema: SchemaVersion;
     }> {
@@ -213,17 +187,25 @@ class SchemaRegistryService {
             let outputSchema: SchemaVersion;
 
             // Get input schema
-            if (config.inputSchemaId) {
-                inputSchema = await this.getSchemaById(config.inputSchemaId);
+            if (this.config.inputSchemaId) {
+                inputSchema = await this.getSchemaById(
+                    this.config.inputSchemaId,
+                );
             } else {
-                inputSchema = await this.getLatestSchema(config.inputSubject);
+                inputSchema = await this.getLatestSchema(
+                    this.config.inputSubject,
+                );
             }
 
             // Get output schema
-            if (config.outputSchemaId) {
-                outputSchema = await this.getSchemaById(config.outputSchemaId);
+            if (this.config.outputSchemaId) {
+                outputSchema = await this.getSchemaById(
+                    this.config.outputSchemaId,
+                );
             } else {
-                outputSchema = await this.getLatestSchema(config.outputSubject);
+                outputSchema = await this.getLatestSchema(
+                    this.config.outputSubject,
+                );
             }
 
             return { inputSchema, outputSchema };
@@ -267,38 +249,19 @@ class ServiceSchemaManager {
     private inputSchema: any = null;
     private outputSchema: any = null;
     private isInitialized = false;
+    private validateEnabled = false;
 
     /**
      * Initialize service schemas from environment configuration
      */
     async initialize(): Promise<void> {
         try {
-            const config: ServiceSchemaConfig = {
-                inputSubject:
-                    process.env.SERVICE_INPUT_SUBJECT || "mqtt-sensor-data",
-                outputSubject:
-                    process.env.SERVICE_OUTPUT_SUBJECT ||
-                    "processed-sensor-data",
-                inputSchemaId: process.env.SERVICE_INPUT_SCHEMA_ID
-                    ? parseInt(process.env.SERVICE_INPUT_SCHEMA_ID)
-                    : undefined,
-                outputSchemaId: process.env.SERVICE_OUTPUT_SCHEMA_ID
-                    ? parseInt(process.env.SERVICE_OUTPUT_SCHEMA_ID)
-                    : undefined,
-            };
-
-            console.log("Initializing service schemas...", {
-                inputSubject: config.inputSubject,
-                outputSubject: config.outputSubject,
-                inputSchemaId: config.inputSchemaId,
-                outputSchemaId: config.outputSchemaId,
-            });
-
             const schemas =
-                await this.schemaRegistry.initializeServiceSchemas(config);
+                await this.schemaRegistry.initializeServiceSchemas();
             this.inputSchema = schemas.inputSchema;
             this.outputSchema = schemas.outputSchema;
             this.isInitialized = true;
+            this.validateEnabled = getSchemaRegistryConfig().validateEnabled;
 
             console.log("Service schemas initialized successfully:", {
                 inputSchema: {
@@ -352,10 +315,7 @@ class ServiceSchemaManager {
             );
         }
 
-        if (
-            !process.env.SCHEMA_VALIDATION_ENABLED ||
-            process.env.SCHEMA_VALIDATION_ENABLED === "true"
-        ) {
+        if (this.validateEnabled) {
             // Here you would implement actual schema validation logic
             // For now, we'll do basic validation
             try {
@@ -392,10 +352,7 @@ class ServiceSchemaManager {
             );
         }
 
-        if (
-            !process.env.SCHEMA_VALIDATION_ENABLED ||
-            process.env.SCHEMA_VALIDATION_ENABLED === "true"
-        ) {
+        if (this.validateEnabled) {
             try {
                 const parsedMessage =
                     typeof message === "string" ? JSON.parse(message) : message;
