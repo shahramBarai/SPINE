@@ -7,7 +7,7 @@ import mqtt, {
     IConnackPacket,
     IPublishPacket,
 } from "mqtt";
-import { getMQTTConfig, MQTTConfig } from "../config";
+import { getMQTTConfig, MQTTConfig } from "../utils/config";
 import { ServiceSchemaManager } from "./SchemaRegistryService";
 import { KafkaProducerService } from "./KafkaProducerService";
 import { logger } from "../utils/logger";

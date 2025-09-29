@@ -1,5 +1,5 @@
 import { Kafka, Producer } from "kafkajs";
-import { getKafkaConfig, getKafkaTopic } from "../config";
+import { getKafkaConfig, getKafkaTopic } from "../utils/config";
 import { logger } from "../utils/logger";
 
 class KafkaProducerService {

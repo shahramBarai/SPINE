@@ -1,4 +1,4 @@
-import * as configs from "./config";
+import * as configs from "./utils/config";
 import {
     KafkaProducerService,
     ServiceSchemaManager,

@@ -1,4 +1,4 @@
-import { getSchemaRegistryConfig, SchemaRegistryConfig } from "../config";
+import { getSchemaRegistryConfig, SchemaRegistryConfig } from "../utils/config";
 import { logger } from "../utils/logger";
 
 interface SchemaVersion {
