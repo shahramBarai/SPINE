@@ -1,5 +1,6 @@
 import { Kafka, Producer } from "kafkajs";
 import { getKafkaConfig, getKafkaTopic } from "../config";
+import { logger } from "../utils/logger";
 
 class KafkaProducerService {
     private kafka: Kafka;
@@ -18,9 +19,9 @@ class KafkaProducerService {
     async connect(): Promise<void> {
         try {
             await this.producer.connect();
-            console.info("Kafka producer connected");
+            logger.info("Kafka producer: Connected to Kafka");
         } catch (error) {
-            console.error("Failed to connect to Kafka", error);
+            logger.error("Kafka producer: Failed to connect to Kafka", error);
             throw error;
         }
     }
@@ -28,9 +29,9 @@ class KafkaProducerService {
     async disconnect(): Promise<void> {
         try {
             await this.producer.disconnect();
-            console.info("Kafka producer disconnected");
+            logger.info("Kafka producer: Disconnected from Kafka");
         } catch (error) {
-            console.error("Failed to disconnect from Kafka", error);
+            logger.error("Kafka producer: Failed to disconnect from Kafka", error);
             throw error;
         }
     }
@@ -42,9 +43,9 @@ class KafkaProducerService {
                 messages: [{ value: message }],
                 acks: 0,
             });
-            console.log("Message sent to Kafka", result);
+            logger.debug("Kafka producer: Message sent to Kafka", result);
         } catch (error) {
-            console.error("Failed to send message to Kafka", error);
+            logger.error("Kafka producer: Failed to send message to Kafka", error);
             throw error;
         }
     }

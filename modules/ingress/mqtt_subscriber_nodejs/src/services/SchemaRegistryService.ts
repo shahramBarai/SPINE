@@ -1,4 +1,5 @@
 import { getSchemaRegistryConfig, SchemaRegistryConfig } from "../config";
+import { logger } from "../utils/logger";
 
 interface SchemaVersion {
     id: number;
@@ -256,12 +257,12 @@ class ServiceSchemaManager {
      */
     async initialize(): Promise<void> {
         try {
-            console.log("Initializing service schemas...");
+            logger.info("Schema registry service: Initializing service schemas...");
             while ((await this.schemaRegistry.healthCheck()).status !== "connected") {
                 await new Promise((resolve) => setTimeout(resolve, 1000));
-                console.log("Waiting for schema registry to be connected...");
+                logger.info("Schema registry service: Waiting for schema registry to be connected...");
             }
-            console.log("Schema registry connected, initializing service schemas...");
+            logger.info("Schema registry service: Connected, initializing service schemas...");
             const schemas =
                 await this.schemaRegistry.initializeServiceSchemas();
             this.inputSchema = schemas.inputSchema;
@@ -269,20 +270,8 @@ class ServiceSchemaManager {
             this.isInitialized = true;
             this.validateEnabled = getSchemaRegistryConfig().validateEnabled;
 
-            console.log("Service schemas initialized successfully:", {
-                inputSchema: {
-                    id: this.inputSchema.id,
-                    version: this.inputSchema.version,
-                    subject: this.inputSchema.subject,
-                },
-                outputSchema: {
-                    id: this.outputSchema.id,
-                    version: this.outputSchema.version,
-                    subject: this.outputSchema.subject,
-                },
-            });
         } catch (error) {
-            console.error("Failed to initialize service schemas:", error);
+            logger.error("Schema registry service: Failed to initialize service schemas:", error);
             throw error;
         }
     }
@@ -293,7 +282,7 @@ class ServiceSchemaManager {
     getInputSchema(): any {
         if (!this.isInitialized) {
             throw new Error(
-                "Service schemas not initialized. Call initialize() first.",
+                "Schema registry service: Service schemas not initialized. Call initialize() first.",
             );
         }
         return this.inputSchema;
@@ -333,14 +322,14 @@ class ServiceSchemaManager {
                 const schemaFields = JSON.parse(this.inputSchema.schema).fields;
                 for (const field of schemaFields) {
                     if (field.name && !(field.name in parsedMessage)) {
-                        console.warn(`Missing required field: ${field.name}`);
+                        logger.warn(`Schema registry service: Missing required field: ${field.name}`);
                         return false;
                     }
                 }
 
                 return true;
             } catch (error) {
-                console.error("Input message validation failed:", error);
+                logger.error("Schema registry service: Input message validation failed:", error);
                 return false;
             }
         }
@@ -369,14 +358,14 @@ class ServiceSchemaManager {
                 ).fields;
                 for (const field of schemaFields) {
                     if (field.name && !(field.name in parsedMessage)) {
-                        console.warn(`Missing required field: ${field.name}`);
+                        logger.warn(`Schema registry service: Missing required field: ${field.name}`);
                         return false;
                     }
                 }
 
                 return true;
             } catch (error) {
-                console.error("Output message validation failed:", error);
+                logger.error("Schema registry service: Output message validation failed:", error);
                 return false;
             }
         }
