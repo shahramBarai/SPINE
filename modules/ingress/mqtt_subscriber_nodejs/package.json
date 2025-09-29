@@ -33,6 +33,7 @@
   "dependencies": {
     "dotenv": "^17.2.2",
     "kafkajs": "^2.2.4",
-    "mqtt": "^5.3.4"
+    "mqtt": "^5.3.4",
+    "winston": "^3.17.0"
   }
 }
