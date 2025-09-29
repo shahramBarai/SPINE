@@ -257,21 +257,31 @@ class ServiceSchemaManager {
      */
     async initialize(): Promise<void> {
         try {
-            logger.info("Schema registry service: Initializing service schemas...");
-            while ((await this.schemaRegistry.healthCheck()).status !== "connected") {
+            logger.info(
+                "Schema registry service: Initializing service schemas...",
+            );
+            while (
+                (await this.schemaRegistry.healthCheck()).status !== "connected"
+            ) {
                 await new Promise((resolve) => setTimeout(resolve, 1000));
-                logger.info("Schema registry service: Waiting for schema registry to be connected...");
+                logger.info(
+                    "Schema registry service: Waiting for schema registry to be connected...",
+                );
             }
-            logger.info("Schema registry service: Connected, initializing service schemas...");
+            logger.info(
+                "Schema registry service: Connected, initializing service schemas...",
+            );
             const schemas =
                 await this.schemaRegistry.initializeServiceSchemas();
             this.inputSchema = schemas.inputSchema;
             this.outputSchema = schemas.outputSchema;
             this.isInitialized = true;
             this.validateEnabled = getSchemaRegistryConfig().validateEnabled;
-
         } catch (error) {
-            logger.error("Schema registry service: Failed to initialize service schemas:", error);
+            logger.error(
+                "Schema registry service: Failed to initialize service schemas:",
+                error,
+            );
             throw error;
         }
     }
@@ -322,14 +332,19 @@ class ServiceSchemaManager {
                 const schemaFields = JSON.parse(this.inputSchema.schema).fields;
                 for (const field of schemaFields) {
                     if (field.name && !(field.name in parsedMessage)) {
-                        logger.warn(`Schema registry service: Missing required field: ${field.name}`);
+                        logger.warn(
+                            `Schema registry service: Missing required field: ${field.name}`,
+                        );
                         return false;
                     }
                 }
 
                 return true;
             } catch (error) {
-                logger.error("Schema registry service: Input message validation failed:", error);
+                logger.error(
+                    "Schema registry service: Input message validation failed:",
+                    error,
+                );
                 return false;
             }
         }
@@ -358,14 +373,19 @@ class ServiceSchemaManager {
                 ).fields;
                 for (const field of schemaFields) {
                     if (field.name && !(field.name in parsedMessage)) {
-                        logger.warn(`Schema registry service: Missing required field: ${field.name}`);
+                        logger.warn(
+                            `Schema registry service: Missing required field: ${field.name}`,
+                        );
                         return false;
                     }
                 }
 
                 return true;
             } catch (error) {
-                logger.error("Schema registry service: Output message validation failed:", error);
+                logger.error(
+                    "Schema registry service: Output message validation failed:",
+                    error,
+                );
                 return false;
             }
         }

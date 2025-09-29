@@ -85,17 +85,11 @@ const getSchemaRegistryConfig = (): SchemaRegistryConfig => {
     const SCHEMA_REGISTRY_URL = process.env.SCHEMA_REGISTRY_URL;
     const SCHEMA_REGISTRY_USERNAME = process.env.SCHEMA_REGISTRY_USERNAME;
     const SCHEMA_REGISTRY_PASSWORD = process.env.SCHEMA_REGISTRY_PASSWORD;
-    const SCHEMA_VALIDATION_ENABLED =
-        process.env.SCHEMA_VALIDATION_ENABLED;
-    const SERVICE_INPUT_SUBJECT =
-        process.env.SERVICE_INPUT_SUBJECT;
-    const SERVICE_OUTPUT_SUBJECT =
-        process.env.SERVICE_OUTPUT_SUBJECT;
-    const SERVICE_INPUT_SCHEMA_ID =
-        process.env.SERVICE_INPUT_SCHEMA_ID;
-    const SERVICE_OUTPUT_SCHEMA_ID =
-        process.env.SERVICE_OUTPUT_SCHEMA_ID;
-    
+    const SCHEMA_VALIDATION_ENABLED = process.env.SCHEMA_VALIDATION_ENABLED;
+    const SERVICE_INPUT_SUBJECT = process.env.SERVICE_INPUT_SUBJECT;
+    const SERVICE_OUTPUT_SUBJECT = process.env.SERVICE_OUTPUT_SUBJECT;
+    const SERVICE_INPUT_SCHEMA_ID = process.env.SERVICE_INPUT_SCHEMA_ID;
+    const SERVICE_OUTPUT_SCHEMA_ID = process.env.SERVICE_OUTPUT_SCHEMA_ID;
 
     if (
         !SCHEMA_REGISTRY_URL ||
@@ -155,7 +149,7 @@ const getMQTTConfig = (): MQTTConfig => {
     if (mqttConfig) {
         return mqttConfig;
     }
-    
+
     const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL;
     const MQTT_TOPICS = process.env.MQTT_TOPICS;
     const MQTT_QOS = process.env.MQTT_QOS;
@@ -178,12 +172,16 @@ const getMQTTConfig = (): MQTTConfig => {
         );
     }
 
-    const topics = MQTT_TOPICS.split(",").map(topic => topic.trim());
+    const topics = MQTT_TOPICS.split(",").map((topic) => topic.trim());
     const qos = (MQTT_QOS ? parseInt(MQTT_QOS) : 0) as 0 | 1 | 2;
     const clean = MQTT_CLEAN !== "false"; // Default to true
     const keepalive = MQTT_KEEPALIVE ? parseInt(MQTT_KEEPALIVE) : 60;
-    const reconnectPeriod = MQTT_RECONNECT_PERIOD ? parseInt(MQTT_RECONNECT_PERIOD) : 1000;
-    const connectTimeout = MQTT_CONNECT_TIMEOUT ? parseInt(MQTT_CONNECT_TIMEOUT) : 30000;
+    const reconnectPeriod = MQTT_RECONNECT_PERIOD
+        ? parseInt(MQTT_RECONNECT_PERIOD)
+        : 1000;
+    const connectTimeout = MQTT_CONNECT_TIMEOUT
+        ? parseInt(MQTT_CONNECT_TIMEOUT)
+        : 30000;
 
     mqttConfig = {
         brokerUrl: MQTT_BROKER_URL,
@@ -196,12 +194,17 @@ const getMQTTConfig = (): MQTTConfig => {
         connectTimeout,
         username: MQTT_USERNAME,
         password: MQTT_PASSWORD,
-        will: MQTT_WILL_TOPIC ? {
-            topic: MQTT_WILL_TOPIC,
-            payload: MQTT_WILL_PAYLOAD || "",
-            qos: (MQTT_WILL_QOS ? parseInt(MQTT_WILL_QOS) : 0) as 0 | 1 | 2,
-            retain: MQTT_WILL_RETAIN === "true",
-        } : undefined,
+        will: MQTT_WILL_TOPIC
+            ? {
+                  topic: MQTT_WILL_TOPIC,
+                  payload: MQTT_WILL_PAYLOAD || "",
+                  qos: (MQTT_WILL_QOS ? parseInt(MQTT_WILL_QOS) : 0) as
+                      | 0
+                      | 1
+                      | 2,
+                  retain: MQTT_WILL_RETAIN === "true",
+              }
+            : undefined,
     };
 
     return mqttConfig;
