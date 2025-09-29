@@ -29,9 +29,12 @@ class KafkaProducerService {
     async disconnect(): Promise<void> {
         try {
             await this.producer.disconnect();
-            logger.info("Kafka producer: Disconnected from Kafka");
+            logger.warn("Kafka producer: Disconnected from Kafka");
         } catch (error) {
-            logger.error("Kafka producer: Failed to disconnect from Kafka", error);
+            logger.warn(
+                "Kafka producer: Failed to disconnect from Kafka",
+                error,
+            );
             throw error;
         }
     }
@@ -45,7 +48,10 @@ class KafkaProducerService {
             });
             logger.debug("Kafka producer: Message sent to Kafka", result);
         } catch (error) {
-            logger.error("Kafka producer: Failed to send message to Kafka", error);
+            logger.error(
+                "Kafka producer: Failed to send message to Kafka",
+                error,
+            );
             throw error;
         }
     }
