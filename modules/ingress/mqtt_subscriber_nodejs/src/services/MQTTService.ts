@@ -1,4 +1,12 @@
-import mqtt, { MqttClient, IClientOptions, OnConnectCallback, OnMessageCallback, OnErrorCallback, IConnackPacket, IPublishPacket } from "mqtt";
+import mqtt, {
+    MqttClient,
+    IClientOptions,
+    OnConnectCallback,
+    OnMessageCallback,
+    OnErrorCallback,
+    IConnackPacket,
+    IPublishPacket,
+} from "mqtt";
 import { getMQTTConfig, MQTTConfig } from "../config";
 import { ServiceSchemaManager } from "./SchemaRegistryService";
 import { KafkaProducerService } from "./KafkaProducerService";
@@ -34,13 +42,11 @@ class MQTTService {
     };
     private schemaManager: ServiceSchemaManager;
     private kafkaProducer: KafkaProducerService;
-    private maxReconnectAttempts = 10;
-    private reconnectDelay = 1000; // Start with 1 second
-    private maxReconnectDelay = 30000; // Max 30 seconds
-    private reconnectMultiplier = 1.5;
-    private isShuttingDown = false;
 
-    constructor(schemaManager: ServiceSchemaManager, kafkaProducer: KafkaProducerService) {
+    constructor(
+        schemaManager: ServiceSchemaManager,
+        kafkaProducer: KafkaProducerService,
+    ) {
         this.config = getMQTTConfig();
         this.schemaManager = schemaManager;
         this.kafkaProducer = kafkaProducer;
@@ -50,79 +56,35 @@ class MQTTService {
      * Connect to MQTT broker with retry logic
      */
     async connect(): Promise<void> {
-        if (this.connectionState.isConnecting || this.connectionState.isConnected) {
-            logger.info("MQTT service: Connection already in progress or connected");
+        if (
+            this.connectionState.isConnecting ||
+            this.connectionState.isConnected
+        ) {
+            logger.info(
+                "MQTT service: Connection already in progress or connected",
+            );
             return;
         }
 
         this.connectionState.isConnecting = true;
         this.connectionState.reconnectAttempts++;
+        logger.debug(`MQTT service: Connecting to MQTT broker...`);
 
-        try {
-            logger.info(`MQTT service: Connecting to MQTT broker: ${this.config.brokerUrl} (attempt ${this.connectionState.reconnectAttempts})`);
-            
-            const options: IClientOptions = {
-                clientId: this.config.clientId,
-                clean: this.config.clean,
-                keepalive: this.config.keepalive,
-                connectTimeout: this.config.connectTimeout,
-                reconnectPeriod: 0, // We handle reconnection manually
-                username: this.config.username,
-                password: this.config.password,
-                will: this.config.will,
-            };
+        const options: IClientOptions = {
+            clientId: this.config.clientId,
+            clean: this.config.clean,
+            keepalive: this.config.keepalive,
+            connectTimeout: this.config.connectTimeout,
+            reconnectPeriod: this.config.reconnectPeriod,
+            username: this.config.username,
+            password: this.config.password,
+            will: this.config.will,
+        };
 
-            this.client = mqtt.connect(this.config.brokerUrl, options);
+        this.client = mqtt.connect(this.config.brokerUrl, options);
 
-            // Set up event handlers
-            this.setupEventHandlers();
-
-            // Wait for connection
-            await new Promise<void>((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    reject(new Error(`Connection timeout after ${this.config.connectTimeout}ms`));
-                }, this.config.connectTimeout);
-
-                this.client!.on("connect", () => {
-                    clearTimeout(timeout);
-                    resolve();
-                });
-
-                this.client!.on("error", (error: Error) => {
-                    clearTimeout(timeout);
-                    reject(error);
-                });
-            });
-
-            logger.info("MQTT service: Successfully connected to MQTT broker");
-            this.connectionState.isConnected = true;
-            this.connectionState.isConnecting = false;
-            this.connectionState.lastConnectedAt = new Date();
-            this.connectionState.reconnectAttempts = 0;
-            this.reconnectDelay = 1000; // Reset delay
-
-        } catch (error) {
-            this.connectionState.isConnecting = false;
-            const errorMessage = error instanceof Error ? error.message : "Unknown error";
-            logger.error(`MQTT service: Failed to connect to MQTT broker: ${errorMessage}`);
-            
-            // Clean up failed connection
-            if (this.client) {
-                try {
-                    this.client.end(true);
-                } catch (cleanupError) {
-                    logger.warn("MQTT service: Error during connection cleanup:", cleanupError);
-                }
-                this.client = null;
-            }
-            
-            if (!this.isShuttingDown && this.connectionState.reconnectAttempts < this.maxReconnectAttempts) {
-                await this.scheduleReconnect();
-            } else if (this.connectionState.reconnectAttempts >= this.maxReconnectAttempts) {
-                logger.error("MQTT service: Max reconnection attempts reached. Giving up.");
-                throw new Error(`Failed to connect to MQTT broker after ${this.maxReconnectAttempts} attempts. Last error: ${errorMessage}`);
-            }
-        }
+        // Set up event handlers
+        this.setupEventHandlers();
     }
 
     /**
@@ -162,7 +124,6 @@ class MQTTService {
         this.connectionState.isConnecting = false;
         this.connectionState.lastConnectedAt = new Date();
         this.connectionState.reconnectAttempts = 0;
-        this.reconnectDelay = 1000; // Reset delay
 
         // Subscribe to configured topics
         this.subscribeToTopics();
@@ -171,10 +132,16 @@ class MQTTService {
     /**
      * Handle incoming messages
      */
-    private onMessage: OnMessageCallback = async (topic: string, payload: Buffer, packet: IPublishPacket) => {
+    private onMessage: OnMessageCallback = async (
+        topic: string,
+        payload: Buffer,
+        packet: IPublishPacket,
+    ) => {
         try {
-            logger.debug(`MQTT service: Received MQTT message on topic: ${topic}`);
-            
+            logger.debug(
+                `MQTT service: Received MQTT message on topic: ${topic}`,
+            );
+
             const message: MQTTMessage = {
                 topic,
                 payload,
@@ -185,7 +152,10 @@ class MQTTService {
 
             await this.processMessage(message);
         } catch (error) {
-            logger.error(`MQTT service: Error processing MQTT message from topic ${topic}:`, error);
+            logger.error(
+                `MQTT service: Error processing MQTT message from topic ${topic}:`,
+                error,
+            );
         }
     };
 
@@ -193,7 +163,7 @@ class MQTTService {
      * Handle connection errors
      */
     private onError: OnErrorCallback = (error) => {
-        logger.error("MQTT service: Client error:", error);
+        logger.warn("MQTT service: Client error:", error);
         this.connectionState.isConnected = false;
         this.connectionState.lastDisconnectedAt = new Date();
     };
@@ -205,17 +175,13 @@ class MQTTService {
         logger.info("MQTT service: Client disconnected", { packet });
         this.connectionState.isConnected = false;
         this.connectionState.lastDisconnectedAt = new Date();
-        
-        if (!this.isShuttingDown) {
-            this.scheduleReconnect();
-        }
     };
 
     /**
      * Handle connection close
      */
     private onClose = () => {
-        logger.info("MQTT service: Client connection closed");
+        logger.warn("MQTT service: Client connection closed");
         this.connectionState.isConnected = false;
         this.connectionState.lastDisconnectedAt = new Date();
     };
@@ -224,7 +190,7 @@ class MQTTService {
      * Handle going offline
      */
     private onOffline = () => {
-        logger.info("MQTT service: Client went offline");
+        logger.warn("MQTT service: Client went offline");
         this.connectionState.isConnected = false;
         this.connectionState.lastDisconnectedAt = new Date();
     };
@@ -233,7 +199,10 @@ class MQTTService {
      * Handle reconnection
      */
     private onReconnect = () => {
-        logger.info("MQTT service: Client reconnecting...");
+        this.connectionState.reconnectAttempts++;
+        logger.warn(
+            `MQTT service: Client reconnecting... (attempt ${this.connectionState.reconnectAttempts})`,
+        );
         this.connectionState.isConnecting = true;
     };
 
@@ -242,23 +211,36 @@ class MQTTService {
      */
     private async subscribeToTopics(): Promise<void> {
         if (!this.client || !this.connectionState.isConnected) {
-            logger.warn("MQTT service: Cannot subscribe to topics: client not connected");
+            logger.warn(
+                "MQTT service: Cannot subscribe to topics: client not connected",
+            );
             return;
         }
 
         try {
-            logger.info(`MQTT service: Subscribing to topics: ${this.config.topics.join(", ")}`);
-            
+            logger.info(
+                `MQTT service: Subscribing to topics: ${this.config.topics.join(", ")}`,
+            );
+
             await new Promise<void>((resolve, reject) => {
-                this.client!.subscribe(this.config.topics, { qos: this.config.qos }, (error: Error | null) => {
-                    if (error) {
-                        logger.error("MQTT service: Failed to subscribe to topics:", error);
-                        reject(error);
-                    } else {
-                        logger.info("MQTT service: Successfully subscribed to all topics");
-                        resolve();
-                    }
-                });
+                this.client!.subscribe(
+                    this.config.topics,
+                    { qos: this.config.qos },
+                    (error: Error | null) => {
+                        if (error) {
+                            logger.error(
+                                "MQTT service: Failed to subscribe to topics:",
+                                error,
+                            );
+                            reject(error);
+                        } else {
+                            logger.info(
+                                "MQTT service: Successfully subscribed to all topics",
+                            );
+                            resolve();
+                        }
+                    },
+                );
             });
         } catch (error) {
             logger.error("MQTT service: Error subscribing to topics:", error);
@@ -273,20 +255,29 @@ class MQTTService {
         try {
             // Decode payload
             const payloadString = message.payload.toString();
-            logger.debug(`MQTT service: Processing message from topic ${message.topic}:`, payloadString);
+            logger.debug(
+                `MQTT service: Processing message from topic ${message.topic}:`,
+                payloadString,
+            );
 
             let parsedMessage: any;
             try {
                 parsedMessage = JSON.parse(payloadString);
             } catch (error) {
-                logger.error(`MQTT service: Failed to parse JSON payload from topic ${message.topic}:`, error);
+                logger.error(
+                    `MQTT service: Failed to parse JSON payload from topic ${message.topic}:`,
+                    error,
+                );
                 return;
             }
 
             // Validate against input schema
-            const isInputValid = this.schemaManager.validateInputMessage(parsedMessage);
+            const isInputValid =
+                this.schemaManager.validateInputMessage(parsedMessage);
             if (!isInputValid) {
-                logger.error(`MQTT service: Input message validation failed for topic ${message.topic}`);
+                logger.error(
+                    `MQTT service: Input message validation failed for topic ${message.topic}`,
+                );
                 return;
             }
 
@@ -299,60 +290,56 @@ class MQTTService {
                 mqtt_dup: message.dup,
                 received_at: new Date().toISOString(),
                 processed_at: new Date().toISOString(),
-                processing_service: process.env.SERVICE_NAME || "mqtt-subscriber",
+                processing_service:
+                    process.env.SERVICE_NAME || "mqtt-subscriber",
                 processing_version: process.env.SERVICE_VERSION || "1.0.0",
             };
 
             // Validate against output schema
-            const isOutputValid = this.schemaManager.validateOutputMessage(processedMessage);
+            const isOutputValid =
+                this.schemaManager.validateOutputMessage(processedMessage);
             if (!isOutputValid) {
-                logger.error(`MQTT service: Output message validation failed for topic ${message.topic}`);
+                logger.error(
+                    `MQTT service: Output message validation failed for topic ${message.topic}`,
+                );
                 return;
             }
 
             // Send to Kafka
-            await this.kafkaProducer.sendMessage(JSON.stringify(processedMessage));
-            logger.debug(`MQTT service: Successfully processed and sent message from topic ${message.topic} to Kafka`);
-
+            await this.kafkaProducer.sendMessage(
+                JSON.stringify(processedMessage),
+            );
+            logger.debug(
+                `MQTT service: Successfully processed and sent message from topic ${message.topic} to Kafka`,
+            );
         } catch (error) {
-            logger.error(`MQTT service: Error processing message from topic ${message.topic}:`, error);
+            logger.error(
+                `MQTT service: Error processing message from topic ${message.topic}:`,
+                error,
+            );
         }
-    }
-
-    /**
-     * Schedule reconnection with exponential backoff
-     */
-    private async scheduleReconnect(): Promise<void> {
-        if (this.isShuttingDown) return;
-
-        const delay = Math.min(this.reconnectDelay, this.maxReconnectDelay);
-        logger.debug(`MQTT service: Scheduling reconnection in ${delay}ms (attempt ${this.connectionState.reconnectAttempts + 1})`);
-
-        setTimeout(async () => {
-            if (!this.isShuttingDown) {
-                this.reconnectDelay *= this.reconnectMultiplier;
-                await this.connect();
-            }
-        }, delay);
     }
 
     /**
      * Disconnect from MQTT broker
      */
     async disconnect(): Promise<void> {
-        this.isShuttingDown = true;
-        
         if (this.client) {
             try {
-                logger.info("MQTT service: Disconnecting from MQTT broker...");
+                logger.debug("MQTT service: Disconnecting from MQTT broker...");
                 await new Promise<void>((resolve) => {
                     this.client!.end(false, {}, () => {
-                        logger.info("MQTT service: Client disconnected gracefully");
+                        logger.warn(
+                            "MQTT service: Client disconnected gracefully",
+                        );
                         resolve();
                     });
                 });
             } catch (error) {
-                logger.error("MQTT service: Error during MQTT disconnect:", error);
+                logger.error(
+                    "MQTT service: Error during MQTT disconnect:",
+                    error,
+                );
             }
         }
 
@@ -371,7 +358,9 @@ class MQTTService {
      * Check if client is connected
      */
     isConnected(): boolean {
-        return this.connectionState.isConnected && this.client?.connected === true;
+        return (
+            this.connectionState.isConnected && this.client?.connected === true
+        );
     }
 
     /**
