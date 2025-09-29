@@ -2,6 +2,7 @@
   "name": "mqtt_subscriber_nodejs",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "tsx src/index.ts",
