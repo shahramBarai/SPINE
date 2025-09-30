@@ -255,20 +255,20 @@ class ServiceSchemaManager {
     /**
      * Initialize service schemas from environment configuration
      */
-    async initialize(): Promise<void> {
+    async initialize(): Promise<boolean> {
         try {
-            logger.info(
+            logger.debug(
                 "Schema registry service: Initializing service schemas...",
             );
             while (
                 (await this.schemaRegistry.healthCheck()).status !== "connected"
             ) {
                 await new Promise((resolve) => setTimeout(resolve, 1000));
-                logger.info(
+                logger.debug(
                     "Schema registry service: Waiting for schema registry to be connected...",
                 );
             }
-            logger.info(
+            logger.debug(
                 "Schema registry service: Connected, initializing service schemas...",
             );
             const schemas =
@@ -277,12 +277,16 @@ class ServiceSchemaManager {
             this.outputSchema = schemas.outputSchema;
             this.isInitialized = true;
             this.validateEnabled = getSchemaRegistryConfig().validateEnabled;
+            logger.info(
+                "Schema registry service: Service schemas initialized successfully.",
+            );
+            return true;
         } catch (error) {
             logger.error(
                 "Schema registry service: Failed to initialize service schemas:",
                 error,
             );
-            throw error;
+            return false;
         }
     }
 
