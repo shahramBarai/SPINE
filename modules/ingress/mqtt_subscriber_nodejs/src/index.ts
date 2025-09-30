@@ -1,47 +1,73 @@
 import * as configs from "./utils/config";
-import {
-    KafkaProducerService,
-    ServiceSchemaManager,
-    MQTTService,
-} from "./services";
+import { Fastify, cors, KafkaProducer, SchemaManager, MqttService } from "./deps";
 import { logger } from "./utils/logger";
+import { healthRoutes } from "./routes/health";
+
+async function setupServer() {
+    const server = Fastify({
+        maxParamLength: 5000,
+        logger: configs.NODE_ENV === "dev" ? {
+            transport: {
+                target: "pino-pretty",
+                options: {
+                    colorize: true,
+                    ignore: "pid,hostname",
+                    translateTime: "HH:MM:ss.l",
+                },
+            },
+        } : false,
+    });
+
+    // Register error handler
+    // server.register(errorHandlerPlugin);
+
+    // Register CORS for cross-origin requests
+    server.register(cors, {
+        origin: true,
+    });
+
+    // Register health routes
+    server.register(healthRoutes);
+
+    // Root endpoint
+    server.get("/", async () => {
+        return {
+            message: "MQTT Subscriber Service is running",
+            health: "/health",
+        };
+    });
+
+    // Start server
+    await server.listen({ port: configs.PORT, host: configs.HOST });
+}
 
 async function main() {
-    // Initialize Kafka producer
-    const kafkaProducer = new KafkaProducerService();
-    await kafkaProducer.connect();
-    const kafkaProducerHealthStatus = await kafkaProducer.healthCheck();
-    if (kafkaProducerHealthStatus.status !== "connected") {
+    // Connect to Kafka producer
+    // TODO: Add reconncetion logic in to KafkaProducerService
+    if (!(await KafkaProducer.connect())) {
         throw new Error(
-            `Kafka producer is not connected: ${kafkaProducerHealthStatus.error}`,
+            `Kafka producer is not connected!`,
         );
     }
 
     // Initialize schema manager
-    const schemaManager = new ServiceSchemaManager();
-    await schemaManager.initialize();
-    const schemaManagerHealthStatus = await schemaManager.healthCheck();
-    if (schemaManagerHealthStatus.status !== "connected") {
+    // TODO: Add reconncetion logic in here
+    if (!(await SchemaManager.initialize())) {
         throw new Error(
-            `Schema manager is not connected: ${schemaManagerHealthStatus.error}`,
+            `Schema manager is not connected!`,
         );
     }
-
-    // Initialize MQTT service and connect to MQTT broker (this will retry in background if it fails)
-    const mqttService = new MQTTService(schemaManager, kafkaProducer);
+    // Connect and start MQTT service
+    MqttService.initialize();
 
     // Handle graceful shutdown
     const shutdown = async () => {
         logger.error("\n\nShutting down MQTT Subscriber Service...");
         // clearInterval(keepAlive);
 
-        if (mqttService) {
-            await mqttService.disconnect();
-        }
+        await MqttService.disconnect();
 
-        if (kafkaProducer) {
-            await kafkaProducer.disconnect();
-        }
+        await KafkaProducer.disconnect();
 
         logger.debug("Service shutdown complete");
         process.exit(0);
@@ -52,4 +78,5 @@ async function main() {
     process.on("SIGTERM", shutdown);
 }
 
+await setupServer();
 await main();
