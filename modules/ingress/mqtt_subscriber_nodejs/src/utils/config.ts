@@ -5,6 +5,13 @@ const clientId = process.env.CLIENT_ID;
 if (!clientId) {
     throw new Error("CLIENT_ID is not set");
 }
+const NODE_ENV: "prod" | "dev" = (process.env.NODE_ENV || "prod") as
+    | "prod"
+    | "dev";
+const LOG_LEVEL: "error" | "warn" | "info" | "debug" = (process.env.LOG_LEVEL ||
+    "warn") as "error" | "warn" | "info" | "debug";
+const HOST = process.env.HOST || "0.0.0.0";
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 // Kafka configuration
 interface KafkaConfig {
@@ -211,6 +218,10 @@ const getMQTTConfig = (): MQTTConfig => {
 };
 
 export {
+    NODE_ENV,
+    LOG_LEVEL,
+    HOST,
+    PORT,
     getKafkaConfig,
     getKafkaTopic,
     getSchemaRegistryConfig,
