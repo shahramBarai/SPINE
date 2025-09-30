@@ -50,15 +50,12 @@ class MQTTService {
         this.config = getMQTTConfig();
         this.schemaManager = schemaManager;
         this.kafkaProducer = kafkaProducer;
-
-        // Connect to MQTT broker
-        this.connect();
     }
 
     /**
-     * Connect to MQTT broker with retry logic
+     * Initialize MQTT connection with retry logic
      */
-    private connect(): void {
+    initialize(): void {
         if (
             this.connectionState.isConnecting ||
             this.connectionState.isConnected
