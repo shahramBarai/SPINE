@@ -6,6 +6,7 @@ class KafkaProducerService {
     private kafka: Kafka;
     private producer: Producer;
     private topic: string;
+    private isConnected: boolean = false;
 
     constructor() {
         const config = getKafkaConfig();
@@ -16,13 +17,16 @@ class KafkaProducerService {
         this.topic = topic;
     }
 
-    async connect(): Promise<void> {
+    async connect(): Promise<boolean> {
         try {
             await this.producer.connect();
             logger.info("Kafka producer: Connected to Kafka");
+            this.isConnected = true;
+            return true;
         } catch (error) {
             logger.error("Kafka producer: Failed to connect to Kafka", error);
-            throw error;
+            this.isConnected = false;
+            return false;
         }
     }
 
@@ -30,12 +34,12 @@ class KafkaProducerService {
         try {
             await this.producer.disconnect();
             logger.warn("Kafka producer: Disconnected from Kafka");
+            this.isConnected = false;
         } catch (error) {
-            logger.warn(
+            logger.error(
                 "Kafka producer: Failed to disconnect from Kafka",
                 error,
             );
-            throw error;
         }
     }
 
@@ -47,12 +51,19 @@ class KafkaProducerService {
                 acks: 0,
             });
             logger.debug("Kafka producer: Message sent to Kafka", result);
+            if (!this.isConnected ) {
+                logger.debug("Kafka producer: Kafka connection is established after sending message");
+                this.isConnected = true;
+            }
         } catch (error) {
             logger.error(
                 "Kafka producer: Failed to send message to Kafka",
                 error,
             );
-            throw error;
+            if (this.isConnected) {
+                logger.debug("Kafka producer: Connection is lost! Message not sent: " + message);
+                this.isConnected = false;
+            }
         }
     }
 
@@ -61,19 +72,11 @@ class KafkaProducerService {
         timestamp: string;
         error?: string;
     }> {
-        try {
-            await this.producer.connect();
-            return {
-                status: "connected",
-                timestamp: new Date().toISOString(),
-            };
-        } catch (error) {
-            return {
-                status: "disconnected",
-                error: error instanceof Error ? error.message : "Unknown error",
-                timestamp: new Date().toISOString(),
-            };
-        }
+        return {
+            status: this.isConnected ? "connected" : "disconnected",
+            timestamp: new Date().toISOString(),
+            error: this.isConnected ? undefined : "Not connected to Kafka",
+        };
     }
 }
 
