@@ -7,9 +7,6 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "watch": "tsx watch src/index.ts",
-    "example": "tsx src/example-usage.ts",
-    "test": "tsx test-service.ts",
-    "test-connection": "tsx test-connection.ts",
     "check": "tsc --noEmit",
     "build": "tsc",
     "start": "node dist/index.js",
@@ -39,6 +36,7 @@
     "pino-pretty": "^13.0.0",
     "kafkajs": "^2.2.4",
     "mqtt": "^5.3.4",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "zod": "^3.22.4"
   }
 }
