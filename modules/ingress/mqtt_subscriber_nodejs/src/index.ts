@@ -1,21 +1,30 @@
 import * as configs from "./utils/config";
-import { Fastify, cors, KafkaProducer, SchemaManager, MqttService } from "./deps";
+import {
+    Fastify,
+    cors,
+    KafkaProducer,
+    SchemaManager,
+    MqttService,
+} from "./deps";
 import { logger } from "./utils/logger";
 import { healthRoutes } from "./routes/health";
 
 async function setupServer() {
     const server = Fastify({
         maxParamLength: 5000,
-        logger: configs.NODE_ENV === "dev" ? {
-            transport: {
-                target: "pino-pretty",
-                options: {
-                    colorize: true,
-                    ignore: "pid,hostname",
-                    translateTime: "HH:MM:ss.l",
-                },
-            },
-        } : false,
+        logger:
+            configs.NODE_ENV === "dev"
+                ? {
+                      transport: {
+                          target: "pino-pretty",
+                          options: {
+                              colorize: true,
+                              ignore: "pid,hostname",
+                              translateTime: "HH:MM:ss.l",
+                          },
+                      },
+                  }
+                : false,
     });
 
     // Register error handler
@@ -45,17 +54,13 @@ async function main() {
     // Connect to Kafka producer
     // TODO: Add reconncetion logic in to KafkaProducerService
     if (!(await KafkaProducer.connect())) {
-        throw new Error(
-            `Kafka producer is not connected!`,
-        );
+        throw new Error(`Kafka producer is not connected!`);
     }
 
     // Initialize schema manager
     // TODO: Add reconncetion logic in here
     if (!(await SchemaManager.initialize())) {
-        throw new Error(
-            `Schema manager is not connected!`,
-        );
+        throw new Error(`Schema manager is not connected!`);
     }
     // Connect and start MQTT service
     MqttService.initialize();

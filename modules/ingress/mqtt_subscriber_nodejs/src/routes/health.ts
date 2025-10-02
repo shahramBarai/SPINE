@@ -35,8 +35,8 @@ const healthRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
         if (mqttHealthStatus.connectionState.isConnecting) {
             health.status = "degraded";
-        } 
-        
+        }
+
         if (mqttHealthStatus.connectionState.reconnectAttempts > 10) {
             health.status = "unhealthy";
         }

@@ -51,8 +51,10 @@ class KafkaProducerService {
                 acks: 0,
             });
             logger.debug("Kafka producer: Message sent to Kafka", result);
-            if (!this.isConnected ) {
-                logger.debug("Kafka producer: Kafka connection is established after sending message");
+            if (!this.isConnected) {
+                logger.debug(
+                    "Kafka producer: Kafka connection is established after sending message",
+                );
                 this.isConnected = true;
             }
         } catch (error) {
@@ -61,7 +63,10 @@ class KafkaProducerService {
                 error,
             );
             if (this.isConnected) {
-                logger.debug("Kafka producer: Connection is lost! Message not sent: " + message);
+                logger.debug(
+                    "Kafka producer: Connection is lost! Message not sent: " +
+                        message,
+                );
                 this.isConnected = false;
             }
         }
