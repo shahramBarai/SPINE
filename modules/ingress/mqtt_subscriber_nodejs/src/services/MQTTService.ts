@@ -12,14 +12,6 @@ import { ServiceSchemaManager } from "./SchemaRegistryService";
 import { KafkaProducerService } from "./KafkaProducerService";
 import { logger } from "../utils/logger";
 
-interface MQTTMessage {
-    topic: string;
-    payload: Buffer;
-    qos: 0 | 1 | 2;
-    retain: boolean;
-    dup: boolean;
-}
-
 interface ConnectionState {
     isConnected: boolean;
     isConnecting: boolean;
@@ -135,22 +127,10 @@ class MQTTService {
     private onMessage: OnMessageCallback = async (
         topic: string,
         payload: Buffer,
-        packet: IPublishPacket,
     ) => {
+        const receivedTime = new Date().getTime();
         try {
-            logger.debug(
-                `MQTT service: Received MQTT message on topic: ${topic}`,
-            );
-
-            const message: MQTTMessage = {
-                topic,
-                payload,
-                qos: packet.qos,
-                retain: packet.retain,
-                dup: packet.dup,
-            };
-
-            await this.processMessage(message);
+            await this.processMessage(topic, payload, receivedTime);
         } catch (error) {
             logger.error(
                 `MQTT service: Error processing MQTT message from topic ${topic}:`,
@@ -251,48 +231,33 @@ class MQTTService {
     /**
      * Process incoming MQTT message
      */
-    private async processMessage(message: MQTTMessage): Promise<void> {
+    private async processMessage(
+        topic: string,
+        message: Buffer,
+        receivedTime: number,
+    ): Promise<void> {
         try {
-            // Decode payload
-            const payloadString = message.payload.toString();
+            // Decode message
+            const messageString = message.toString();
             logger.debug(
-                `MQTT service: Processing message from topic ${message.topic}:`,
-                payloadString,
+                `MQTT service: Processing message from topic ${topic}: ${messageString}`,
             );
-
-            let parsedMessage: any;
-            try {
-                parsedMessage = JSON.parse(payloadString);
-            } catch (error) {
-                logger.error(
-                    `MQTT service: Failed to parse JSON payload from topic ${message.topic}:`,
-                    error,
-                );
-                return;
-            }
 
             // Validate against input schema
             const isInputValid =
-                this.schemaManager.validateInputMessage(parsedMessage);
+                this.schemaManager.validateInputMessage(messageString);
             if (!isInputValid) {
                 logger.error(
-                    `MQTT service: Input message validation failed for topic ${message.topic}`,
+                    `MQTT service: Input message validation failed for topic ${topic}`,
                 );
                 return;
             }
 
             // Transform message (add processing metadata)
             const processedMessage = {
-                ...parsedMessage,
-                mqtt_topic: message.topic,
-                mqtt_qos: message.qos,
-                mqtt_retain: message.retain,
-                mqtt_dup: message.dup,
-                received_at: new Date().toISOString(),
-                processed_at: new Date().toISOString(),
-                processing_service:
-                    process.env.SERVICE_NAME || "mqtt-subscriber",
-                processing_version: process.env.SERVICE_VERSION || "1.0.0",
+                sensor_id: topic,
+                message: messageString,
+                received_at: receivedTime,
             };
 
             // Validate against output schema
@@ -300,7 +265,7 @@ class MQTTService {
                 this.schemaManager.validateOutputMessage(processedMessage);
             if (!isOutputValid) {
                 logger.error(
-                    `MQTT service: Output message validation failed for topic ${message.topic}`,
+                    `MQTT service: Output message validation failed for topic ${topic}`,
                 );
                 return;
             }
@@ -310,11 +275,12 @@ class MQTTService {
                 JSON.stringify(processedMessage),
             );
             logger.debug(
-                `MQTT service: Successfully processed and sent message from topic ${message.topic} to Kafka`,
+                `MQTT service: Successfully processed and sent message from topic ${topic} to Kafka`,
             );
         } catch (error) {
             logger.error(
-                `MQTT service: Error processing message from topic ${message.topic}:`,
+                `MQTT service: Error processing message from topic ${topic}:`,
+                message,
                 error,
             );
         }
@@ -420,4 +386,4 @@ class MQTTService {
     }
 }
 
-export { MQTTService, type MQTTMessage, type ConnectionState };
+export { MQTTService, type ConnectionState };
