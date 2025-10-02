@@ -1,5 +1,7 @@
+import z from "zod";
 import { getSchemaRegistryConfig, SchemaRegistryConfig } from "../utils/config";
 import { logger } from "../utils/logger";
+import { convertAvroToZod } from "../utils/zodSchemaValidator";
 
 interface SchemaVersion {
     id: number;
@@ -243,14 +245,23 @@ class SchemaRegistryService {
 
 /**
  * Service Schema Manager
- * Handles initialization and management of input/output schemas for the MQTT subscriber service
+ * Handles initialization, management, and monitoring of input/output schemas for the MQTT subscriber service
  */
 class ServiceSchemaManager {
     private schemaRegistry = new SchemaRegistryService();
     private inputSchema: any = null;
     private outputSchema: any = null;
+    private inputZodSchema: z.ZodSchema | null = null;
+    private outputZodSchema: z.ZodSchema | null = null;
+
     private isInitialized = false;
     private validateEnabled = false;
+
+    // Schema monitoring properties
+    private isMonitoring = false;
+    private checkInterval: number = 30000; // 30 seconds default
+    private intervalId: NodeJS.Timeout | null = null;
+    private lastCheckTime = 0;
 
     /**
      * Initialize service schemas from environment configuration
@@ -275,8 +286,14 @@ class ServiceSchemaManager {
                 await this.schemaRegistry.initializeServiceSchemas();
             this.inputSchema = schemas.inputSchema;
             this.outputSchema = schemas.outputSchema;
+            this.inputZodSchema = convertAvroToZod(schemas.inputSchema.schema);
+            this.outputZodSchema = convertAvroToZod(
+                schemas.outputSchema.schema,
+            );
+
             this.isInitialized = true;
             this.validateEnabled = getSchemaRegistryConfig().validateEnabled;
+
             logger.info(
                 "Schema registry service: Service schemas initialized successfully.",
             );
@@ -314,110 +331,299 @@ class ServiceSchemaManager {
         return this.outputSchema;
     }
 
-    /**
-     * Validate incoming MQTT message against input schema
-     */
-    validateInputMessage(message: any): boolean {
-        if (!this.isInitialized) {
-            throw new Error(
-                "Service schemas not initialized. Call initialize() first.",
-            );
-        }
-
-        if (this.validateEnabled) {
-            // Here you would implement actual schema validation logic
-            // For now, we'll do basic validation
-            try {
-                const parsedMessage =
-                    typeof message === "string" ? JSON.parse(message) : message;
-
-                // Basic validation - check if required fields exist
-                // This is a simplified example - you'd want to use a proper Avro validator
-                const schemaFields = JSON.parse(this.inputSchema.schema).fields;
-                for (const field of schemaFields) {
-                    if (field.name && !(field.name in parsedMessage)) {
-                        logger.warn(
-                            `Schema registry service: Missing required field: ${field.name}`,
-                        );
-                        return false;
-                    }
-                }
-
-                return true;
-            } catch (error) {
-                logger.error(
-                    "Schema registry service: Input message validation failed:",
-                    error,
-                );
-                return false;
+    private validateMessage(
+        message: any,
+        schema: z.ZodSchema,
+    ): { success: boolean; data?: any; error?: string } {
+        try {
+            const parsedMessage =
+                typeof message === "string" ? JSON.parse(message) : message;
+            const result = schema.safeParse(parsedMessage);
+            if (result.success) {
+                return { success: true, data: result.data };
+            } else {
+                const errorMessages = result.error.errors
+                    .map((err) => `${err.path.join(".")}: ${err.message}`)
+                    .join(", ");
+                return {
+                    success: false,
+                    error: `Validation failed: ${errorMessages}`,
+                };
             }
+        } catch (error) {
+            return {
+                success: false,
+                error: `Parse error: ${error instanceof Error ? error.message : "Unknown error"}`,
+            };
         }
-
-        return true; // Skip validation if disabled
     }
 
     /**
-     * Validate outgoing Kafka message against output schema
+     * Validate incoming MQTT message against input schema using Zod
      */
-    validateOutputMessage(message: any): boolean {
-        if (!this.isInitialized) {
-            throw new Error(
-                "Service schemas not initialized. Call initialize() first.",
+    validateInputMessage(message: any): {
+        success: boolean;
+        data?: any;
+        error?: string;
+    } {
+        if (!this.isInitialized || !this.inputZodSchema) {
+            return {
+                success: false,
+                error: "Service schemas not initialized. Call initialize() first.",
+            };
+        }
+
+        if (!this.validateEnabled) {
+            return { success: true, data: message }; // Skip validation if disabled
+        }
+
+        const result = this.validateMessage(message, this.inputZodSchema);
+
+        if (!result.success) {
+            logger.warn(
+                `Schema registry service: Input message validation failed: ${result.error}`,
             );
         }
 
-        if (this.validateEnabled) {
-            try {
-                const parsedMessage =
-                    typeof message === "string" ? JSON.parse(message) : message;
+        return result;
+    }
 
-                // Basic validation - check if required fields exist
-                const schemaFields = JSON.parse(
-                    this.outputSchema.schema,
-                ).fields;
-                for (const field of schemaFields) {
-                    if (field.name && !(field.name in parsedMessage)) {
-                        logger.warn(
-                            `Schema registry service: Missing required field: ${field.name}`,
-                        );
-                        return false;
-                    }
-                }
-
-                return true;
-            } catch (error) {
-                logger.error(
-                    "Schema registry service: Output message validation failed:",
-                    error,
-                );
-                return false;
-            }
+    /**
+     * Validate outgoing Kafka message against output schema using Zod
+     */
+    validateOutputMessage(message: any): {
+        success: boolean;
+        data?: any;
+        error?: string;
+    } {
+        if (!this.isInitialized || !this.outputZodSchema) {
+            return {
+                success: false,
+                error: "Service schemas not initialized. Call initialize() first.",
+            };
         }
 
-        return true; // Skip validation if disabled
+        if (!this.validateEnabled) {
+            return { success: true, data: message }; // Skip validation if disabled
+        }
+
+        const result = this.validateMessage(message, this.outputZodSchema);
+
+        if (!result.success) {
+            logger.warn(
+                `Schema registry service: Output message validation failed: ${result.error}`,
+            );
+        }
+
+        return result;
     }
 
     /**
      * Get schema information for logging/debugging
      */
     getSchemaInfo(): {
-        input: { id: number; version: number; subject: string };
-        output: { id: number; version: number; subject: string };
+        input: { id: string; version: string; subject: string };
+        output: { id: string; version: string; subject: string };
         isInitialized: boolean;
     } {
         return {
             input: {
-                id: this.inputSchema?.id || 0,
-                version: this.inputSchema?.version || 0,
+                id: this.inputSchema?.id || "unknown",
+                version: this.inputSchema?.version || "unknown",
                 subject: this.inputSchema?.subject || "unknown",
             },
             output: {
-                id: this.outputSchema?.id || 0,
-                version: this.outputSchema?.version || 0,
+                id: this.outputSchema?.id || "unknown",
+                version: this.outputSchema?.version || "unknown",
                 subject: this.outputSchema?.subject || "unknown",
             },
             isInitialized: this.isInitialized,
         };
+    }
+
+    /**
+     * Check for schema updates and refresh if needed
+     */
+    async checkForSchemaUpdates(): Promise<{
+        inputUpdated: boolean;
+        outputUpdated: boolean;
+        errors?: string[];
+    }> {
+        if (!this.isInitialized) {
+            return { inputUpdated: false, outputUpdated: false };
+        }
+
+        const errors: string[] = [];
+        let inputUpdated = false;
+        let outputUpdated = false;
+
+        try {
+            // Check input schema for updates
+            const latestInputSchema = await this.schemaRegistry.getLatestSchema(
+                this.inputSchema.subject,
+            );
+            if (latestInputSchema.version > this.inputSchema.version) {
+                this.inputZodSchema = convertAvroToZod(
+                    latestInputSchema.schema,
+                );
+                inputUpdated = true;
+            }
+
+            // Check output schema for updates
+            const latestOutputSchema =
+                await this.schemaRegistry.getLatestSchema(
+                    this.outputSchema.subject,
+                );
+            this.outputZodSchema = convertAvroToZod(latestOutputSchema.schema);
+            outputUpdated = true;
+        } catch (error) {
+            const errorMsg = `Failed to check for schema updates: ${error instanceof Error ? error.message : "Unknown error"}`;
+            errors.push(errorMsg);
+            logger.error("Schema registry service:", errorMsg);
+        }
+
+        return {
+            inputUpdated,
+            outputUpdated,
+            errors: errors.length > 0 ? errors : undefined,
+        };
+    }
+
+    /**
+     * Check for schema updates (internal method)
+     */
+    private async checkForUpdates(): Promise<void> {
+        try {
+            const startTime = Date.now();
+            const result = await this.checkForSchemaUpdates();
+            const duration = Date.now() - startTime;
+
+            if (result.inputUpdated || result.outputUpdated) {
+                logger.debug(
+                    `Schema updates detected - Input: ${result.inputUpdated}, Output: ${result.outputUpdated} (${duration}ms)`,
+                );
+
+                // Log current schema versions
+                const schemaInfo = this.getSchemaInfo();
+                logger.debug(
+                    `Current schema versions - Input: ${schemaInfo.input.version}, Output: ${schemaInfo.output.version}`,
+                );
+            }
+
+            if (result.errors && result.errors.length > 0) {
+                logger.error(
+                    "Schema registry service: Schema update check failed:",
+                    result.errors,
+                );
+            }
+
+            this.lastCheckTime = Date.now();
+        } catch (error) {
+            logger.error(
+                "Schema registry service: Failed to check for schema updates:",
+                error,
+            );
+        }
+    }
+
+    /**
+     * Start monitoring for schema changes
+     */
+    startMonitoring(checkIntervalMs: number = 30000): void {
+        if (this.isMonitoring) {
+            logger.warn("Schema monitoring is already running");
+            return;
+        }
+
+        if (!this.isInitialized) {
+            throw new Error(
+                "Schema manager must be initialized before starting monitoring",
+            );
+        }
+
+        this.isMonitoring = true;
+        this.checkInterval = checkIntervalMs;
+        this.lastCheckTime = Date.now();
+
+        logger.debug(
+            `Schema registry service: Starting schema monitoring with ${this.checkInterval}ms interval`,
+        );
+
+        this.intervalId = setInterval(async () => {
+            await this.checkForUpdates();
+        }, this.checkInterval);
+
+        // Initial check
+        this.checkForUpdates();
+    }
+
+    /**
+     * Stop monitoring for schema changes
+     */
+    stopMonitoring(): void {
+        if (!this.isMonitoring) {
+            logger.warn("Schema monitoring is not running");
+            return;
+        }
+
+        this.isMonitoring = false;
+
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+
+        logger.debug("Schema registry service: Schema monitoring stopped");
+    }
+
+    /**
+     * Force an immediate schema update check
+     */
+    async forceUpdateCheck(): Promise<{
+        inputUpdated: boolean;
+        outputUpdated: boolean;
+        errors?: string[];
+    }> {
+        logger.debug("Schema registry service: Forcing schema update check");
+        return await this.checkForSchemaUpdates();
+    }
+
+    /**
+     * Get monitoring status
+     */
+    getMonitoringStatus(): {
+        isMonitoring: boolean;
+        checkInterval: number;
+        lastCheckTime: number;
+    } {
+        return {
+            isMonitoring: this.isMonitoring,
+            checkInterval: this.checkInterval,
+            lastCheckTime: this.lastCheckTime,
+        };
+    }
+
+    /**
+     * Update monitoring check interval
+     */
+    setMonitoringInterval(intervalMs: number): void {
+        if (intervalMs < 1000) {
+            throw new Error("Check interval must be at least 1000ms");
+        }
+
+        this.checkInterval = intervalMs;
+
+        if (this.isMonitoring && this.intervalId) {
+            // Restart with new interval
+            clearInterval(this.intervalId);
+            this.intervalId = setInterval(async () => {
+                await this.checkForUpdates();
+            }, this.checkInterval);
+
+            logger.debug(
+                `Schema registry service: Schema monitoring interval updated to ${intervalMs}ms`,
+            );
+        }
     }
 
     /**
