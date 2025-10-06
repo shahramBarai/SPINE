@@ -3,17 +3,13 @@ services:
   mqtt-subscriber:
     container_name: mqtt-subscriber
     build:
-      context: .
-      dockerfile: ./mqtt_subscriber/Dockerfile.dev
+      context: ./mqtt_subscriber_nodejs
+      dockerfile: Dockerfile.dev
     env_file:
-      - path: ./mqtt_subscriber/.env.example
+      - path: ./mqtt_subscriber_nodejs/.env.example
         required: true
     ports:
       - '3001:3000'
     volumes:
-      - ./mqtt_subscriber:/app
-      - mqtt_subscriber_target:/app/target
+      - ./mqtt_subscriber_nodejs:/app
     profiles: ["ingress", "full"]
-
-volumes:
-  mqtt_subscriber_target:

@@ -1,0 +1,18 @@
+FROM node:20-alpine3.17
+
+# Install necessary system libraries
+RUN apk add --no-cache libc6-compat openssl netcat-openbsd
+
+WORKDIR /app
+
+# Copy all package management files
+COPY package.json pnpm-lock.yaml ./
+
+# Enable pnpm with specific version
+RUN corepack enable
+RUN corepack prepare pnpm@latest --activate
+
+# Install dependencies
+RUN pnpm install
+
+CMD ["pnpm", "run", "dev"]
