@@ -17,7 +17,7 @@ model User {
     password String
     role     UserRole @default(USER)
 
-    projectMemberships ProjectMember[]
+    entityMemberships EntityMember[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -29,33 +29,45 @@ enum UserRole {
     USER
 }
 
-// Project model
-model Project {
-    id          String  @id @default(cuid())
-    name        String
+// Entity model
+model Entity {
+    id       String   @id @default(cuid())
+    name     String
     description String?
+    type     EntityType
 
-    members   ProjectMember[]
+    members EntityMember[]
+
+    kafkaTopic KafkaTopic[]
     pipelines Pipeline[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 }
 
-model ProjectMember {
-    projectId String
-    userId    String
-    role      MemberRole
+// Entity types
+enum EntityType {
+    DISTRICT
+    CAMPUS
+    BUILDING
+    LAB
+}
 
+model EntityMember {
+    entityId String
+    userId   String
+    role     MemberRole
+    
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
-    project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-    user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@id([projectId, userId])
+    @@id([entityId, userId])
 }
 
+// Member roles
 enum MemberRole {
     OWNER
     VIEWER
@@ -71,14 +83,14 @@ model Pipeline {
     version     Int     @default(1)
     isActive    Boolean @default(false)
 
-    projectId String
+    entityId String
     createdBy String
     editedBy  String
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
-    project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 }
 
 // Kafka topic model for Kafka topics 
@@ -87,54 +99,13 @@ model KafkaTopic {
     description String?
     stage       TopicStage
     dataFormat  DataFormat @default(STRING)
-    schema      Schema?    @relation(fields: [schemaId], references: [id])
     schemaId    String?    @db.Uuid
+    entityId    String
+
     createdAt   DateTime   @default(now())
+    updatedAt   DateTime   @updatedAt
 
-    connectors       ConnectorConfig[]
-    sourceValidators Validator[]       @relation("SourceTopic")
-    targetValidators Validator[]       @relation("TargetTopic")
-}
-
-model Schema {
-    id         String       @id @default(uuid()) @db.Uuid
-    schemaName String
-    schemaType SchemaType
-    version    String
-    format     SchemaFormat @default(JSON)
-    schema     Json
-    createdAt  DateTime     @default(now())
-
-    topics     KafkaTopic[]
-    connectors ConnectorConfig[]
-    validators Validator[]
-}
-
-model ConnectorConfig {
-    id             String        @id @default(uuid())
-    connectorName  String        @unique
-    connectorType  ConnectorType
-    endpointUrl    String
-    kafkaTopic     KafkaTopic    @relation(fields: [kafkaTopicName], references: [topicName])
-    kafkaTopicName String
-    inputSchema    Schema?       @relation(fields: [inputSchemaId], references: [id])
-    inputSchemaId  String?       @db.Uuid
-    config         Json?
-    createdAt      DateTime      @default(now())
-    updatedAt      DateTime      @updatedAt
-}
-
-model Validator {
-    id              String        @id @default(uuid())
-    sourceTopic     KafkaTopic    @relation("SourceTopic", fields: [sourceTopicName], references: [topicName])
-    sourceTopicName String
-    targetTopic     KafkaTopic    @relation("TargetTopic", fields: [targetTopicName], references: [topicName])
-    targetTopicName String
-    schema          Schema        @relation(fields: [schemaId], references: [id])
-    schemaId        String        @db.Uuid
-    errorStrategy   ErrorStrategy @default(REDIRECT)
-    errorTopic      String?
-    createdAt       DateTime      @default(now())
+    entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 }
 
 enum TopicStage {
@@ -150,27 +121,4 @@ enum DataFormat {
     BYTES
     AVRO
     PROTOBUF
-}
-
-enum SchemaType {
-    INPUT
-    OUTPUT
-}
-
-enum SchemaFormat {
-    JSON
-    AVRO
-    PROTOBUF
-}
-
-enum ConnectorType {
-    MQTT
-    REST
-    INPUT_CONNECTOR
-}
-
-enum ErrorStrategy {
-    LOG
-    DROP
-    REDIRECT
 }

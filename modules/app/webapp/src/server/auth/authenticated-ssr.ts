@@ -14,7 +14,7 @@ export interface AuthenticatedContext<
 > extends GetServerSidePropsContext<Params, Preview> {
   req: GetServerSidePropsContext["req"] & {
     session: {
-      data: { user?: UserSession };
+      data: { user: UserSession };
     };
   };
 }
@@ -49,7 +49,8 @@ export function withAuthSSR<Props>(opts: {
     // Get the user session
     const session = await getServerSession(context.req, context.res);
 
-    if (!session.data?.user) {
+    const user = session.data.user;
+    if (!user) {
       return {
         redirect: {
           destination: opts.redirectTo ?? "/auth",
@@ -64,7 +65,7 @@ export function withAuthSSR<Props>(opts: {
       req: {
         ...context.req,
         session: {
-          data: session.data,
+          data: { user: user },
         },
       },
     } as AuthenticatedContext;

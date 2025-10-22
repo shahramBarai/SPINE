@@ -1,5 +1,5 @@
 import { platformDb } from "../../db/platform";
-import { MemberRole } from "generated/platform";
+import { EntityType, MemberRole } from "generated/platform";
 import {
   EntityNotFoundError,
   ConflictError,
@@ -12,6 +12,7 @@ export interface CreateProjectData {
   name: string;
   description?: string;
   members?: AddProjectMemberData[];
+  type: EntityType;
 }
 
 export interface UpdateProjectData {
@@ -28,7 +29,7 @@ export class ProjectService {
   // Get all projects
   static async getAllProjects() {
     try {
-      return platformDb.project.findMany({
+      return platformDb.entity.findMany({
         include: {
           members: {
             include: {
@@ -52,7 +53,7 @@ export class ProjectService {
   // Get project by id
   static async getProjectById(id: string) {
     try {
-      const project = await platformDb.project.findUnique({
+      const project = await platformDb.entity.findUnique({
         where: { id },
         include: {
           members: {
@@ -86,7 +87,7 @@ export class ProjectService {
   // Get projects for a specific user
   static async getProjectsByUserId(userId: string) {
     try {
-      return await platformDb.project.findMany({
+      return await platformDb.entity.findMany({
         where: {
           members: {
             some: {
@@ -136,10 +137,11 @@ export class ProjectService {
     }
 
     try {
-      return await platformDb.project.create({
+      return await platformDb.entity.create({
         data: {
           name: data.name,
           description: data.description,
+          type: data.type,
           members: data.members
             ? {
                 create: data.members,
@@ -171,7 +173,7 @@ export class ProjectService {
     await this.getProjectById(id);
 
     try {
-      return await platformDb.project.update({
+      return await platformDb.entity.update({
         where: { id },
         data: {
           ...data,
@@ -202,7 +204,7 @@ export class ProjectService {
     await this.getProjectById(id);
 
     try {
-      return await platformDb.project.delete({
+      return await platformDb.entity.delete({
         where: { id },
       });
     } catch (error: any) {
@@ -211,13 +213,13 @@ export class ProjectService {
   }
 
   // Get project members
-  static async getProjectMembers(projectId: string) {
+  static async getProjectMembers(entityId: string) {
     // Check if project exists
-    await this.getProjectById(projectId);
+    await this.getProjectById(entityId);
 
     try {
-      return await platformDb.projectMember.findMany({
-        where: { projectId },
+      return await platformDb.entityMember.findMany({
+        where: { entityId },
         include: {
           user: {
             select: {
@@ -234,9 +236,9 @@ export class ProjectService {
   }
 
   // Add member to project
-  static async addProjectMember(projectId: string, data: AddProjectMemberData) {
+  static async addProjectMember(entityId: string, data: AddProjectMemberData) {
     // Check if project exists
-    await this.getProjectById(projectId);
+    await this.getProjectById(entityId);
 
     // Check if user exists
     try {
@@ -254,7 +256,7 @@ export class ProjectService {
     }
 
     // Check if user is already a member of the project
-    const isAlreadyMember = await this.isProjectMember(projectId, data.userId);
+    const isAlreadyMember = await this.isProjectMember(entityId, data.userId);
     if (isAlreadyMember) {
       throw ConflictError(
         "addProjectMember",
@@ -263,9 +265,9 @@ export class ProjectService {
     }
 
     try {
-      return await platformDb.projectMember.create({
+      return await platformDb.entityMember.create({
         data: {
-          projectId,
+          entityId,
           userId: data.userId,
           role: data.role,
         },
@@ -286,28 +288,28 @@ export class ProjectService {
 
   // Update project member role
   static async updateProjectMemberRole(
-    projectId: string,
+    entityId: string,
     userId: string,
     role: MemberRole
   ) {
     // Check if project exists
-    await this.getProjectById(projectId);
+    await this.getProjectById(entityId);
 
     // Check if user is a member of the project
-    const isMember = await this.isProjectMember(projectId, userId);
+    const isMember = await this.isProjectMember(entityId, userId);
     if (!isMember) {
       throw new ServiceError(
         "NOT_FOUND",
-        `User with ID ${userId} is not a member of project ${projectId}`,
-        { userId, projectId }
+        `User with ID ${userId} is not a member of project ${entityId}`,
+        { userId, entityId }
       );
     }
 
     try {
-      return await platformDb.projectMember.update({
+      return await platformDb.entityMember.update({
         where: {
-          projectId_userId: {
-            projectId,
+          entityId_userId: {
+            entityId,
             userId,
           },
         },
@@ -331,25 +333,25 @@ export class ProjectService {
   }
 
   // Remove member from project
-  static async removeProjectMember(projectId: string, userId: string) {
+  static async removeProjectMember(entityId: string, userId: string) {
     // Check if project exists
-    await this.getProjectById(projectId);
+    await this.getProjectById(entityId);
 
     // Check if user is a member of the project
-    const isMember = await this.isProjectMember(projectId, userId);
+    const isMember = await this.isProjectMember(entityId, userId);
     if (!isMember) {
       throw new ServiceError(
         "NOT_FOUND",
-        `User with ID ${userId} is not a member of project ${projectId}`,
-        { userId, projectId }
+        `User with ID ${userId} is not a member of project ${entityId}`,
+        { userId, entityId }
       );
     }
 
     try {
-      return await platformDb.projectMember.delete({
+      return await platformDb.entityMember.delete({
         where: {
-          projectId_userId: {
-            projectId,
+          entityId_userId: {
+            entityId,
             userId,
           },
         },
@@ -360,12 +362,12 @@ export class ProjectService {
   }
 
   // Check if user is project member
-  static async isProjectMember(projectId: string, userId: string) {
+  static async isProjectMember(entityId: string, userId: string) {
     try {
-      const member = await platformDb.projectMember.findUnique({
+      const member = await platformDb.entityMember.findUnique({
         where: {
-          projectId_userId: {
-            projectId,
+          entityId_userId: {
+            entityId,
             userId,
           },
         },
@@ -377,12 +379,12 @@ export class ProjectService {
   }
 
   // Get user's role in project
-  static async getUserRoleInProject(projectId: string, userId: string) {
+  static async getUserRoleInProject(entityId: string, userId: string) {
     try {
-      const member = await platformDb.projectMember.findUnique({
+      const member = await platformDb.entityMember.findUnique({
         where: {
-          projectId_userId: {
-            projectId,
+          entityId_userId: {
+            entityId,
             userId,
           },
         },
