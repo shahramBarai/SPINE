@@ -2,8 +2,8 @@
 {
   "name": "IoT Platform",
   "dockerComposeFile": ["../docker-compose.yml", "docker-compose.yml"],
-  "service": "app",
-  "workspaceFolder": "/app/${localWorkspaceFolderBasename}",
+  "service": "devcontainer",
+  "workspaceFolder":  "/workspaces/${localWorkspaceFolderBasename}",
   "customizations": {
     "vscode": {
       "extensions": [
