@@ -1,0 +1,5 @@
+ifc_dir: C:/Users/yanpe/OneDrive - Metropolia Ammattikorkeakoulu Oy/Research/MD2MV/data/IFC
+rdf_dir: C:/Users/yanpe/OneDrive - Metropolia Ammattikorkeakoulu Oy/Research/MD2MV/data/TTL
+citygml_dir: C:/Users/yanpe/OneDrive - Metropolia Ammattikorkeakoulu Oy/Research/MD2MV/data/CityGML
+mapping_file: ./config/mappings.xlsx
+#graphdb_url: http://localhost:7200

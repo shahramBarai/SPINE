@@ -1,0 +1,20 @@
+[2025-10-30T10:00:01.523+0200][0.015s][debug][gc,heap] Minimum heap 4294967296  Initial heap 4294967296  Maximum heap 21474836480
+[2025-10-30T10:00:01.523+0200][0.016s][info ][gc     ] Using G1
+[2025-10-30T10:00:01.533+0200][0.025s][info ][gc,init] Version: 17.0.6+9-LTS-190 (release)
+[2025-10-30T10:00:01.533+0200][0.025s][info ][gc,init] CPUs: 22 total, 22 available
+[2025-10-30T10:00:01.533+0200][0.025s][info ][gc,init] Memory: 32212M
+[2025-10-30T10:00:01.533+0200][0.025s][info ][gc,init] Large Page Support: Disabled
+[2025-10-30T10:00:01.533+0200][0.025s][info ][gc,init] NUMA Support: Disabled
+[2025-10-30T10:00:01.534+0200][0.026s][info ][gc,init] Compressed Oops: Enabled (Zero based)
+[2025-10-30T10:00:01.534+0200][0.026s][info ][gc,init] Heap Region Size: 16M
+[2025-10-30T10:00:01.534+0200][0.026s][info ][gc,init] Heap Min Capacity: 4G
+[2025-10-30T10:00:01.534+0200][0.026s][info ][gc,init] Heap Initial Capacity: 4G
+[2025-10-30T10:00:01.534+0200][0.026s][info ][gc,init] Heap Max Capacity: 20G
+[2025-10-30T10:00:01.534+0200][0.026s][info ][gc,init] Pre-touch: Disabled
+[2025-10-30T10:00:01.534+0200][0.026s][info ][gc,init] Parallel Workers: 16
+[2025-10-30T10:00:01.534+0200][0.026s][info ][gc,init] Concurrent Workers: 4
+[2025-10-30T10:00:01.534+0200][0.026s][info ][gc,init] Concurrent Refinement Workers: 16
+[2025-10-30T10:00:01.534+0200][0.026s][info ][gc,init] Periodic GC: Disabled
+[2025-10-30T10:00:01.535+0200][0.027s][info ][gc,metaspace] CDS archive(s) mapped at: [0x0000000800000000-0x0000000800bd0000-0x0000000800bd0000), size 12386304, SharedBaseAddress: 0x0000000800000000, ArchiveRelocationMode: 0.
+[2025-10-30T10:00:01.535+0200][0.027s][info ][gc,metaspace] Compressed class space mapped at: 0x0000000800c00000-0x0000000840c00000, reserved size: 1073741824
+[2025-10-30T10:00:01.535+0200][0.027s][info ][gc,metaspace] Narrow klass base: 0x0000000800000000, Narrow klass shift: 0, Narrow klass range: 0x100000000
