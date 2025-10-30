@@ -234,12 +234,6 @@ def validate_ttl_syntax(file_path):
 
 if __name__ == "__main__":   
 
-    '''
-    input_ttl = "C:/Users/yanpe/Downloads/HVAC_NordicLCA_Office_Concrete_ifcOWL.ttl"
-    output_folder = os.path.dirname(input_ttl)
-    filename = os.path.basename(input_ttl)        
-    output_ttl = output_folder + os.path.splitext(filename)[0]+"_no_geometry.ttl"
-    '''
     input_ttl = "C:/Users/yanpe/OneDrive - Metropolia Ammattikorkeakoulu Oy/Research/MD2MV/scripts/docs/AC20-FZK-Haus-40_ifcOWL.ttl"    
     output_ttl = "C:/Users/yanpe/OneDrive - Metropolia Ammattikorkeakoulu Oy/Research/MD2MV/scripts/docs/AC20-FZK-Haus-40_ifcOWL_no_geometry.ttl"
     remove_ifc_geometry(input_ttl, output_ttl)
