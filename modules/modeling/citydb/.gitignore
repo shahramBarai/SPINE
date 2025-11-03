@@ -1,0 +1,9 @@
+# Environment variables - NEVER commit
+.env
+
+# Data directories (exclude files but keep structure)
+citydb/impexp-data/*
+!citydb/impexp-data/.gitkeep
+
+# Keep directory structure
+!.gitkeep

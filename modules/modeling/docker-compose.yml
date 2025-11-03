@@ -1,0 +1,58 @@
+services:
+  # ------ CityDB ------- #
+  citydb:
+    image: 3dcitydb/3dcitydb-pg:5.0.0-alpine
+    container_name: citydb
+    env_file:
+      - ./citydb/.env.example
+    ports:
+      - "5432:5432"
+    volumes:
+      - citydb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ------ Import/Export Service ------- #
+  impexp:
+    image: 3dcitydb/impexp:5.5.2
+    container_name: citydb-impexp
+    env_file:
+      - ./citydb/.env.example
+    volumes:
+      - ./citydb/impexp-data:/data
+    depends_on:
+      citydb:
+        condition: service_healthy
+
+  # ------ Web Client Service ------- #
+  citydb-web-client:
+    image: tumgis/3dcitydb-web-map
+    container_name: citydb-web-client
+    env_file:
+      - ./citydb/.env.example
+    ports:
+      - "8081:8000"
+    depends_on:
+      citydb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ------ Web Feature Service (WFS) ------- #
+  citydb-wfs:
+    image: 3dcitydb/wfs:5.0.0-alpine
+    container_name: citydb-wfs
+    env_file:
+      - ./citydb/.env.example
+    ports:
+      - "8080:8080"
+    depends_on:
+      citydb:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  citydb_data:
