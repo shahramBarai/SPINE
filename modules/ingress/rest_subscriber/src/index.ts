@@ -1,9 +1,7 @@
-import { Fastify, cors, kafkaProducer, schemaManager, empathicBuildingService } from "./deps";
-import * as configs from "./utils/config";
+import { Fastify, cors, configs, excelService, kafkaProducer, schemaManager, empathicBuildingService } from "./deps";
 import { logger } from "@spine/shared";
 import { healthRoutes } from "./routes/health";
-import type { DecodedEvent } from "@spine/ingress";
-import { ExcelService } from "./services/ExcelService";
+import { setupEmpathicBuildingHandlers } from "./utils/eb_helper";
 
 async function setupServer() {
     const server = Fastify({
@@ -44,101 +42,18 @@ async function setupServer() {
     await server.listen({ port: configs.PORT, host: configs.HOST});
 }
 
-// Initialize Excel service
-const excelService = new ExcelService();
-
-/**
- * Handle incoming Empathic Building events and save to Excel
- */
-async function handleEmpathicBuildingEvent(event: DecodedEvent): Promise<void> {
-    try {
-        // Prepare message for Excel
-        const message = {
-            eventType: event.eventType,
-            channel: event.channel,
-            data: event.data,
-            timestamp: event.timestamp,
-            source: "empathic-building",
-        };
-
-        // Save to Excel file
-        await excelService.saveEvent(message);
-
-        logger.debug(
-            `Empathic Building: Saved event ${event.eventType} to Excel`,
-        );
-    } catch (error) {
-        logger.error(
-            `Empathic Building: Failed to save event ${event.eventType} to Excel:`,
-            error,
-        );
-    }
-}
-
-/**
- * Set up Empathic Building event handlers
- */
-function setupEmpathicBuildingHandlers(): void {
-    // Connection events
-    empathicBuildingService.on("connected", () => {
-        logger.info("Empathic Building service: Connected to Pusher");
-    });
-
-    empathicBuildingService.on("disconnected", () => {
-        logger.warn("Empathic Building service: Disconnected from Pusher");
-    });
-
-    empathicBuildingService.on("subscribed", ({ channel }) => {
-        logger.info(`Empathic Building service: Subscribed to channel ${channel}`);
-    });
-
-    // Handle all events and save to Excel
-    empathicBuildingService.on("event", async (event: DecodedEvent) => {
-        await handleEmpathicBuildingEvent(event);
-    });
-
-    // Handle specific event types (optional - for additional logging/processing)
-    empathicBuildingService.on("sensor-modified", async (event: DecodedEvent) => {
-        logger.debug("Empathic Building: Sensor modified event received");
-        await handleEmpathicBuildingEvent(event);
-    });
-
-    empathicBuildingService.on("asset-created", async (event: DecodedEvent) => {
-        logger.debug("Empathic Building: Asset created event received");
-        await handleEmpathicBuildingEvent(event);
-    });
-
-    empathicBuildingService.on("asset-modified", async (event: DecodedEvent) => {
-        logger.debug("Empathic Building: Asset modified event received");
-        await handleEmpathicBuildingEvent(event);
-    });
-
-    empathicBuildingService.on("asset-deleted", async (event: DecodedEvent) => {
-        logger.debug("Empathic Building: Asset deleted event received");
-        await handleEmpathicBuildingEvent(event);
-    });
-
-    // Error handling
-    empathicBuildingService.on("error", (error: unknown) => {
-        logger.error("Empathic Building service error:", error);
-    });
-
-    empathicBuildingService.on("tokenRefreshError", (error: unknown) => {
-        logger.error("Empathic Building token refresh error:", error);
-    });
-}
-
 async function main() {
-    // Connect to Kafka producer
-    // TODO: Add reconncetion logic in to KafkaProducerService
-    // if (!(await kafkaProducer.connect())) {
-    //     throw new Error(`Kafka producer is not connected!`);
-    // }
+    // Connect to Kafka producer and schema manager if they are initialized
+    if (kafkaProducer && schemaManager) {
+        logger.info("Initializing Kafka producer...");
+        // TODO: Add reconnection logic in to KafkaProducerService
+        await kafkaProducer.connect();
+        logger.info("Kafka producer connected successfully");
 
-    // Initialize schema manager
-    // if (!(await schemaManager.initialize())) {
-    //     throw new Error(`Schema manager is not connected!`);
-    // }
+        // Initialize schema manager
+        await schemaManager.initialize();
+        logger.info("Schema manager initialized successfully");
+    }
 
     // Set up Empathic Building event handlers
     setupEmpathicBuildingHandlers();
@@ -165,10 +80,14 @@ async function main() {
             logger.error("Error disconnecting from Empathic Building service:", error);
         }
 
-        // TODO: Disconnect from Kafka producer
-
-        // TODO: Disconnect from schema manager
-
+        // Disconnect from Kafka producer if it was initialized
+        if (kafkaProducer) {
+            while (!await kafkaProducer.disconnect()) {
+                logger.warn("Kafka producer not disconnected, retrying...");
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            logger.info("Kafka producer disconnected");
+        }
         logger.info("Service shutdown complete");
         process.exit(0);
     }

@@ -7,6 +7,15 @@ const NODE_ENV: "prod" | "dev" = (process.env.NODE_ENV || "prod") as
 const HOST = process.env.HOST || "0.0.0.0";
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
+// Options: kafka, excel, or console
+// - kafka: Send data to Kafka topic
+// - excel: Save data to Excel file
+// - console: Log data to console
+const SEND_TO = process.env.SEND_TO || "console";
+if (SEND_TO !== "kafka" && SEND_TO !== "excel" && SEND_TO !== "console") {
+    throw new Error(`SEND_TO must be one of: kafka, excel, console`);
+}
+
 type SupportedMethod = "GET" | "POST";
 type AuthType = "none" | "basic" | "bearer" | "apikey" | "oauth2";
 type ApiKeyLocation = "header" | "query";
@@ -141,172 +150,6 @@ const parseEndpoints = (
         });
 };
 
-let restApiConfig: RestApiConfig | undefined = undefined;
-const getRestApiConfig = (): RestApiConfig => {
-    if (restApiConfig) {
-        return restApiConfig;
-    }
-    const REST_API_BASE_URL = process.env.REST_API_BASE_URL;
-    const REST_API_ENDPOINTS = process.env.REST_API_ENDPOINTS;
-    const REST_API_DEFAULT_METHOD = parseMethod(
-        process.env.REST_API_DEFAULT_METHOD,
-        "GET",
-    );
-    const REST_API_POLL_INTERVAL = process.env.REST_API_POLL_INTERVAL;
-    const REST_API_TIMEOUT = process.env.REST_API_TIMEOUT;
-    const REST_API_RETRY_ATTEMPTS = process.env.REST_API_RETRY_ATTEMPTS;
-    const REST_API_RETRY_DELAY = process.env.REST_API_RETRY_DELAY;
-    const REST_API_CUSTOM_HEADERS = process.env.REST_API_CUSTOM_HEADERS;
-
-    const REST_API_AUTH_TYPE = (process.env.REST_API_AUTH_TYPE ||
-        "none") as AuthType;
-    const REST_API_AUTH_USERNAME = process.env.REST_API_AUTH_USERNAME;
-    const REST_API_AUTH_PASSWORD = process.env.REST_API_AUTH_PASSWORD;
-    const REST_API_AUTH_BEARER_TOKEN = process.env.REST_API_AUTH_BEARER_TOKEN;
-    const REST_API_AUTH_API_KEY = process.env.REST_API_AUTH_API_KEY;
-    const REST_API_AUTH_API_KEY_HEADER =
-        process.env.REST_API_AUTH_API_KEY_HEADER || "x-api-key";
-    const REST_API_AUTH_API_KEY_LOCATION = (process.env.REST_API_AUTH_API_KEY_LOCATION ||
-        "header") as ApiKeyLocation;
-    const REST_API_AUTH_API_KEY_QUERY_PARAM =
-        process.env.REST_API_AUTH_API_KEY_QUERY_PARAM || "api_key";
-
-    const REST_API_AUTH_OAUTH_TOKEN_URL =
-        process.env.REST_API_AUTH_OAUTH_TOKEN_URL;
-    const REST_API_AUTH_OAUTH_CLIENT_ID =
-        process.env.REST_API_AUTH_OAUTH_CLIENT_ID;
-    const REST_API_AUTH_OAUTH_CLIENT_SECRET =
-        process.env.REST_API_AUTH_OAUTH_CLIENT_SECRET;
-    const REST_API_AUTH_OAUTH_SCOPE = process.env.REST_API_AUTH_OAUTH_SCOPE;
-    const REST_API_AUTH_OAUTH_AUDIENCE =
-        process.env.REST_API_AUTH_OAUTH_AUDIENCE;
-    const REST_API_AUTH_OAUTH_GRANT_TYPE =
-        process.env.REST_API_AUTH_OAUTH_GRANT_TYPE || "client_credentials";
-    const REST_API_AUTH_OAUTH_REFRESH_MARGIN = parseNumber(
-        process.env.REST_API_AUTH_OAUTH_REFRESH_MARGIN,
-        60,
-    );
-
-    const REST_API_PAGINATION_TYPE = (process.env.REST_API_PAGINATION_TYPE ||
-        "none") as PaginationMode;
-    const REST_API_PAGINATION_PAGE_PARAM =
-        process.env.REST_API_PAGINATION_PAGE_PARAM || "page";
-    const REST_API_PAGINATION_PAGE_SIZE_PARAM =
-        process.env.REST_API_PAGINATION_PAGE_SIZE_PARAM || "pageSize";
-    const REST_API_PAGINATION_PAGE_SIZE = parseNumber(
-        process.env.REST_API_PAGINATION_PAGE_SIZE,
-        100,
-    );
-    const REST_API_PAGINATION_MAX_PAGES = parseNumber(
-        process.env.REST_API_PAGINATION_MAX_PAGES,
-        0,
-    );
-    const REST_API_PAGINATION_CURSOR_PARAM =
-        process.env.REST_API_PAGINATION_CURSOR_PARAM || "cursor";
-    const REST_API_PAGINATION_NEXT_CURSOR_FIELD =
-        process.env.REST_API_PAGINATION_NEXT_CURSOR_FIELD || "nextCursor";
-    const REST_API_PAGINATION_NEXT_LINK_FIELD =
-        process.env.REST_API_PAGINATION_NEXT_LINK_FIELD || "next";
-
-    if (!REST_API_BASE_URL || !REST_API_ENDPOINTS) {
-        throw new Error(
-            `REST API configuration is not set: 
-                REST_API_BASE_URL=${REST_API_BASE_URL}, 
-                REST_API_ENDPOINTS=${REST_API_ENDPOINTS}`,
-        );
-    }
-
-    if (REST_API_AUTH_TYPE === "basic" &&
-        (!REST_API_AUTH_USERNAME || !REST_API_AUTH_PASSWORD)) {
-        throw new Error(
-            `REST API authentication configuration is not set: 
-                REST_API_AUTH_TYPE=${REST_API_AUTH_TYPE}, 
-                REST_API_AUTH_USERNAME=${REST_API_AUTH_USERNAME}, 
-                REST_API_AUTH_PASSWORD=${REST_API_AUTH_PASSWORD}`,
-        );
-    }
-
-    if (REST_API_AUTH_TYPE === "bearer" && !REST_API_AUTH_BEARER_TOKEN) {
-        throw new Error(
-            `REST API authentication configuration is not set: 
-                REST_API_AUTH_TYPE=${REST_API_AUTH_TYPE}, 
-                REST_API_AUTH_BEARER_TOKEN=${REST_API_AUTH_BEARER_TOKEN}`,
-        );
-    }
-
-    if (REST_API_AUTH_TYPE === "apikey" && !REST_API_AUTH_API_KEY) {
-        throw new Error(
-            `REST API authentication configuration is not set: 
-                REST_API_AUTH_TYPE=${REST_API_AUTH_TYPE}, 
-                REST_API_AUTH_API_KEY=${REST_API_AUTH_API_KEY}`,
-        );
-    }
-
-    if (
-        REST_API_AUTH_TYPE === "oauth2" &&
-        (!REST_API_AUTH_OAUTH_TOKEN_URL ||
-            !REST_API_AUTH_OAUTH_CLIENT_ID ||
-            !REST_API_AUTH_OAUTH_CLIENT_SECRET)
-    ) {
-        throw new Error(
-            `REST API OAuth configuration is not set: 
-                REST_API_AUTH_OAUTH_TOKEN_URL=${REST_API_AUTH_OAUTH_TOKEN_URL}, 
-                REST_API_AUTH_OAUTH_CLIENT_ID=${REST_API_AUTH_OAUTH_CLIENT_ID}, 
-                REST_API_AUTH_OAUTH_CLIENT_SECRET=${REST_API_AUTH_OAUTH_CLIENT_SECRET}`,
-        );
-    }
-
-    restApiConfig = {
-        baseUrl: REST_API_BASE_URL,
-        endpoints: parseEndpoints(REST_API_ENDPOINTS, REST_API_DEFAULT_METHOD),
-        poller: {
-            pollIntervalMs: parseNumber(REST_API_POLL_INTERVAL, 5000),
-            timeoutMs: parseNumber(REST_API_TIMEOUT, 30000),
-            retryAttempts: parseNumber(REST_API_RETRY_ATTEMPTS, 3),
-            retryDelayMs: parseNumber(REST_API_RETRY_DELAY, 1000),
-        },
-        auth: {
-            type: REST_API_AUTH_TYPE,
-            username: REST_API_AUTH_USERNAME,
-            password: REST_API_AUTH_PASSWORD,
-            bearerToken: REST_API_AUTH_BEARER_TOKEN,
-            apiKey: REST_API_AUTH_API_KEY,
-            apiKeyHeader: REST_API_AUTH_API_KEY_HEADER,
-            apiKeyQueryParam: REST_API_AUTH_API_KEY_QUERY_PARAM,
-            apiKeyLocation: REST_API_AUTH_API_KEY_LOCATION,
-            customHeaders: parseCustomHeaders(
-                process.env.REST_API_AUTH_CUSTOM_HEADERS,
-            ),
-            oauth:
-                REST_API_AUTH_TYPE === "oauth2"
-                    ? {
-                          tokenUrl: REST_API_AUTH_OAUTH_TOKEN_URL!,
-                          clientId: REST_API_AUTH_OAUTH_CLIENT_ID!,
-                          clientSecret: REST_API_AUTH_OAUTH_CLIENT_SECRET!,
-                          scope: REST_API_AUTH_OAUTH_SCOPE,
-                          audience: REST_API_AUTH_OAUTH_AUDIENCE,
-                          grantType: REST_API_AUTH_OAUTH_GRANT_TYPE,
-                          refreshMarginSeconds: REST_API_AUTH_OAUTH_REFRESH_MARGIN,
-                      }
-                    : undefined,
-        },
-        pagination: {
-            mode: REST_API_PAGINATION_TYPE,
-            pageParam: REST_API_PAGINATION_PAGE_PARAM,
-            pageSizeParam: REST_API_PAGINATION_PAGE_SIZE_PARAM,
-            pageSize: REST_API_PAGINATION_PAGE_SIZE,
-            maxPages: REST_API_PAGINATION_MAX_PAGES,
-            cursorParam: REST_API_PAGINATION_CURSOR_PARAM,
-            nextCursorField: REST_API_PAGINATION_NEXT_CURSOR_FIELD,
-            nextLinkField: REST_API_PAGINATION_NEXT_LINK_FIELD,
-        },
-        customHeaders: parseCustomHeaders(REST_API_CUSTOM_HEADERS),
-        defaultMethod: REST_API_DEFAULT_METHOD,
-    };
-
-    return restApiConfig;
-};
-
 // Empathic Building API configuration
 import type { EmpathicBuildingConfig } from "@spine/ingress";
 
@@ -367,7 +210,7 @@ export {
     NODE_ENV,
     HOST,
     PORT,
-    getRestApiConfig,
+    SEND_TO,
     getEmpathicBuildingConfig,
     type RestApiConfig,
     type RestEndpointConfig,
