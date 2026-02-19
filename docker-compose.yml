@@ -6,10 +6,10 @@ include:
   - ./modules/storage/docker-compose.dev.yml
   
   # Optional services - controlled by profiles defined in their respective files
-  - ./modules/ingress/docker-compose.dev.yml
-  - ./modules/analytics/docker-compose.dev.yml
-  - ./modules/app/docker-compose.dev.yml
-  - ./modules/egress/docker-compose.dev.yml
+  # - ./modules/ingress/docker-compose.dev.yml
+  # - ./modules/analytics/docker-compose.dev.yml
+  # - ./modules/app/docker-compose.dev.yml
+  # - ./modules/egress/docker-compose.dev.yml
 
 # Global networks that can be shared across modules
 # networks:
