@@ -2,7 +2,7 @@ import { PhotoIcon } from "@heroicons/react/24/outline";
 import { cn } from "@/client/utils";
 import Image from "next/image";
 import { Skeleton } from "../../basics/Skeleton";
-import { EntityType } from "@/server/services/data-service/types";
+import { EntityType } from "@spine/storage-platform/types";
 
 interface BaseProps {
   imageUrl: string;

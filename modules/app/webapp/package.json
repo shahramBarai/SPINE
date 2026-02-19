@@ -7,12 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "type-check": "tsc --noEmit",
     "test:kafka": "tsx test/kafka-connection.ts",
     "test:schema-registry": "tsx test/schema-registry-connection.ts",
     "test:schema-registration": "tsx test/test-schema-registration.ts",
     "debug:schema-registry": "tsx test/debug-schema-registry.ts"
   },
   "dependencies": {
+    "@spine/storage-platform": "workspace:*",
     "@headlessui/react": "^2.2.2",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.0.1",

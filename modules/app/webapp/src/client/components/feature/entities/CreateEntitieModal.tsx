@@ -4,7 +4,7 @@ import { Input } from "../../basics/input";
 import { Label } from "../../basics/label";
 import { useForm } from "react-hook-form";
 
-import { EntityType } from "@/server/services/data-service/types";
+import { EntityType } from "@spine/storage-platform/types";
 import { Select, SelectTrigger, SelectValue, SelectItem, SelectContent } from "../../basics/select";
 import { Button } from "../../basics/Button";
 

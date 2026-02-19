@@ -3,7 +3,7 @@ import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../trpc";
 import { hashPassword, verifyPassword } from "../auth/password";
 import { UserSession } from "../auth/iron-session";
-import { dataServiceApi } from "../api/data-service";
+import { UserService } from "@spine/storage-platform";
 
 // User input validation schemas
 const signUpSchema = z.object({
@@ -37,9 +37,9 @@ export const authRouter = router({
 
       try {
         // Check if user already exists
-        const existingUser = await dataServiceApi.getUserByEmail(email);
+        const existingUser = await UserService.getUserByEmail(email);
 
-        if (existingUser) {
+        if (existingUser !== null) {
           throw new TRPCError({
             code: "CONFLICT",
             message: "User already exists",
@@ -50,7 +50,7 @@ export const authRouter = router({
         const hashedPassword = await hashPassword(password);
 
         // Create new user
-        const user = await dataServiceApi.createUser({
+        const user = await UserService.createUser({
           email,
           password: hashedPassword,
           name,
@@ -62,7 +62,7 @@ export const authRouter = router({
           email: user.email,
           fullName: user.name ?? "",
           avatar: "",
-          role: user.role as "ADMIN" | "USER",
+          role: user.role,
         };
 
         ctx.session.data.user = session;
@@ -88,9 +88,9 @@ export const authRouter = router({
 
       try {
         // Find user with password
-        const user = await dataServiceApi.getUserWithPassword(email);
+        const user = await UserService.getUserByEmailWithPassword(email);
 
-        if (!user || !user.password) {
+        if (!user) {
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Invalid email or password",
@@ -107,23 +107,13 @@ export const authRouter = router({
           });
         }
 
-        // Get full user details
-        const fullUser = await dataServiceApi.getUserByEmail(email);
-
-        if (!fullUser) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "User not found",
-          });
-        }
-
         // Create session
         const session: UserSession = {
           id: user.id,
           email: user.email,
-          fullName: fullUser.name ?? "",
+          fullName: user.name ?? "",
           avatar: "",
-          role: fullUser.role as "ADMIN" | "USER",
+          role: user.role,
         };
 
         ctx.session.data = { user: session };
@@ -163,12 +153,12 @@ export const authRouter = router({
 
       try {
         // Check if user exists
-        let user = await dataServiceApi.getUserByEmail(email);
+        let user = await UserService.getUserByEmail(email);
 
         if (!user) {
           // Create user with a default dev password
           const devPassword = await hashPassword("dev123456");
-          user = await dataServiceApi.createUser({
+          user = await UserService.createUser({
             email,
             password: devPassword,
             name,
@@ -182,7 +172,7 @@ export const authRouter = router({
           email: user.email,
           fullName: user.name || name,
           avatar: "",
-          role: user.role as "ADMIN" | "USER",
+          role: user.role,
         };
 
         ctx.session.data = { user: session };
