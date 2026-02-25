@@ -1,0 +1,13 @@
+# CODEOWNERS file
+# Lines starting with '#' are comments.
+# Each line is a file pattern followed by one or more owners.
+# You can also specify GitHub teams as owners using the @orgname/teamname syntax.
+
+# To make someone the default owner for evering in the repo, add name here
+*        @shahramBarai
+
+# To specify code ownership for specific directories, add directori and name here
+# /docs/      @{github_username}
+
+# To specify code ownership for specific file types
+# *.js        @{github_username}
