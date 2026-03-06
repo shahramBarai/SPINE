@@ -37,11 +37,11 @@ async function insertSensorData(data: SensorReading) {
 async function getSensorData(id: string, timeRange: { start: Date, end: Date }) {
     const queryText = `
         SELECT * FROM sensor_readings
-        WHERE id = $1 AND time BETWEEN $2 AND $3
+        WHERE time >= $1 AND time < $2 AND id = $3
         ORDER BY time ASC;
     `;
 
-    const res = await query(queryText, [id, timeRange.start, timeRange.end]);
+    const res = await query(queryText, [timeRange.start, timeRange.end, id]);
 
     return res.rows;
 }
