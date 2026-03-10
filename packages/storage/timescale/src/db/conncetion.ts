@@ -1,9 +1,10 @@
 import { Pool, PoolClient } from "pg";
 import { logger } from "@spine/shared";
+import { DATABASE_URL } from "../config";
 
 // Connection pool configuration optimised for time-series workloads
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: DATABASE_URL,
 
     // Pool sizing
     max: 20,                        // Maximum connections in pool
@@ -14,26 +15,56 @@ const pool = new Pool({
 
 // Monitor pool events for debugging
 pool.on('connect', () => {
-    logger.info('New connection acquired');
+    logger.info('🛜  TimescaleDB: New connection acquired');
 });
 
 pool.on('error', (err) => {
-    logger.error('Unexpected error on idle client', err);
+    logger.error('🛜  TimescaleDB: Unexpected error on idle client', err);
 });
 
-// Helper function for single query
+/**
+ * Executes a single query with optional parameters.
+ * 
+ * @param text - The SQL query to execute.
+ * @param params - Optional parameters for the query.
+ * @returns The result of the query.
+ * 
+ * @example
+ * ```typescript
+ * const result = await query('SELECT * FROM sensor_readings WHERE id = $1', [id]);
+ * ```
+ */
 async function query(text: string, params?: any[]) {
     const start = Date.now();
     const result = await pool.query(text, params);
     const duration = Date.now() - start;
 
     if (duration > 1000) {
-        logger.warn('Slow query: ' + text + ' ' + duration + 'ms');
+        logger.warn('🛜  TimescaleDB: Slow query: ' + text + ' ' + duration + 'ms');
     }
     return result;
 }
 
-// Helper for transactions
+/**
+ * Executes a transaction with a callback function.
+ * 
+ * @param callback - The callback function to execute within the transaction.
+ * @returns The result of the callback function.
+ * @throws Error if the transaction fails.
+ * 
+ * @example
+ * ```typescript
+ * try {
+ *     await withTransaction(async (client) => {
+ *         await client.query('INSERT INTO sensor_readings (time, id, data) VALUES ($1, $2, $3)', [time, id, data]);
+ *         await client.query('INSERT INTO sensor_readings (time, id, data) VALUES ($1, $2, $3)', [time, id, data]);
+ *         ...
+ *     });
+ * } catch (error) {
+ *     logger.error('Transaction failed', error);
+ * }
+ * ```
+ */
 async function withTransaction(callback: (client: PoolClient) => Promise<void>) {
     const client = await pool.connect();
     try {
