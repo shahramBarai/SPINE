@@ -37,27 +37,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ------ Data Service ------- #
-  data-service:
-    container_name: data-service
-    build:
-      context: ./data-service
-      dockerfile: Dockerfile.dev
-    env_file:
-      - path: ./data-service/.env.example
-        required: true
-    ports:
-      - "3010:3010"
-    volumes:
-      - ./data-service:/app
-      - /app/node_modules
-      - ./data-service/generated:/app/generated
-    depends_on:
-      postgres:
-        condition: service_healthy
-      timescaledb:
-        condition: service_healthy
-
   # ------ Apache Jena Fuseki ------- #
   fuseki:
     image: stain/jena-fuseki:5.1.0
