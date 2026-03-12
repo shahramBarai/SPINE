@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { logger } from "@spine/shared";
 
-dotenv.config({ path: ["../../../.env", ".env"] });
+dotenv.config({ path: ["../../../../.env", ".env"] });
 
 let inputVariable: string | undefined;
 let NODE_ENV: string;
