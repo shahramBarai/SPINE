@@ -524,6 +524,31 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/storage/minio:
+    dependencies:
+      '@spine/shared':
+        specifier: workspace:*
+        version: link:../../shared
+      minio:
+        specifier: ^8.0.0
+        version: 8.0.6
+    devDependencies:
+      '@types/node':
+        specifier: ^25.2.0
+        version: 25.2.0
+      dotenv:
+        specifier: ^17.3.1
+        version: 17.3.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.1(jiti@2.6.1)
+      tsx:
+        specifier: ^3.14.0
+        version: 3.14.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   packages/storage/platform:
     dependencies:
       '@prisma/adapter-pg':

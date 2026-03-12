@@ -1,0 +1,32 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ES2022",
+        "declaration": true,
+        "outDir": "./dist",
+        "rootDir": ".",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": false,
+        "composite": true,
+        "baseUrl": ".",
+        "paths": {
+            "@spine/storage-minio": [
+                "./src/index.ts"
+            ]
+        }
+    },
+    "include": [
+        "./src/**/*.ts",
+        "./scripts/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}

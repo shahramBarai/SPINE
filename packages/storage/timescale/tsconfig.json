@@ -16,7 +16,7 @@
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "@spine/storage-platform": [
+      "@spine/storage-timescale": [
         "./src/index.ts"
       ]
     }
@@ -27,5 +27,5 @@
   "exclude": [
     "node_modules",
     "dist"
-  ],
+  ]
 }
