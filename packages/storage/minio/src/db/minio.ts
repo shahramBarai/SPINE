@@ -1,6 +1,5 @@
 import { Client } from "minio";
 import { DATABASE_HOST, DATABASE_PORT, DATABASE_USER, DATABASE_PASSWORD } from "../config";
-import { logger } from "@spine/shared";
 
 /** Runtime array of all bucket names available in the platform. */
 const BUCKET_NAME_LIST = [

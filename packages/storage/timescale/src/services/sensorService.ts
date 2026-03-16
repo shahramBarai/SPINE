@@ -1,4 +1,4 @@
-import { query } from "../db/conncetion";
+import { query } from "../db/connection";
 import { SensorReading } from "../db/schema";
 
 /* -------------------------------- CREATE -------------------------------- */

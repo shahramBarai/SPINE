@@ -8,7 +8,6 @@ const pool = new Pool({
 
     // Pool sizing
     max: 20,                        // Maximum connections in pool
-    min: 5,                         // Minimum connections to maintain
     idleTimeoutMillis: 30000,       // Close idle connections after 30 seconds
     connectionTimeoutMillis: 2000,  // Maximum time to wait for a connection to be acquired
 });

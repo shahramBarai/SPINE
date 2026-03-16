@@ -6,8 +6,8 @@ const { success, error } = await createSchema();
 
 if (!success) {
     console.error("❌ Failed to create schema", error);
+} else {
+    console.log("\n✅ Schema created successfully");
 }
-
-console.log("\n✅ Schema created successfully");
 
 process.exit(success ? 0 : 1);

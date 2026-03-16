@@ -1,4 +1,4 @@
-import { BucketItemWithMetadata } from "minio"
+import { BucketItemWithMetadata } from "minio";
 import { minioClient, type BUCKET_NAMES } from "../db/minio";
 import { Readable } from "stream";
 
@@ -152,7 +152,7 @@ async function readFile(
     objectName: string
 ): Promise<Readable | null> {
     try {
-        return minioClient.getObject(bucketName, objectName);
+        return await minioClient.getObject(bucketName, objectName);
     } catch (error) {
         return null;
     }
@@ -164,7 +164,7 @@ async function readFile(
  * Internally uses a streaming MinIO list operation and collects results into an array.
  *
  * @param options - Listing configuration including bucket name, optional prefix, recursive flag, and max key count.
- * @returns A promise that resolves to an array of `FileInfo` objects for each matched object.
+ * @returns A promise that resolves to an array of `BucketItemWithMetadata` objects.
  */
 async function listFiles({ bucketName, prefix = "", recursive = false, maxKeys }: ListFilesOptions): Promise<BucketItemWithMetadata[]> {
     const files: BucketItemWithMetadata[] = [];

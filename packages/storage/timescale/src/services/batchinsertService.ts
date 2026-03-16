@@ -1,4 +1,4 @@
-import { query, withTransaction } from "../db/conncetion";
+import { query } from "../db/connection";
 import { SensorReading } from "../db/schema";
 import { logger } from "@spine/shared";
 
@@ -62,11 +62,11 @@ class BatchInsertService {
      * @param data.data - The data of the sensor reading
      * @throws Error if the batch cannot be flushed
      */
-    addReading(data: SensorReading) {
+    async addReading(data: SensorReading) {
         this.batch.push(data);
 
         if (this.batch.length >= this.batchSize) {
-            this.flush();
+            await this.flush();
         } else if (!this.timer) {
             // Set a timer to flush the batch if it's not full yet
             this.timer = setTimeout(() => this.flush(), this.flushInterval);

@@ -1,4 +1,4 @@
-import { withTransaction } from "./conncetion";
+import { withTransaction } from "./connection";
 import { logger } from "@spine/shared";
 
 interface SensorReading {
@@ -44,7 +44,7 @@ async function createSchema() {
                 logger.info("✅ Table sensor_readings created.");
             }
 
-            // Convert to hybertable with 1-day chunks (chunk_time_interval determines partion size);
+            // Convert to hypertable with 1-day chunks (chunk_time_interval determines partition size)
             result = await client.query(`
                 SELECT create_hypertable(
                     'sensor_readings',
@@ -60,7 +60,7 @@ async function createSchema() {
             }
 
             // Create indexes for common query patterns
-            // Compoind index on id and time speeds up devices-specific queries
+            // Compound index on id and time speeds up devices-specific queries
             result = await client.query(`
                 CREATE INDEX IF NOT EXISTS idx_sensor_readings_sensor_time ON sensor_readings(id, time DESC);
             `);
