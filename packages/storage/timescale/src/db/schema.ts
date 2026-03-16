@@ -4,7 +4,7 @@ import { logger } from "@spine/shared";
 interface SensorReading {
     time: Date;
     id: string;
-    data: JSON;
+    data: Record<string, unknown>;
 }
 
 /**

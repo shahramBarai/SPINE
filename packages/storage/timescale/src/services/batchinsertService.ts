@@ -35,7 +35,7 @@ class BatchInsertService {
 
         // Build multi-row INSERT statement
         const values: string[] = [];
-        const params: (Date | string | JSON)[] = [];
+        const params: (Date | string | Record<string, unknown>)[] = [];
 
         batchToInsert.forEach((reading, index) => {
             const offset = index * 3;
