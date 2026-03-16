@@ -7,12 +7,14 @@ class BatchInsertService {
     private flushInterval: number;
     private batch: SensorReading[];
     private timer: NodeJS.Timeout | null;
+    private error: Error | null;
 
     constructor({ batchSize = 1000, flushInterval = 5000 }: { batchSize?: number; flushInterval?: number }) {
         this.batchSize = batchSize;
         this.flushInterval = flushInterval;
         this.batch = [];
         this.timer = null;
+        this.error = null;
     }
 
     /**
@@ -45,11 +47,17 @@ class BatchInsertService {
         try {
             await query(sql, params);
             logger.debug('Batch flushed successfully');
+            this.error = null;
         } catch (error) {
             logger.error('Failed to flush batch', error);
             // Re-add failed readings to buffer for retry
             this.batch = [...batchToInsert, ...this.batch];
-            throw error;
+            this.error = error as Error;
+        } finally {
+            // If timer is not set, set a timer to flush the batch last time
+            if (!this.timer) {
+                this.timer = setTimeout(() => this.flush(), this.flushInterval);
+            }
         }
     }
 
@@ -60,7 +68,6 @@ class BatchInsertService {
      * @param data.time - The time of the sensor reading.
      * @param data.id - The id of the sensor.
      * @param data.data - The data of the sensor reading
-     * @throws Error if the batch cannot be flushed
      */
     async addReading(data: SensorReading) {
         this.batch.push(data);
