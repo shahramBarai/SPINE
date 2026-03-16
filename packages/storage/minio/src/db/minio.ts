@@ -16,7 +16,7 @@ type BUCKET_NAMES = (typeof BUCKET_NAME_LIST)[number];
 // Initialize MinIO client
 const minioClient = new Client({
     endPoint: DATABASE_HOST,
-    port: parseInt(DATABASE_PORT),
+    port: DATABASE_PORT,
     useSSL: false,
     accessKey: DATABASE_USER,
     secretKey: DATABASE_PASSWORD,

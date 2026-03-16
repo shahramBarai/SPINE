@@ -30,8 +30,14 @@ try {
 const DATABASE_USER = decodeURIComponent(parsedUrl.username);
 const DATABASE_PASSWORD = decodeURIComponent(parsedUrl.password);
 const DATABASE_HOST = parsedUrl.hostname;
-const DATABASE_PORT = parsedUrl.port;
 const DATABASE_NAME = parsedUrl.pathname.replace(/^\//, "");
+
+let DATABASE_PORT: number;
+try {
+    DATABASE_PORT = parseInt(parsedUrl.port);
+} catch (error) {
+    throw new Error(`Invalid DATABASE_URL_MINIO format: ${inputVariable}`);
+}
 
 if (!DATABASE_USER || !DATABASE_PASSWORD || !DATABASE_HOST) {
     throw new Error("DATABASE_URL_MINIO is missing required components (user, password, or host).");
