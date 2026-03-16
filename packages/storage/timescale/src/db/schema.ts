@@ -21,31 +21,21 @@ interface SensorReading {
 async function createSchema() {
     try {
         await withTransaction(async (client) => {
-            let result;
-
             // Enable TimescaleDB extension
-            result = await client.query(`CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE`);
-            if (result.rowCount === null) {
-                logger.info("✔️​  TimescaleDB extension already enabled.");
-            } else {
-                logger.info("✅ TimescaleDB extension enabled.");
-            }
+            await client.query(`CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE`);
+            logger.info("✅ Ensured TimescaleDB extension exists.");
 
-            result = await client.query(`
+            await client.query(`
                 CREATE TABLE IF NOT EXISTS sensor_readings (
                     time        TIMESTAMPTZ NOT NULL,
                     id          TEXT NOT NULL,
                     data        JSONB NOT NULL
                 )`
             );
-            if (result.rowCount === null) {
-                logger.info("✔️  Table sensor_readings already exists.");
-            } else {
-                logger.info("✅ Table sensor_readings created.");
-            }
+            logger.info("✅ Ensured table sensor_readings exists.");
 
             // Convert to hypertable with 1-day chunks (chunk_time_interval determines partition size)
-            result = await client.query(`
+            await client.query(`
                 SELECT create_hypertable(
                     'sensor_readings',
                     'time',
@@ -53,22 +43,14 @@ async function createSchema() {
                     if_not_exists => TRUE
                 );
             `);
-            if (result.rowCount === null) {
-                logger.info("✔️  Table sensor_readings already converted to hypertable with 1-day chunks.");
-            } else {
-                logger.info("✅ Table sensor_readings converted to hypertable with 1-day chunks.");
-            }
+            logger.info("✅ Ensured table sensor_readings is converted to hypertable with 1-day chunks.");
 
             // Create indexes for common query patterns
             // Compound index on id and time speeds up devices-specific queries
-            result = await client.query(`
+            await client.query(`
                 CREATE INDEX IF NOT EXISTS idx_sensor_readings_sensor_time ON sensor_readings(id, time DESC);
             `);
-            if (result.rowCount === null) {
-                logger.info("✔️  Index idx_sensor_readings_sensor_time already exists.");
-            } else {
-                logger.info("✅ Index idx_sensor_readings_sensor_time created.");
-            }
+            logger.info("✅ Ensured index idx_sensor_readings_sensor_time exists.");
         });
     } catch (error) {
         return { success: false, error };
