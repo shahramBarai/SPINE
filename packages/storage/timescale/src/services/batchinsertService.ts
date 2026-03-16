@@ -23,15 +23,17 @@ class BatchInsertService {
      * @throws Error if the batch cannot be flushed
      */
     private async flush() {
-        if (this.batch.length === 0) return;
-
-        const batchToInsert = [...this.batch];
-        this.batch = [];
-
+        // Clear the timer to prevent multiple flushes
         if (this.timer) {
             clearTimeout(this.timer);
             this.timer = null;
         }
+
+        // If the batch is empty, return
+        if (this.batch.length === 0) return;
+
+        const batchToInsert = [...this.batch];
+        this.batch = [];
 
         // Build multi-row INSERT statement
         const values: string[] = [];
