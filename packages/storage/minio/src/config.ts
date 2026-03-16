@@ -18,11 +18,24 @@ inputVariable = process.env.DATABASE_URL_MINIO;
 if (!inputVariable) {
     throw new Error("DATABASE_URL_MINIO is not set in the environment variables. Please check the .env file.");
 }
-// auth: user:password@host:port/dbName
-const [auth, dbInfo] = inputVariable.split("@");
-const [hostport, DATABASE_NAME] = dbInfo.split("/");
-const [DATABASE_HOST, DATABASE_PORT] = hostport.split(":");
-const [DATABASE_USER, DATABASE_PASSWORD] = auth.split(":");
+let parsedUrl: URL;
+try {
+    // Treat as http:// if no protocol provided so URL parsing works
+    const urlString = inputVariable.includes("://") ? inputVariable : `http://${inputVariable}`;
+    parsedUrl = new URL(urlString);
+} catch (error) {
+    throw new Error(`Invalid DATABASE_URL_MINIO format: ${inputVariable}`);
+}
+
+const DATABASE_USER = decodeURIComponent(parsedUrl.username);
+const DATABASE_PASSWORD = decodeURIComponent(parsedUrl.password);
+const DATABASE_HOST = parsedUrl.hostname;
+const DATABASE_PORT = parsedUrl.port;
+const DATABASE_NAME = parsedUrl.pathname.replace(/^\//, "");
+
+if (!DATABASE_USER || !DATABASE_PASSWORD || !DATABASE_HOST) {
+    throw new Error("DATABASE_URL_MINIO is missing required components (user, password, or host).");
+}
 
 export {
     NODE_ENV,
