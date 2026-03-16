@@ -20,6 +20,6 @@ inputVariable = process.env.DATABASE_URL_TIMESCALE;
 if (!inputVariable) {
   throw new Error("DATABASE_URL_TIMESCALE is not set in the environment variables. Please check the .env file.");
 }
-DATABASE_URL = inputVariable;
+DATABASE_URL = `postgresql://${inputVariable}`;
 
 export { DATABASE_URL, NODE_ENV };
