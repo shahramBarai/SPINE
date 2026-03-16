@@ -87,8 +87,6 @@ async function uploadBuffer(
 /**
  * Copies an object from a source bucket/key to a destination bucket/key within MinIO.
  *
- * Ensures the destination bucket exists before performing the copy.
- *
  * @param sourceBucket - The name of the source bucket.
  * @param sourceObject - The object key in the source bucket.
  * @param destBucket - The name of the destination bucket.
