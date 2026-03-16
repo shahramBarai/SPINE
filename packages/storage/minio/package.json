@@ -7,8 +7,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "db:init": "tsx scripts/initilize-buckets.ts",
-    "test": "tsx scripts/testing_save_read_file.ts",
+    "db:init": "tsx scripts/initialize-buckets.ts",
     "lint": "eslint --ext .ts src",
     "type-check": "tsc --noEmit"
   },
