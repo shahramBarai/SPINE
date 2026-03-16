@@ -16,14 +16,14 @@
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "@spine/storage-platform": [
-        "src/index.ts"
+      "@spine/storage-timescale": [
+        "./src/index.ts"
       ]
     }
   },
   "include": [
-    "src/**/*.ts",
-    "prisma/*.ts"
+    "./src/**/*.ts",
+    "scripts/**/*.ts"
   ],
   "exclude": [
     "node_modules",

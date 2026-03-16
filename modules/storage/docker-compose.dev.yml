@@ -6,14 +6,14 @@ services:
     expose:
       - 5432
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
       POSTGRES_DB: platform
     command: -p 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d platform"]
+      test: ["CMD-SHELL", "pg_isready -U username -d platform"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -25,38 +25,35 @@ services:
     expose:
       - 5432
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
       POSTGRES_DB: timescale
     command: -p 5432
     volumes:
       - timescaledb_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d timescale"]
+      test: ["CMD-SHELL", "pg_isready -U username -d timescale"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # ------ Data Service ------- #
-  data-service:
-    container_name: data-service
-    build:
-      context: ./data-service
-      dockerfile: Dockerfile.dev
-    env_file:
-      - path: ./data-service/.env.example
-        required: true
+  # ------ MinIO ------- #
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1
+    container_name: minio
     ports:
-      - "3010:3010"
-    volumes:
-      - ./data-service:/app
-      - /app/node_modules
-      - ./data-service/generated:/app/generated
-    depends_on:
-      postgres:
-        condition: service_healthy
-      timescaledb:
-        condition: service_healthy
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: username
+      MINIO_ROOT_PASSWORD: password
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   # ------ Apache Jena Fuseki ------- #
   fuseki:
