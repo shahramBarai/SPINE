@@ -1,0 +1,2 @@
+apache-flink==2.2.0
+apache-flink-libraries==2.2.0

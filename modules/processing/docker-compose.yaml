@@ -1,0 +1,28 @@
+services:
+  # ------ Flink Job Manager ------ #
+  flink-jobmanager:
+    build:
+      context: ./pyFlink
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"     # Flink Web UI
+    environment:
+      - |
+        FLINK_PROPERTIES=
+          jobmanager.rpc.address: flink-jobmanager
+    command: jobmanager
+  
+  # ------ Flink Task Manager ------ #
+  flink-taskmanager:
+    build:
+      context: ./pyFlink
+      dockerfile: Dockerfile
+    scale: 1
+    environment:
+      - |
+        FLINK_PROPERTIES=
+          jobmanager.rpc.address: flink-jobmanager
+          taskmanager.numberOfTaskSlots: 8
+    command: taskmanager
+    depends_on:
+      - flink-jobmanager
