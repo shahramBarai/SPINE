@@ -5,13 +5,13 @@ services:
       context: ./pyFlink
       dockerfile: Dockerfile
     ports:
-      - "8081:8081"     # Flink Web UI
+      - "7070:8081" # Flink Web UI
     environment:
       - |
         FLINK_PROPERTIES=
           jobmanager.rpc.address: flink-jobmanager
     command: jobmanager
-  
+
   # ------ Flink Task Manager ------ #
   flink-taskmanager:
     build:
