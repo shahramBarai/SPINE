@@ -1,4 +1,4 @@
-FROM flink:2.2.0
+FROM flink:2.0
 
 # Switch to root to perform system-level installations
 USER root
@@ -16,7 +16,7 @@ WORKDIR /opt/flink/
 
 # Install Python dependencies (--break-system-packages flag is needed for Flink 2.2.0)
 COPY requirements.txt .
-RUN pip install --break-system-packages -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Download Flink connector libs
 COPY download_libs.sh .

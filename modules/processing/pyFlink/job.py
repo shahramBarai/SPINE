@@ -3,7 +3,7 @@ PyFlink Smoke-Test Job
 ======================
 Reads JSON sensor messages from a Kafka topic, parses them, then writes
 the results to two sinks:
-  1. TimescaleDB  – via a persistent psycopg2 connection (RichSinkFunction)
+  1. TimescaleDB  – via the Flink JDBC connector (JdbcSink)
   2. Kafka        – via the Flink Kafka connector (KafkaSink)
 
 Message format (JSON):
@@ -31,19 +31,21 @@ SELECT create_hypertable('sensor_data', 'sensor_timestamp', if_not_exists => TRU
 # Parameters – adjust these before running the job
 # ===========================================================================
 
-KAFKA_BROKERS       = "kafka:9092"
-KAFKA_SOURCE_TOPIC  = "smartlab-sensor-data"
-KAFKA_SINK_TOPIC    = "smartlab-sensor-data-processed"
+KAFKA_BROKERS       = "kafka:29092"
+KAFKA_SOURCE_TOPIC  = "sensor-data"
+KAFKA_SINK_TOPIC    = "test-topic"
 KAFKA_GROUP_ID      = "pyflink-smoke-test"
 
 TIMESCALE_URL       = "postgresql://postgres:postgres@timescaledb:5432/timescale"
+TIMESCALE_USER      = "postgres"
+TIMESCALE_PASSWORD  = "postgres"
 
 FLINK_JOB_NAME      = "PyFlink Smoke-Test: Kafka → TimescaleDB + Kafka"
 FLINK_PARALLELISM   = 1
 
 # Paths to connector JARs (populated by download_libs.sh)
-JAR_KAFKA           = "file:///opt/flink/lib/flink-sql-connector-kafka-3.2.0-1.18.jar"
-JAR_JDBC            = "file:///opt/flink/lib/flink-connector-jdbc-3.2.0-1.18.jar"
+JAR_KAFKA           = "file:///opt/flink/lib/flink-sql-connector-kafka-4.0.0-2.0.jar"
+JAR_JDBC            = "file:///opt/flink/lib/flink-connector-jdbc-4.0.0-2.0.jar"
 JAR_POSTGRES        = "file:///opt/flink/lib/postgresql-42.7.10.jar"
 
 # ===========================================================================
@@ -54,7 +56,8 @@ import json
 import logging
 import datetime
 
-import psycopg2
+from pyflink.common import Types, WatermarkStrategy
+from pyflink.common.serialization import SimpleStringSchema
 
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors.kafka import (
@@ -63,10 +66,13 @@ from pyflink.datastream.connectors.kafka import (
     KafkaOffsetsInitializer,
     KafkaRecordSerializationSchema,
 )
-from pyflink.common.serialization import SimpleStringSchema
-from pyflink.common import WatermarkStrategy
-from pyflink.datastream.functions import MapFunction, RichSinkFunction
-from pyflink.common.typeinfo import Types
+from pyflink.datastream.functions import MapFunction
+
+from pyflink.datastream.connectors import JdbcSink
+from pyflink.datastream.connectors.jdbc import (
+    JdbcConnectionOptions,
+    JdbcExecutionOptions,
+)
 
 # ===========================================================================
 # Logging
@@ -117,7 +123,7 @@ def build_kafka_source() -> KafkaSource:
         .set_bootstrap_servers(KAFKA_BROKERS)
         .set_topics(KAFKA_SOURCE_TOPIC)
         .set_group_id(KAFKA_GROUP_ID)
-        .set_starting_offsets(KafkaOffsetsInitializer.latest())
+        .set_starting_offsets(KafkaOffsetsInitializer.earliest())
         .set_value_only_deserializer(SimpleStringSchema())
         .build()
     )
@@ -171,83 +177,26 @@ class SerialiseToJson(MapFunction):
 # Sink 1: TimescaleDB
 # ===========================================================================
 
-class TimescaleSink(RichSinkFunction):
-    """
-    Maintains a persistent psycopg2 connection to TimescaleDB.
-    The connection is opened once per task-manager slot (open) and
-    closed when the job finishes (close).
-    Writes are idempotent via ON CONFLICT DO NOTHING.
-    """
-
-    def __init__(self, database_url: str):
-        super().__init__()
-        self._database_url = database_url
-        self._conn   = None
-        self._cursor = None
-
-    # -- Lifecycle -----------------------------------------------------------
-
-    def open(self, runtime_context):
-        logger.info("TimescaleSink: opening connection …")
-        self._connect()
-
-    def close(self):
-        self._close_conn()
-
-    # -- Core sink -----------------------------------------------------------
-
-    def invoke(self, record, context):
-        if record is None:
-            return  # skip unparseable messages
-
-        try:
-            self._ensure_conn()
-            self._cursor.execute(
-                """
-                INSERT INTO sensor_data (sensor_id, message, sensor_timestamp)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (sensor_id, sensor_timestamp) DO NOTHING
-                """,
-                (record.sensor_id, record.message, record.sensor_timestamp),
-            )
-            self._conn.commit()
-            logger.info("TimescaleSink: wrote %s", record)
-        except Exception as exc:
-            logger.error("TimescaleSink: write error: %s | record: %s", exc, record)
-            try:
-                self._conn.rollback()
-            except Exception:
-                pass
-            self._reconnect()
-
-    # -- Helpers -------------------------------------------------------------
-
-    def _connect(self):
-        self._conn = psycopg2.connect(self._database_url)
-        self._conn.autocommit = False
-        self._cursor = self._conn.cursor()
-        logger.info("TimescaleSink: connection established.")
-
-    def _close_conn(self):
-        try:
-            if self._cursor:
-                self._cursor.close()
-            if self._conn:
-                self._conn.close()
-        except Exception as exc:
-            logger.warning("TimescaleSink: error closing connection: %s", exc)
-
-    def _ensure_conn(self):
-        if self._conn is None or self._conn.closed:
-            logger.warning("TimescaleSink: connection lost — reconnecting …")
-            self._connect()
-
-    def _reconnect(self):
-        self._close_conn()
-        try:
-            self._connect()
-        except Exception as exc:
-            logger.error("TimescaleSink: reconnect failed: %s", exc)
+def build_timescale_sink(sql_dml: str, type_info: Types) -> JdbcSink:
+    """Create a TimescaleDB sink that writes SensorRecords to the database."""
+    return (
+        JdbcSink.sink(
+            sql_dml,
+            type_info,
+            JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
+            .with_url(TIMESCALE_URL)
+            .with_username(TIMESCALE_USER)
+            .with_password(TIMESCALE_PASSWORD)
+            .with_driver_name("org.postgresql.Driver")
+            .build(),
+            JdbcExecutionOptions.builder()
+            .with_batch_size(200)
+            .with_flush_interval(1000)
+            .with_max_retries(5)
+            .build(),
+        )
+    )
+            
 
 # ===========================================================================
 # Sink 2: Kafka builder
@@ -287,22 +236,23 @@ def main():
     )
 
     # -- Parse ---------------------------------------------------------------
-    parsed_stream = raw_stream.map(
-        ParseSensorMessage(),
-        output_type=Types.PICKLED_BYTE_ARRAY(),
-    )
+    # parsed_stream = raw_stream.map(
+    #     ParseSensorMessage(),
+    #     output_type=Types.PICKLED_BYTE_ARRAY(),
+    # )
 
     # -- Sink 1: TimescaleDB -------------------------------------------------
-    parsed_stream.add_sink(TimescaleSink(TIMESCALE_URL))
+    # parsed_stream.add_sink(build_timescale_sink(
+    #     "INSERT INTO sensor_data (time, id, data) VALUES (?, ?, ?)",
+    #     Types.ROW([Types.SQL_TIMESTAMP(), Types.STRING(), Types.SQL_JSON()]),
+    # ))
+        
 
     # -- Sink 2: Kafka -------------------------------------------------------
-    # Map SensorRecord → JSON string first, then hand off to KafkaSink
-    json_stream = parsed_stream.map(
-        SerialiseToJson(),
-        output_type=Types.STRING(),
-    ).filter(lambda s: s is not None)
-
-    json_stream.sink_to(build_kafka_sink())
+    # Forward the raw JSON string directly into the KafkaSink
+    # and print to stdout for debugging purposes
+    raw_stream.print()
+    raw_stream.sink_to(build_kafka_sink())
 
     # -- Execute -------------------------------------------------------------
     logger.info(
