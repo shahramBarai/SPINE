@@ -1,4 +1,6 @@
-import { minioClient, type BUCKET_NAMES } from "../db/minio";
+import { getMinioClient, type BUCKET_NAMES } from "../db/minio";
+
+const minioClient = getMinioClient();
 
 /* -------------------------------- INTERFACES -------------------------------- */
 

@@ -1,6 +1,6 @@
 import { Kafka, Producer } from "kafkajs";
 import { logger } from "@spine/shared";
-import { getKafkaConfig, getKafkaTopic } from "./utils/config";
+import { type KafkaConfig } from "./utils/config";
 
 class KafkaProducer {
     private kafka: Kafka;
@@ -8,10 +8,7 @@ class KafkaProducer {
     private topic: string;
     private isConnected: boolean = false;
 
-    constructor() {
-        const config = getKafkaConfig();
-        const topic = getKafkaTopic();
-        
+    constructor(config: KafkaConfig, topic: string) {
         this.kafka = new Kafka(config);
         this.producer = this.kafka.producer();
         this.topic = topic;

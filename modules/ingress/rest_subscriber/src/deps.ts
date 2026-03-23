@@ -11,8 +11,12 @@ import { ExcelService } from "./services/ExcelService";
 
 // Initialize services based on SEND_TO configuration
 const excelService = configs.SEND_TO === "excel" ? new ExcelService() : null;
-const kafkaProducer = configs.SEND_TO === "kafka" ? new KafkaProducer() : null;
-const schemaManager = configs.SEND_TO === "kafka" ? new ServiceSchemaManager() : null;
+const kafkaProducer = configs.SEND_TO === "kafka"
+    ? new KafkaProducer(configs.getKafkaConfig(), configs.getKafkaTopic())
+    : null;
+const schemaManager = configs.SEND_TO === "kafka"
+    ? new ServiceSchemaManager(configs.getSchemaRegistryConfig())
+    : null;
 // Initialize Empathic Building service
 const empathicBuildingService = new EmpathicBuildingService(getEmpathicBuildingConfig());
 

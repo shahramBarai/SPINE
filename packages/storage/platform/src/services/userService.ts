@@ -1,5 +1,7 @@
-import { prisma } from "../../prisma/client";
+import { getPrisma } from "../../prisma/client";
 import { UserRole } from "../../generated/client";
+
+const prisma = getPrisma();
 
 /* -------------------------------- CREATE -------------------------------- */
 /**
@@ -42,7 +44,7 @@ async function createUser(data: { name?: string; email: string; password: string
  * Get all users
  * @returns An array of users
  */
-async function getAllUsers(){
+async function getAllUsers() {
   const users = await prisma.user.findMany({
     select: {
       id: true,

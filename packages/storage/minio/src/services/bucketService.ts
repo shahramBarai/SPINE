@@ -1,6 +1,8 @@
 import { BucketItem } from "minio";
-import { minioClient, type BUCKET_NAMES } from "../db/minio";
+import { getMinioClient, type BUCKET_NAMES } from "../db/minio";
 import { Readable } from "stream";
+
+const minioClient = getMinioClient();
 
 /* -------------------------------- INTERFACES -------------------------------- */
 

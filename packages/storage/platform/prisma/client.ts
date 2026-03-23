@@ -1,28 +1,44 @@
-import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaClient } from '../generated/client'
-import { DATABASE_URL, NODE_ENV } from "../src/config";
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../generated/client';
+import { type PlatformConfig } from '../src/config';
 
-declare global {
-  var prisma: PrismaClient | undefined;
+let prisma: PrismaClient | null = null;
+
+/**
+ * Initialise the Prisma client with the supplied configuration.
+ * Must be called once at service startup before any queries.
+ */
+function initPlatformStorage(config: PlatformConfig): void {
+    if (prisma) {
+        return; // already initialised
+    }
+
+    const adapter = new PrismaPg({ connectionString: config.databaseUrl });
+    const isDevMode = (config.nodeEnv ?? 'prod') === 'dev';
+
+    if (isDevMode) {
+        // Reuse existing instance in dev to avoid too many connections (HMR)
+        const globalWithPrisma = global as typeof globalThis & { prisma?: PrismaClient };
+        if (!globalWithPrisma.prisma) {
+            globalWithPrisma.prisma = new PrismaClient({
+                adapter,
+                log: ['query', 'info', 'warn', 'error'],
+            });
+        }
+        prisma = globalWithPrisma.prisma;
+    } else {
+        prisma = new PrismaClient({
+            adapter,
+            log: ['error'],
+        });
+    }
 }
 
-const adapter = new PrismaPg({ connectionString: DATABASE_URL });
-let prisma: PrismaClient;
-
-if (NODE_ENV === "dev") {
-  if (!global.prisma) {
-    global.prisma = new PrismaClient({
-      adapter,
-      log: ["query", "info", "warn", "error"],
-    });
-  }
-  prisma = global.prisma;
-
-} else {
-  prisma = new PrismaClient({
-    adapter,
-    log: ["error"],
-  });
+function getPrisma(): PrismaClient {
+    if (!prisma) {
+        throw new Error("Prisma client not initialised. Call initDb() first.");
+    }
+    return prisma;
 }
 
-export { prisma };
+export { initPlatformStorage, getPrisma };
