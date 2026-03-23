@@ -1,6 +1,6 @@
 import { Kafka, Consumer, EachMessagePayload } from "kafkajs";
-import { getKafkaConfig, getKafkaTopic } from "./utils/config";
 import { logger } from "@spine/shared";
+import { KafkaConfig } from "./utils/config";
 
 type MessageHandler = (message: string, topic: string, partition: number, offset: string) => Promise<void>;
 
@@ -11,10 +11,7 @@ class KafkaConsumer {
     private isConnected: boolean = false;
     private messageHandler: MessageHandler | null = null;
 
-    constructor() {
-        const config = getKafkaConfig();
-        const topic = getKafkaTopic();
-
+    constructor({ config, topic }: { config: KafkaConfig, topic: string }) {
         this.kafka = new Kafka({
             clientId: config.clientId,
             brokers: config.brokers,

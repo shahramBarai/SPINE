@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config({ path: ".env" });
 
 const NODE_ENV: "prod" | "dev" = (process.env.NODE_ENV || "prod") as
     | "prod"
@@ -11,7 +11,7 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 // - kafka: Send data to Kafka topic
 // - excel: Save data to Excel file
 // - console: Log data to console
-const SEND_TO = process.env.SEND_TO || "console";
+const SEND_TO = process.env.SEND_TO || "kafka";
 if (SEND_TO !== "kafka" && SEND_TO !== "excel" && SEND_TO !== "console") {
     throw new Error(`SEND_TO must be one of: kafka, excel, console`);
 }
