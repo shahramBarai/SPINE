@@ -1,4 +1,4 @@
-import { getSchemaRegistryConfig, SchemaRegistryConfig } from "./utils/config";
+import { type SchemaRegistryConfig } from "./utils/config";
 import z from "zod";
 import { convertAvroToZod } from "./utils/zodSchemaValidator";
 import { logger } from "@spine/shared";
@@ -25,8 +25,8 @@ interface CompatibilityCheckResponse {
 class SchemaRegistry {
     private config: SchemaRegistryConfig;
 
-    constructor() {
-        this.config = getSchemaRegistryConfig();
+    constructor(config: SchemaRegistryConfig) {
+        this.config = config;
     }
 
     private async makeRequest<T>(
@@ -249,11 +249,12 @@ class SchemaRegistry {
  * Handles initialization, management, and monitoring of input/output schemas for the MQTT subscriber service
  */
 class ServiceSchemaManager {
-    private schemaRegistry = new SchemaRegistry();
+    private schemaRegistry: SchemaRegistry;
     private inputSchema: any = null;
     private outputSchema: any = null;
     private inputZodSchema: z.ZodSchema | null = null;
     private outputZodSchema: z.ZodSchema | null = null;
+    private config: SchemaRegistryConfig;
 
     private isInitialized = false;
     private validateEnabled = false;
@@ -266,6 +267,14 @@ class ServiceSchemaManager {
 
     /**
      * Initialize service schemas from environment configuration
+     */
+    constructor(config: SchemaRegistryConfig) {
+        this.config = config;
+        this.schemaRegistry = new SchemaRegistry(config);
+    }
+
+    /**
+     * Initialize service schemas
      */
     async initialize(): Promise<boolean> {
         try {
@@ -293,7 +302,7 @@ class ServiceSchemaManager {
             );
 
             this.isInitialized = true;
-            this.validateEnabled = getSchemaRegistryConfig().validateEnabled;
+            this.validateEnabled = this.config.validateEnabled;
 
             logger.info(
                 "Schema registry service: Service schemas initialized successfully.",

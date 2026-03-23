@@ -1,6 +1,8 @@
-import { prisma } from "../../prisma/client";
+import { getPrisma } from "../../prisma/client";
 import { EntityType, MemberRole } from "../../generated/client";
-import { getAllUsers, getUserById } from "./userService";
+import { getAllUsers } from "./userService";
+
+const prisma = getPrisma();
 
 /* -------------------------------- CREATE -------------------------------- */
 
@@ -39,8 +41,8 @@ async function createEntity(data: {
       type: data.type,
       members: data.members
         ? {
-            create: data.members,
-          }
+          create: data.members,
+        }
         : undefined,
     },
     select: {
@@ -87,7 +89,7 @@ async function addMembers(entityId: string, newMembers: { userId: string; role: 
       role: member.role,
     })),
   });
-  
+
   // Returning new members
   return newEntityMembers;
 }
