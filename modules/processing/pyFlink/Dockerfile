@@ -1,4 +1,4 @@
-FROM flink:2.0
+FROM flink:1.18.1
 
 # Switch to root to perform system-level installations
 USER root
@@ -10,6 +10,14 @@ RUN apt-get update -y && \
 
 # Ensure python command points to python3
 RUN ln -s /usr/bin/python3 /usr/bin/python
+
+# Install Java & updates
+RUN apt-get update && \
+    apt-get install -y openjdk-21-jdk && \
+    apt-get install -y ant && \
+    apt-get clean;
+
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64
 
 # Set working directory
 WORKDIR /opt/flink/

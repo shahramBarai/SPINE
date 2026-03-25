@@ -3,28 +3,24 @@ PyFlink Smoke-Test Job
 ======================
 Reads JSON sensor messages from a Kafka topic, parses them, then writes
 the results to two sinks:
-  1. TimescaleDB  – via the Flink JDBC connector (JdbcSink)
-  2. Kafka        – via the Flink Kafka connector (KafkaSink)
+  1. TimescaleDB   via the Flink JDBC connector (JdbcSink)
+  2. Kafka         via the Flink Kafka connector (KafkaSink)
 
 Message format (JSON):
 {
-  "sensor_id": "sensor-1",
-  "message": "...",
-  "sensor_timestamp": {
-    "secs_since_epoch": 1741862400,
-    "nanos_since_epoch": 123000000
-  }
+  "time": "2026-03-23T17:14:59Z",
+  "id": "sensor-1",
+  "data": key-value pairs
 }
 
 Required TimescaleDB table
 --------------------------
-CREATE TABLE IF NOT EXISTS sensor_data (
-    sensor_id        TEXT        NOT NULL,
-    message          TEXT        NOT NULL,
-    sensor_timestamp TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (sensor_id, sensor_timestamp)
+sensor_data (
+    time        TIMESTAMPTZ NOT NULL,
+    id          TEXT        NOT NULL,
+    data        JSONB       NOT NULL,
+    PRIMARY KEY (id, time)
 );
-SELECT create_hypertable('sensor_data', 'sensor_timestamp', if_not_exists => TRUE);
 """
 
 # ===========================================================================
@@ -36,17 +32,18 @@ KAFKA_SOURCE_TOPIC  = "sensor-data"
 KAFKA_SINK_TOPIC    = "test-topic"
 KAFKA_GROUP_ID      = "pyflink-smoke-test"
 
-TIMESCALE_URL       = "postgresql://postgres:postgres@timescaledb:5432/timescale"
-TIMESCALE_USER      = "postgres"
-TIMESCALE_PASSWORD  = "postgres"
+TIMESCALE_HOST_PORT = "timescaledb:5432"
+TIMESCALE_DB        = "timescale"
+TIMESCALE_USER      = "username"
+TIMESCALE_PASSWORD  = "password"
 
 FLINK_JOB_NAME      = "PyFlink Smoke-Test: Kafka → TimescaleDB + Kafka"
 FLINK_PARALLELISM   = 1
 
 # Paths to connector JARs (populated by download_libs.sh)
-JAR_KAFKA           = "file:///opt/flink/lib/flink-sql-connector-kafka-4.0.0-2.0.jar"
-JAR_JDBC            = "file:///opt/flink/lib/flink-connector-jdbc-4.0.0-2.0.jar"
-JAR_POSTGRES        = "file:///opt/flink/lib/postgresql-42.7.10.jar"
+JAR_KAFKA           = "file:///opt/flink/lib/flink-sql-connector-kafka-3.1.0-1.18.jar"
+JAR_JDBC            = "file:///opt/flink/lib/flink-connector-jdbc-3.1.2-1.18.jar"
+JAR_POSTGRES        = "file:///opt/flink/lib/postgresql-42.7.3.jar"
 
 # ===========================================================================
 # Imports
@@ -54,9 +51,9 @@ JAR_POSTGRES        = "file:///opt/flink/lib/postgresql-42.7.10.jar"
 
 import json
 import logging
-import datetime
+from datetime import datetime
 
-from pyflink.common import Types, WatermarkStrategy
+from pyflink.common import Row, Types, WatermarkStrategy
 from pyflink.common.serialization import SimpleStringSchema
 
 from pyflink.datastream import StreamExecutionEnvironment
@@ -66,7 +63,6 @@ from pyflink.datastream.connectors.kafka import (
     KafkaOffsetsInitializer,
     KafkaRecordSerializationSchema,
 )
-from pyflink.datastream.functions import MapFunction
 
 from pyflink.datastream.connectors import JdbcSink
 from pyflink.datastream.connectors.jdbc import (
@@ -75,42 +71,18 @@ from pyflink.datastream.connectors.jdbc import (
 )
 
 # ===========================================================================
-# Logging
+# Environment builder
 # ===========================================================================
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(name)s %(levelname)s  %(message)s",
-)
-logger = logging.getLogger("pyflink-smoke-test")
-
-# ===========================================================================
-# Data model
-# ===========================================================================
-
-class SensorRecord:
-    """Represents a single parsed sensor reading."""
-
-    __slots__ = ("sensor_id", "message", "sensor_timestamp")
-
-    def __init__(self, sensor_id: str, message: str, sensor_timestamp: datetime.datetime):
-        self.sensor_id = sensor_id
-        self.message = message
-        self.sensor_timestamp = sensor_timestamp
-
-    def to_json(self) -> str:
-        """Serialise back to a JSON string for the Kafka sink."""
-        return json.dumps({
-            "sensor_id": self.sensor_id,
-            "message": self.message,
-            "sensor_timestamp": self.sensor_timestamp.isoformat(),
-        })
-
-    def __repr__(self):
-        return (
-            f"SensorRecord(sensor_id={self.sensor_id!r}, "
-            f"sensor_timestamp={self.sensor_timestamp.isoformat()})"
-        )
+def init_env():
+    """Initialize the Flink stream environment."""
+    env = StreamExecutionEnvironment.get_execution_environment()
+    # Set parallelism
+    env.set_parallelism(FLINK_PARALLELISM)
+    # Register connector JARs (downloaded by download_libs.sh)
+    env.add_jars(JAR_KAFKA, JAR_JDBC, JAR_POSTGRES)
+    return env
+    
 
 # ===========================================================================
 # Source builder
@@ -129,69 +101,55 @@ def build_kafka_source() -> KafkaSource:
     )
 
 # ===========================================================================
-# Map function: JSON string → SensorRecord
+# Map function: JSON string → Row
 # ===========================================================================
 
-class ParseSensorMessage(MapFunction):
-    """Deserialises the raw Kafka JSON string into a SensorRecord (or None on error)."""
+def parse_data(data: str) -> Row:
+    data = json.loads(data)
 
-    def map(self, raw: str):
+    sensor_id = data["sensorId"]
+    
+    ts = data["timestamp"]
+    if isinstance(ts, (int, float)):
+        # If timestamp is in milliseconds (usually > 1e11), convert to seconds
+        if ts > 1e11:
+            ts = ts / 1000.0
+        # Create naive datetime representing UTC time
+        import datetime as dt
+        sensor_timestamp = dt.datetime.fromtimestamp(ts, tz=dt.timezone.utc).replace(tzinfo=None)
+    else:
+        # Fallback for string
         try:
-            data = json.loads(raw)
+            ts = ts.replace("Z", "+00:00")
+            import datetime as dt
+            sensor_timestamp = dt.datetime.fromisoformat(ts).replace(tzinfo=None)
+        except ValueError:
+            sensor_timestamp = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%f+00:00")
 
-            sensor_id = data["sensor_id"]
-            message   = data["message"]
+    message = json.dumps(data["measurement"])
+    
+    return Row(sensor_timestamp, sensor_id, message)
 
-            ts_field = data["sensor_timestamp"]
-            if isinstance(ts_field, dict):
-                secs       = ts_field["secs_since_epoch"]
-                nanos      = ts_field.get("nanos_since_epoch", 0)
-                epoch_ms   = secs * 1000 + nanos // 1_000_000
-                ts         = datetime.datetime.utcfromtimestamp(epoch_ms / 1000.0)
-            else:
-                # Fallback: ISO-8601 string or raw epoch millis
-                try:
-                    ts = datetime.datetime.fromisoformat(str(ts_field))
-                except ValueError:
-                    ts = datetime.datetime.utcfromtimestamp(int(ts_field) / 1000.0)
-
-            return SensorRecord(sensor_id, message, ts)
-
-        except Exception as exc:
-            logger.error("Failed to parse message: %s | error: %s", raw, exc)
-            return None
-
-# ===========================================================================
-# Map function: SensorRecord → JSON string  (for Kafka sink)
-# ===========================================================================
-
-class SerialiseToJson(MapFunction):
-    """Converts a SensorRecord back to a JSON string, skipping None records."""
-
-    def map(self, record):
-        if record is None:
-            return None
-        return record.to_json()
 
 # ===========================================================================
 # Sink 1: TimescaleDB
 # ===========================================================================
 
 def build_timescale_sink(sql_dml: str, type_info: Types) -> JdbcSink:
-    """Create a TimescaleDB sink that writes SensorRecords to the database."""
+    """Create a TimescaleDB sink that writes rows to the database."""
     return (
         JdbcSink.sink(
             sql_dml,
             type_info,
             JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
-            .with_url(TIMESCALE_URL)
-            .with_username(TIMESCALE_USER)
+            .with_url(f"jdbc:postgresql://{TIMESCALE_HOST_PORT}/{TIMESCALE_DB}")
+            .with_user_name(TIMESCALE_USER)
             .with_password(TIMESCALE_PASSWORD)
             .with_driver_name("org.postgresql.Driver")
             .build(),
             JdbcExecutionOptions.builder()
+            .with_batch_interval_ms(1000)
             .with_batch_size(200)
-            .with_flush_interval(1000)
             .with_max_retries(5)
             .build(),
         )
@@ -221,38 +179,43 @@ def build_kafka_sink() -> KafkaSink:
 # ===========================================================================
 
 def main():
+    # -- Logging -------------------------------------------------------------
+    logger = logging.getLogger("__name__")
+    logger.setLevel(logging.INFO)
+    logger.addHandler(logging.StreamHandler())
+    
+
     # -- Environment ---------------------------------------------------------
-    env = StreamExecutionEnvironment.get_execution_environment()
-    env.set_parallelism(FLINK_PARALLELISM)
+    logger.info("Initializing Flink environment...")
+    env = init_env()
 
-    # Register connector JARs (downloaded by download_libs.sh)
-    env.add_jars(JAR_KAFKA, JAR_JDBC, JAR_POSTGRES)
-
-    # -- Source --------------------------------------------------------------
+    # -- Define source and sinks --------------------------------------------------------------
+    logger.info("Defining source and sink...")
+    
+    kafka_source = build_kafka_source()
+    logger.info("1. Kafka source defined.")
+    
+    TYPE_INFO = Types.ROW([Types.SQL_TIMESTAMP(), Types.STRING(), Types.STRING()])
+    timescale_sink = build_timescale_sink("INSERT INTO sensor_readings (time, id, data) VALUES (?, ?, ?::jsonb)", TYPE_INFO)
+    logger.info("2. Timescale sink defined.")
+    
+    kafka_sink = build_kafka_sink()
+    logger.info("3. Kafka sink defined.")
+    
+    # -- Create raw stream from Kafka source --------------------------------------------------------------
     raw_stream = env.from_source(
-        build_kafka_source(),
+        kafka_source,
         WatermarkStrategy.no_watermarks(),
         "Kafka Source",
     )
 
-    # -- Parse ---------------------------------------------------------------
-    # parsed_stream = raw_stream.map(
-    #     ParseSensorMessage(),
-    #     output_type=Types.PICKLED_BYTE_ARRAY(),
-    # )
+    # -- Parse for TimescaleDB -----------------------------------------------
+    parsed_stream = raw_stream.map(parse_data, output_type=TYPE_INFO)
 
-    # -- Sink 1: TimescaleDB -------------------------------------------------
-    # parsed_stream.add_sink(build_timescale_sink(
-    #     "INSERT INTO sensor_data (time, id, data) VALUES (?, ?, ?)",
-    #     Types.ROW([Types.SQL_TIMESTAMP(), Types.STRING(), Types.SQL_JSON()]),
-    # ))
-        
-
-    # -- Sink 2: Kafka -------------------------------------------------------
-    # Forward the raw JSON string directly into the KafkaSink
-    # and print to stdout for debugging purposes
-    raw_stream.print()
-    raw_stream.sink_to(build_kafka_sink())
+    # -- Sink data to TimescaleDB and Kafka ----------------------------------
+    logger.info("Ready to sink data to TimescaleDB and Kafka...")
+    parsed_stream.add_sink(timescale_sink)
+    raw_stream.sink_to(kafka_sink)
 
     # -- Execute -------------------------------------------------------------
     logger.info(
