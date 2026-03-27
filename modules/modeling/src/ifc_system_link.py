@@ -13,9 +13,10 @@ BRICK = Namespace("https://brickschema.org/schema/Brick#")
 BOT = Namespace("https://w3id.org/bot#")
 INST = Namespace("https://lbd.example.com/")
 PROPS = Namespace("http://lbd.arch.rwth-aachen.de/props#") 
+S223 = Namespace("http://data.ashrae.org/standard223#")
 
 PREFIXES = {
-    "brick": BRICK, "bot": BOT, "inst": INST, "rdfs": RDFS, "owl": OWL, "props": PROPS
+    "brick": BRICK, "bot": BOT, "inst": INST, "rdfs": RDFS, "owl": OWL, "props": PROPS, "s223": S223
     }
 
 def initialize_graph():        
@@ -391,7 +392,7 @@ def link_mep_system_ttl(mep_ifc_folder, mep_ttl_folder, arc_ifc_path, arc_ttl, m
 
 # --- Execution ---
 if __name__ == "__main__":   
-    mep_types = ["IfcFlowTerminal", "IfcFlowController", "IfcDistributionControlElement", "IfcEnergyConversionDevice", "IfcFlowMovingDevice", "IfcFlowStorageDevice","IfcFlowTreatmentDevice"] 
+    mep_types = ["IfcFlowTerminal", "IfcFlowController", "IfcDistributionControlElement", "IfcEnergyConversionDevice", "IfcFlowMovingDevice", "IfcFlowStorageDevice","IfcFlowTreatmentDevice","IfcBuildingElementProxy"] 
     hvac_ifc_folder =  r"C:\Users\yanpe\OneDrive - Metropolia Ammattikorkeakoulu Oy\Research\MD2MV\data\IFC\03LVI"   
     hvac_ttl_folder =  r"C:\Users\yanpe\OneDrive - Metropolia Ammattikorkeakoulu Oy\Research\MD2MV\data\TTL\03LVI" 
     el_ifc_folder =  r"C:\Users\yanpe\OneDrive - Metropolia Ammattikorkeakoulu Oy\Research\MD2MV\data\IFC\04SAHKO"   
