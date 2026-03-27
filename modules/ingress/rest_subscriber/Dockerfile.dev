@@ -1,0 +1,23 @@
+# Build context must be repository root so workspace packages are available.
+FROM node:20-alpine3.17
+
+RUN apk add --no-cache libc6-compat openssl netcat-openbsd
+
+WORKDIR /workspace
+
+# Copy workspace root and lockfile
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+
+# Copy workspace packages this module depends on
+COPY packages/messaging ./packages/messaging
+COPY packages/shared ./packages/shared
+COPY packages/ingress ./packages/ingress
+
+# Copy this module
+COPY modules/ingress/rest_subscriber ./modules/ingress/rest_subscriber
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN pnpm install --frozen-lockfile
+
+WORKDIR /workspace/modules/ingress/rest_subscriber
+CMD ["pnpm", "run", "dev"]

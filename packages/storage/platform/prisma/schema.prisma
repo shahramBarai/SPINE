@@ -1,0 +1,163 @@
+generator client {
+    provider      = "prisma-client-js"
+    output        = "../generated"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+// User model
+model User {
+    id       String   @id @default(cuid())
+    email    String   @unique
+    name     String?
+    password String
+    role     UserRole @default(USER)
+
+    entityMemberships EntityMember[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+// User roles
+enum UserRole {
+    ADMIN
+    USER
+}
+
+// Entity model
+model Entity {
+    id       String   @id @default(cuid())
+    // guid     String   @unique
+
+    name     String
+    description String?
+    type     EntityType
+
+    members  EntityMember[]
+    sensors  SensorData[]
+
+    kafkaTopics KafkaTopic[]
+    flinkTasks  Pipeline[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+// Entity types
+enum EntityType {
+    DISTRICT
+    CAMPUS
+    BUILDING
+    LAB
+}
+
+model EntityMember {
+    entityId String
+    userId   String
+    role     MemberRole
+    
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@id([entityId, userId])
+}
+
+// Member roles
+enum MemberRole {
+    OWNER
+    VIEWER
+    EDITOR
+}
+
+// Pipeline model for Flink jobs
+model Pipeline {
+    id          String  @id @default(cuid())
+    name        String
+    description String?
+    config      Json // Stores pipeline configuration
+    version     Int     @default(1)
+    isActive    Boolean @default(false)
+
+    entityId String
+    createdBy String
+    editedBy  String
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+}
+
+// Kafka topic model for Kafka topics 
+model KafkaTopic {
+    topicName   String     @id
+    description String?
+    stage       TopicStage
+    dataFormat  DataFormat @default(STRING)
+    schemaId    String?    @db.Uuid
+    entityId    String
+
+    createdAt   DateTime   @default(now())
+    updatedAt   DateTime   @updatedAt
+
+    entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+}
+
+enum TopicStage {
+    RAW
+    VALIDATED
+    ANALYTICS
+    SYSTEM
+}
+
+enum DataFormat {
+    STRING
+    JSON
+    BYTES
+    AVRO
+    PROTOBUF
+}
+
+
+// ------SENSOR DATA TABLES------
+enum SensorType {
+    UNKNOWN
+    TEMPERATURE
+    HUMIDITY
+}
+
+model SensorData {
+    id          String  @id @default(cuid())
+    guid        String?
+
+    type        SensorType @default(UNKNOWN)
+    name        String?
+    description String?
+
+    tags        SensorTag[]
+
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    entityId    String
+    entity      Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+    @@index([entityId])
+    @@index([type])
+}
+
+model SensorTag {
+    name        String @id
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    sensorData SensorData[]
+}
+

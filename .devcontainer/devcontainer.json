@@ -1,9 +1,13 @@
 // For more information, see https://containers.dev
 {
   "name": "IoT Platform",
-  "dockerComposeFile": ["../docker-compose.yml", "docker-compose.yml"],
+  "dockerComposeFile": [
+    "../docker-compose.yml",
+    "docker-compose.yml"
+  ],
   "service": "devcontainer",
-  "workspaceFolder":  "/workspaces/${localWorkspaceFolderBasename}",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "remoteUser": "${localEnv:USER}",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -21,5 +25,8 @@
         "ms-python.black-formatter"
       ]
     }
-  }
+  },
+  "mounts": [
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,readonly,type=bind"
+  ]
 }

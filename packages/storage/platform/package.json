@@ -1,0 +1,32 @@
+{
+  "name": "@spine/storage-platform",
+  "version": "1.0.0",
+  "description": "Platform database services for SPINE",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./prisma/types.ts"
+  },
+  "scripts": {
+    "lint": "eslint --ext .ts src",
+    "type-check": "tsc --noEmit",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
+    "db:push": "prisma db push --schema=prisma/schema.prisma",
+    "db:init": "pnpm db:push && pnpm db:generate",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.4.0",
+    "@prisma/client": "^7.4.0",
+    "@spine/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.0",
+    "@types/pg": "^8.16.0",
+    "eslint": "^9.17.0",
+    "prisma": "^7.4.0",
+    "tsx": "^3.14.0",
+    "typescript": "^5.9.3",
+    "dotenv": "^17.3.1"
+  }
+}

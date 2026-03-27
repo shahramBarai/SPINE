@@ -1,0 +1,23 @@
+{
+    "name": "@spine/messaging",
+    "version": "1.0.0",
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch"
+    },
+    "dependencies": {
+        "@spine/shared": "workspace:*",
+        "kafkajs": "^2.2.4",
+        "zod": "^4.1.12"
+    },
+    "devDependencies": {
+        "dotenv": "^17.2.2",
+        "typescript": "^5.9.2"
+    }
+}

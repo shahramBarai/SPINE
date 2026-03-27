@@ -1,10 +1,8 @@
 import { protectedProcedure, router } from "../trpc";
-import { fetchFromDataService } from "../services/data-service";
 import { TRPCError } from "@trpc/server";
 import z from "zod";
-
-const EntityType = z.enum(["DISTRICT", "CAMPUS", "BUILDING", "LAB", "DEVICE"]);
-
+import { EntityService } from "@spine/storage-platform"
+import { EntityType, MemberRole } from "@spine/storage-platform/types";
 
 export const entitiesRouter = router({
   // ------------------------------ CRUD Operations ------------------------------
@@ -19,7 +17,7 @@ export const entitiesRouter = router({
   createEntity: protectedProcedure.input(z.object({
     name: z.string(),
     description: z.string(),
-    type: z.string(),
+    type: z.nativeEnum(EntityType)
   })).mutation(async ({ ctx, input }) => {
     const user = ctx.user;
 
@@ -38,16 +36,12 @@ export const entitiesRouter = router({
       type: input.type,
       members: [{
         userId: user.id,
-        role: "OWNER",
+        role: MemberRole.OWNER,
       }],
     };
 
     try {
-      const response = await fetchFromDataService("/projects", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
-      return await response.json();
+      return await EntityService.createEntity(data);
     } catch (error) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
@@ -59,8 +53,7 @@ export const entitiesRouter = router({
   // ------------------------------- READ ------------------------------
   getEntities: protectedProcedure.query(async ({ ctx }) => {
     try {
-      const response = await fetchFromDataService("/projects");
-      return await response.json();
+      return await EntityService.getAllEntities();
     } catch (error) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",

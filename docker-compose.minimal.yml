@@ -1,0 +1,122 @@
+name: campus-minimal
+
+# Note: Docker Compose automatically loads .env from this directory
+# Variables can be referenced using ${VARIABLE} syntax
+
+include:
+  # Kafka and Schema Registry
+  - ./modules/messaging/docker-compose.dev.yml
+
+services:
+  # ------ MQTT Broker ------- #
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0.18
+    container_name: mqtt-broker
+    ports:
+      - '1883:1883' # default MQTT port
+      - '9001:9001' # default MQTT WebSocket port
+    volumes:
+      - ./modules/egress/mqtt-broker/config:/mosquitto/config:rw
+      - ./modules/egress/mqtt-broker/data:/mosquitto/data:rw
+      - ./modules/egress/mqtt-broker/log:/mosquitto/log:rw
+    restart: unless-stopped
+
+  # ------ EB Subscriber (rest_subscriber) ------- #
+  eb-subscriber:
+    container_name: eb-subscriber
+    build:
+      context: .
+      dockerfile: modules/ingress/rest_subscriber/Dockerfile.dev
+    env_file:
+      - .env
+    environment:
+      CLIENT_ID: eb-subscriber
+      HOST: 0.0.0.0
+      PORT: 3000
+      SEND_TO: kafka
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CONNECTION_TIMEOUT: 10000
+      KAFKA_REQUEST_TIMEOUT: 30000
+      KAFKA_RETRY_RETRIES: 5
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      SCHEMA_VALIDATION_ENABLED: "true"
+      KAFKA_TOPIC_SENSOR_DATA: sensor-data
+      KAFKA_TOPIC_SERVICE_METRICS: subscriber-metrics
+      KAFKA_TOPIC_TELEMETRY: spine.telemetry.v1
+      SERVICE_INPUT_SUBJECT: mqtt-sensor-data
+      SERVICE_OUTPUT_SUBJECT: processed-sensor-data
+      EB_BASE_URL: https://eu-api.empathicbuilding.com
+      EB_PUSHER_KEY: 33d6c4f799c274f7e0bc
+      EB_PUSHER_CLUSTER: eu
+      EB_SUBSCRIBE_NOTIFICATIONS: "true"
+      EB_RECONNECT_DELAY_MS: 5000
+      EB_MAX_RECONNECT_ATTEMPTS: 10
+      # From .env (secrets / user-provided)
+      NODE_ENV: ${NODE_ENV:-dev}
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
+      EB_USERNAME: ${EB_USERNAME}
+      EB_PASSWORD: ${EB_PASSWORD}
+      EB_BEARER_TOKEN: ${EB_BEARER_TOKEN:-}
+      EB_ORGANIZATION_IDS: ${EB_ORGANIZATION_IDS}
+      EB_LOCATION_IDS: ${EB_LOCATION_IDS}
+      EB_LOCATION_TO_CAMPUS_MAP: ${EB_LOCATION_TO_CAMPUS_MAP}
+      SCHEMA_REGISTRY_USERNAME: ${SCHEMA_REGISTRY_USERNAME:-}
+      SCHEMA_REGISTRY_PASSWORD: ${SCHEMA_REGISTRY_PASSWORD:-}
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./modules/ingress/rest_subscriber:/workspace/modules/ingress/rest_subscriber
+      - eb-subscriber-node_modules:/workspace/node_modules
+      - eb-subscriber-module-node_modules:/workspace/modules/ingress/rest_subscriber/node_modules
+    depends_on:
+      - kafka
+      - schema-registry
+    restart: unless-stopped
+
+  # ------ MQTT Bridge ------- #
+  mqtt-bridge:
+    container_name: mqtt-bridge
+    build:
+      context: .
+      dockerfile: modules/egress/mqtt-bridge/Dockerfile.dev
+    env_file:
+      - .env
+    environment:
+      CLIENT_ID: mqtt-bridge-service
+      HOST: 0.0.0.0
+      PORT: 3000
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CONNECTION_TIMEOUT: 10000
+      KAFKA_REQUEST_TIMEOUT: 30000
+      KAFKA_RETRY_RETRIES: 5
+      MQTT_ENABLED: "true"
+      MQTT_BROKER_URL: mqtt://mqtt-broker:1883
+      MQTT_QOS: 0
+      MQTT_RETAIN: "false"
+      MQTT_KEEPALIVE: 60
+      MQTT_RECONNECT_PERIOD: 1000
+      MQTT_CONNECT_TIMEOUT: 30000
+      KAFKA_TOPIC_SENSOR_DATA: sensor-data
+      KAFKA_TOPIC_SERVICE_METRICS: subscriber-metrics
+      # From .env (service-specific)
+      NODE_ENV: ${NODE_ENV:-dev}
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
+      MQTT_USERNAME: ${MQTT_USERNAME:-}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+    volumes:
+      - ./modules/egress/mqtt-bridge:/workspace/modules/egress/mqtt-bridge
+      - mqtt-bridge-node_modules:/workspace/node_modules
+      - mqtt-bridge-module-node_modules:/workspace/modules/egress/mqtt-bridge/node_modules
+    depends_on:
+      - kafka
+      - schema-registry
+      - mqtt-broker
+    restart: unless-stopped
+
+volumes:
+  kafka-data:
+    driver: local
+  eb-subscriber-node_modules:
+  eb-subscriber-module-node_modules:
+  mqtt-bridge-node_modules:
+  mqtt-bridge-module-node_modules:
