@@ -7,20 +7,32 @@ let kafkaTopic: string | undefined = undefined;
 const getKafkaConfig = (): KafkaConfig => {
     if (kafkaConfig) return kafkaConfig;
     const KAFKA_BROKERS = process.env.KAFKA_BROKERS;
-    const KAFKA_CONNECTION_TIMEOUT = process.env.KAFKA_CONNECTION_TIMEOUT;
-    const KAFKA_REQUEST_TIMEOUT = process.env.KAFKA_REQUEST_TIMEOUT;
-    const KAFKA_RETRY_RETRIES = process.env.KAFKA_RETRY_RETRIES;
-    const CLIENT_ID = process.env.CLIENT_ID;
-    if (!KAFKA_BROKERS || !KAFKA_CONNECTION_TIMEOUT || !KAFKA_REQUEST_TIMEOUT || !KAFKA_RETRY_RETRIES || !CLIENT_ID) {
-        throw new Error(`Kafka configuration is not set: KAFKA_BROKERS=${KAFKA_BROKERS}, CLIENT_ID=${CLIENT_ID}`);
+    if (!KAFKA_BROKERS) {
+        throw new Error(`Kafka configuration is not set: KAFKA_BROKERS=${KAFKA_BROKERS}`);
     }
+
+    let KAFKA_CONNECTION_TIMEOUT: number;
+    let KAFKA_REQUEST_TIMEOUT: number;
+    let KAFKA_RETRY_RETRIES: number;
+
+    try {
+        KAFKA_CONNECTION_TIMEOUT = parseInt(process.env.KAFKA_CONNECTION_TIMEOUT || "10000");
+        KAFKA_REQUEST_TIMEOUT = parseInt(process.env.KAFKA_REQUEST_TIMEOUT || "30000");
+        KAFKA_RETRY_RETRIES = parseInt(process.env.KAFKA_RETRY_RETRIES || "5");
+    } catch (error) {
+        throw new Error("Kafka configuration is not set properly. Make sure KAFKA_CONNECTION_TIMEOUT, KAFKA_REQUEST_TIMEOUT, and KAFKA_RETRY_RETRIES are set to valid numbers.");
+    }
+
+    const CLIENT_ID = process.env.CLIENT_ID || "eb_subscriber";
+
     kafkaConfig = {
         clientId: CLIENT_ID,
         brokers: KAFKA_BROKERS.split(","),
-        connectionTimeout: parseInt(KAFKA_CONNECTION_TIMEOUT),
-        requestTimeout: parseInt(KAFKA_REQUEST_TIMEOUT),
-        retry: { retries: parseInt(KAFKA_RETRY_RETRIES) },
+        connectionTimeout: KAFKA_CONNECTION_TIMEOUT,
+        requestTimeout: KAFKA_REQUEST_TIMEOUT,
+        retry: { retries: KAFKA_RETRY_RETRIES },
     };
+
     return kafkaConfig;
 };
 

@@ -4,20 +4,20 @@ include:
   # Core services - always included (no profile needed)
   - ./modules/messaging/docker-compose.dev.yml
   - ./modules/storage/docker-compose.dev.yml
+  - ./modules/processing/docker-compose.yml
   
   # Optional services - controlled by profiles defined in their respective files
   # - ./modules/ingress/docker-compose.dev.yml
-  # - ./modules/analytics/docker-compose.dev.yml
   # - ./modules/app/docker-compose.dev.yml
   # - ./modules/egress/docker-compose.dev.yml
 
-# Global networks that can be shared across modules
-# networks:
-#   iot-platform-network:
-#     driver: bridge
-#     name: iot-platform-network
+  # Global networks that can be shared across modules
+  # networks:
+  #   iot-platform-network:
+  #     driver: bridge
+  #     name: iot-platform-network
 
-# Global volumes that can be shared across modules
+  # Global volumes that can be shared across modules
 volumes:
   shared-data:
     name: iot-platform-shared-data
