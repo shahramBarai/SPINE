@@ -180,7 +180,7 @@ def build_kafka_sink() -> KafkaSink:
 
 def main():
     # -- Logging -------------------------------------------------------------
-    logger = logging.getLogger("__name__")
+    logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     logger.addHandler(logging.StreamHandler())
     
