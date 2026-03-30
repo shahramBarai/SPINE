@@ -8,9 +8,9 @@ the results to two sinks:
 
 Message format (JSON):
 {
-  "time": "2026-03-23T17:14:59Z",
-  "id": "sensor-1",
-  "data": key-value pairs
+  "timestamp": "2026-03-23T17:14:59Z",
+  "sensorId": "sensor-1",
+  "measurement": key-value pairs
 }
 
 Required TimescaleDB table
