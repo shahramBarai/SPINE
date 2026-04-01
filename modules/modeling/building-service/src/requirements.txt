@@ -1,0 +1,14 @@
+# Core RDF/IFC + geometry stack
+ifcopenshell
+rdflib
+shapely
+numpy
+rtree
+trimesh
+plotly
+ftfy
+
+# ML/embedding stack used in notebooks
+torch
+torch-geometric
+sentence-transformers
