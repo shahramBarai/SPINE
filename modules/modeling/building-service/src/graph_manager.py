@@ -6,6 +6,7 @@ description: Namespace init, saving, loading of RDF graphs.
 from rdflib import Graph, Literal, Namespace, RDF, RDFS, OWL
 
 # Configuration of Namespaces for RDF graph
+#IFC = Namespace("https://standards.buildingsmart.org/IFC/DEV/IFC2x3/TC1/OWL#") 
 BRICK = Namespace("https://brickschema.org/schema/Brick#")
 BOT = Namespace("https://w3id.org/bot#")
 INST = Namespace("https://lbd.example.com/")

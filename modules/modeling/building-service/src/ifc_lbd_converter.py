@@ -1,3 +1,8 @@
+"""
+name: ifc_lbd_converter.py
+description: IFC to TTL conversion using IFC2LBD converter.
+"""
+
 import json
 import subprocess
 import sys
