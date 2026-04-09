@@ -1,5 +1,5 @@
 """
-models.py – Pydantic request / response models for the Flink submission worker.
+schemas/submit.py – Request/response models for the /submit endpoint.
 """
 
 from __future__ import annotations
@@ -71,3 +71,15 @@ class SubmitResult(BaseModel):
     stderr: str
     job_id: str | None = None
     validation: ValidationResult | None = None
+
+# ---------------------------------------------------------------------------
+# Exceptions errors for the Flink submission worker.
+# ---------------------------------------------------------------------------
+class BundleValidationError(Exception):
+    """Raised when the job bundle fails structural validation."""
+
+class PreSubmitCheckError(Exception):
+    """Raised when Python pre-submit checks (AST syntax checks / import) fail."""
+
+class FlinkSubmitError(Exception):
+    """Raised when the Flink CLI command exits with a non-zero return code."""

@@ -1,5 +1,5 @@
 """
-settings.py – Configuration defaults for the Flink submission worker.
+config.py – Configuration defaults for the Flink submission worker.
 
 Values can be overridden via environment variables at runtime.
 """

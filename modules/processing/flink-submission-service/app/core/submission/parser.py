@@ -1,8 +1,5 @@
 """
-parser.py – Extract the Flink job_id from CLI stdout / stderr output.
-
-Flink CLI output patterns vary slightly across versions. This module uses
-regex to cover a reasonable set of observed patterns from Flink 1.x / 2.x.
+core/submission/parser.py – Extract job_id from Flink CLI output.
 """
 
 from __future__ import annotations
