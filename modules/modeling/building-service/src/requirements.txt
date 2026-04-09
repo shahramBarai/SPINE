@@ -8,7 +8,7 @@ trimesh
 plotly
 ftfy
 
-# ML/embedding stack used in notebooks
+# WIP:ML/embedding stack used in notebooks
 torch
 torch-geometric
 sentence-transformers

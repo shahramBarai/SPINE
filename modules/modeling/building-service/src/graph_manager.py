@@ -12,6 +12,7 @@ BOT = Namespace("https://w3id.org/bot#")
 INST = Namespace("https://lbd.example.com/")
 PROPS = Namespace("http://lbd.arch.rwth-aachen.de/props#") 
 S223 = Namespace("http://data.ashrae.org/standard223#")
+FSO = Namespace("https://w3id.org/fso#")
 
 PREFIXES = {
     "brick": BRICK, 
@@ -20,7 +21,8 @@ PREFIXES = {
     "rdfs": RDFS, 
     "owl": OWL, 
     "props": PROPS, 
-    "s223": S223
+    "s223": S223,
+    "fso": FSO
     }
 
 def init_graph():        

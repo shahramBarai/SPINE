@@ -19,7 +19,7 @@ from itertools import combinations
 from pprint import pprint
 import plotly.graph_objects as go
 from collections import defaultdict, Counter
-from graph_manager import init_graph, save_graph, BRICK, BOT, PROPS, S223
+from graph_manager import init_graph, save_graph, BRICK, BOT, PROPS, S223, FSO
 from ttl_ifc_system_link import pair_ifc_and_ttl
 
 # Configuration 
@@ -491,7 +491,7 @@ def get_all_system_adjacencies(ifc, settings, tolerance=0.05):
 
 def link_mep_components(graph, mep_ttl, adjacencies):
     """
-    For paired MEP components, link them using S223.cnx.
+    For paired MEP components, link them using FSO.connectedWith.
     The directions are not in the model, using symmetric relations.
     """            
     graph_read = Graph()    
@@ -518,10 +518,10 @@ def link_mep_components(graph, mep_ttl, adjacencies):
             print(f"Warning: No URI found for GUID {guid_1}")
             continue
         
-        graph.add((uri_1, S223.cnx, uri_0))
+        graph.add((uri_1, FSO.connectedWith, uri_0))
         linked_components_count += 1
                     
-    print(f"Linked {linked_components_count} adjacent MEP components (s223:cnx).") 
+    print(f"Linked {linked_components_count} adjacent MEP components (fso:connectedWith).") 
     
     return graph
 
@@ -651,7 +651,7 @@ def link_arc_spaces_walls_save(arc_ifc_path, arc_ttl_path, save_path, tolerance=
 def link_mep_components_save(mep_ifc_folder, mep_ttl_folder, save_folder, tolerance=0.05):
     """
     Main function to link MEP components based on IFC files and their corresponding TTL files.
-    For each components in intersections, link them using S223.cnx.
+    For each components in intersections, link them using FSO.connectedWith.
     """
     graph = init_graph()
     processed_ifc_count = 0
@@ -671,7 +671,7 @@ def link_mep_components_save(mep_ifc_folder, mep_ttl_folder, save_folder, tolera
         link_mep_components(graph, ttl_path, adjacencies)        
         processed_ifc_count += 1
 
-        save_file_name = Path(ttl_path).stem + "_cnx.ttl"
+        save_file_name = Path(ttl_path).stem + "_connected.ttl"
         save_path = save_folder + "\\" + save_file_name
 
         save_graph(graph, save_path)
