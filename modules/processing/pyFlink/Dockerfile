@@ -1,34 +1,29 @@
-FROM flink:1.18.1
+FROM flink:1.20.3-scala_2.12-java17
 
 # Switch to root to perform system-level installations
 USER root
 
 # Install Python + pip
 RUN apt-get update -y && \
-    apt-get install -y python3 python3-pip python3-dev && \
+    apt-get install -y python3 python3-pip python3-dev python3-venv && \
     rm -rf /var/lib/apt/lists/*
 
 # Ensure python command points to python3
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-# Install Java & updates
-RUN apt-get update && \
-    apt-get install -y openjdk-21-jdk && \
-    apt-get install -y ant && \
-    apt-get clean;
+# Create venv and install deps there
+WORKDIR /opt/pyFlink
+RUN python3 -m venv .venv && \
+    .venv/bin/pip install --upgrade pip && \
+    .venv/bin/pip install apache-flink==1.20.3
+ENV PATH="/opt/pyFlink/.venv/bin:${PATH}"
 
-ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64
+# # Download Flink connector libs
+WORKDIR /opt/flink/lib
+RUN wget https://repo.maven.apache.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.3.0-1.20/flink-sql-connector-kafka-3.3.0-1.20.jar && \
+    wget https://repo.maven.apache.org/maven2/org/apache/flink/flink-connector-jdbc/3.1.2-1.18/flink-connector-jdbc-3.1.2-1.18.jar && \
+    wget https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.10/postgresql-42.7.10.jar
 
-# Set working directory
-WORKDIR /opt/flink/
-
-# Install Python dependencies (--break-system-packages flag is needed for Flink 2.2.0)
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-# Download Flink connector libs
-COPY download_libs.sh .
-RUN chmod +x download_libs.sh && ./download_libs.sh
-
-# Switch back to default Flink user for runtime security
+# Set working directory and switch back to flink user
+WORKDIR /opt/flink
 USER flink
