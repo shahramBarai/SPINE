@@ -18,7 +18,7 @@ RUN python3 -m venv .venv && \
     .venv/bin/pip install apache-flink==1.20.3
 ENV PATH="/opt/pyFlink/.venv/bin:${PATH}"
 
-# # Download Flink connector libs
+# Download Flink connector libs
 WORKDIR /opt/flink/lib
 RUN wget https://repo.maven.apache.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.3.0-1.20/flink-sql-connector-kafka-3.3.0-1.20.jar && \
     wget https://repo.maven.apache.org/maven2/org/apache/flink/flink-connector-jdbc/3.1.2-1.18/flink-connector-jdbc-3.1.2-1.18.jar && \
