@@ -7,20 +7,15 @@ from __future__ import annotations
 import subprocess
 
 from app.utils import config
-from app.schemas import SubmitRequest, SubmitResult, ValidationResult
+from app.schemas import SubmitRequest, SubmitResult
 from .command import build_flink_command
 from .parser import extract_job_id
 
-
 def submit_job(
-    request: SubmitRequest,
-    validation: ValidationResult,
+    request: SubmitRequest
 ) -> SubmitResult:
     """
     Submit the job bundle to the Flink Session Cluster via ``flink run --detached``.
-
-    Pre-condition: ``validation.success`` must be ``True``. If validation
-    failed we return an error result immediately without invoking Flink.
 
     Detached mode makes ``flink run`` return as soon as the job is accepted
     by the cluster, rather than streaming logs until completion.
@@ -28,9 +23,7 @@ def submit_job(
     Parameters
     ----------
     request:
-        The submit request.
-    validation:
-        The result of pre-submit validation.
+        The submit request
 
     Returns
     -------
@@ -38,17 +31,6 @@ def submit_job(
         Structured response containing the command, return code, captured
         output, parsed job_id, and the validation result.
     """
-    if not validation.success:
-        return SubmitResult(
-            success=False,
-            command=[],
-            returncode=-1,
-            stdout="",
-            stderr="Pre-submit validation failed",
-            job_id=None,
-            validation=validation,
-        )
-
     cmd = build_flink_command(request)
 
     try:
@@ -61,27 +43,19 @@ def submit_job(
     except subprocess.TimeoutExpired:
         return SubmitResult(
             success=False,
-            command=cmd,
-            returncode=-1,
-            stdout="",
-            stderr=(
+            error=(
                 f"flink run timed out after {config.SUBMIT_TIMEOUT}s"
             ),
-            job_id=None,
-            validation=validation,
+            job_id=None
         )
     except FileNotFoundError:
         return SubmitResult(
             success=False,
-            command=cmd,
-            returncode=-1,
-            stdout="",
-            stderr=(
+            error=(
                 f"Flink binary not found: '{config.FLINK_BIN}'. "
                 "Is Flink installed and on PATH inside the container?"
             ),
-            job_id=None,
-            validation=validation,
+            job_id=None
         )
 
     success = proc.returncode == 0
@@ -89,10 +63,6 @@ def submit_job(
 
     return SubmitResult(
         success=success,
-        command=cmd,
-        returncode=proc.returncode,
-        stdout=proc.stdout.strip(),
-        stderr=proc.stderr.strip(),
+        error=proc.stderr.strip(),
         job_id=job_id,
-        validation=validation,
     )

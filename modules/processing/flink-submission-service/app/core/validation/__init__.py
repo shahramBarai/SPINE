@@ -6,15 +6,21 @@ Validation steps:
   2. Python syntax check on entrypoint (ast.parse)
   3. Python syntax check on pyfiles dir (ast.parse)
   4. Import check on entrypoint (PYTHONPATH injection)
+  5. Zip file validation and extraction (for /submit-zip endpoint)
 """
 
-from .bundle_structure import validate_bundle_structure
-from .import_check import run_import_check
-from .syntax_checks import run_compileall_check, run_py_compile_check
+from .pre_submit_checks import run_pre_submit_checks
+from .zip_handler import (
+    ZipValidationError,
+    cleanup_extraction,
+    extract_zip_to_temp,
+    validate_zip_file,
+)
 
 __all__ = [
-    "validate_bundle_structure",
-    "run_py_compile_check",
-    "run_compileall_check",
-    "run_import_check",
+    "run_pre_submit_checks",
+    "validate_zip_file",
+    "extract_zip_to_temp",
+    "cleanup_extraction",
+    "ZipValidationError",
 ]

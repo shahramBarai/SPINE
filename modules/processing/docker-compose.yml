@@ -4,6 +4,8 @@ services:
     build:
       context: ./pyFlink
       dockerfile: Dockerfile
+    image: spine-pyflink:latest
+    pull_policy: never
     ports:
       - "7070:8081" # Flink Web UI
     environment:
@@ -14,9 +16,8 @@ services:
 
   # ------ Flink Task Manager ------ #
   flink-taskmanager:
-    build:
-      context: ./pyFlink
-      dockerfile: Dockerfile
+    image: spine-pyflink:latest
+    pull_policy: never
     scale: 1
     environment:
       - |
@@ -42,6 +43,6 @@ services:
       - CHECK_TIMEOUT=30
       - SUBMIT_TIMEOUT=120
     volumes:
-      - ./flink-submission-service/app:/app/app
+      - ./flink-submission-service/app:/opt/pyFlink/app
     depends_on:
       - flink-jobmanager

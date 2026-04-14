@@ -34,6 +34,24 @@ CHECK_TIMEOUT: int = int(os.getenv("CHECK_TIMEOUT", "30"))
 SUBMIT_TIMEOUT: int = int(os.getenv("SUBMIT_TIMEOUT", "120"))
 
 # ---------------------------------------------------------------------------
+# Zip file handling
+# ---------------------------------------------------------------------------
+
+# Maximum allowed zip file size in MB
+MAX_ZIP_SIZE_MB: int = int(os.getenv("MAX_ZIP_SIZE_MB", "1"))
+
+# Allowed file extensions within zip (comma-separated)
+ALLOWED_ZIP_EXTENSIONS: list[str] = os.getenv(
+    "ALLOWED_ZIP_EXTENSIONS", ".py,.txt"
+).split(",")
+
+# Timeout for extracting zip files (seconds)
+ZIP_EXTRACT_TIMEOUT: int = int(os.getenv("ZIP_EXTRACT_TIMEOUT", "30"))
+
+# Directory for extracting temporary zip files
+TEMP_EXTRACTION_DIR: str = os.getenv("TEMP_EXTRACTION_DIR", "/tmp/flink-submissions")
+
+# ---------------------------------------------------------------------------
 # Service metadata
 # ---------------------------------------------------------------------------
 

@@ -6,7 +6,4 @@
 fastapi>=0.111.0,<1.0.0
 uvicorn[standard]>=0.29.0,<1.0.0
 pydantic>=2.0.0,<3.0.0
-
-# These are needed for the strict import check.
-apache-flink==1.18.1
-apache-flink-libraries==1.18.1
+python-multipart>=0.0.9,<1.0.0
