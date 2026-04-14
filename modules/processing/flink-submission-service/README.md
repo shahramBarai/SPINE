@@ -1,68 +1,58 @@
-# Flink Submission Worker
+# Flink Submission Service
 
-> **Internal service — not exposed to the UI layer.**
+> Internal service. It is not exposed to the UI layer.
 
 ## Purpose
 
-This is the Python-based Flink submission worker for the SPINE processing pipeline.  
-It receives a prepared job bundle, validates it, and submits it to a running **Flink Session Cluster** via the Flink CLI.
+This service validates PyFlink job uploads and submits them to a running Flink Session Cluster via the Flink CLI.
 
----
+It supports two upload-based submission modes:
+
+- Single `.py` upload, stored as `main.py` in a temporary directory
+- Zip bundle upload with a strict bundle layout
 
 ## What it does
 
-| Responsibility | Detail |
-|---|---|
-| Bundle validation | Verifies all referenced paths (entrypoint, pyfiles, requirements) exist. |
-| Python syntax check | Parses `main.py` with `ast.parse` to catch syntax errors without executing the script. |
-| Module syntax check | Parses every `*.py` file under `pyfiles/` with `ast.parse`. |
-| Import check | Imports the entrypoint module with `PYTHONPATH=<pyfiles_path>` set, in an isolated subprocess. |
-| Flink submission | Builds and executes the detached `flink run` command. |
-| Output capture | Returns `stdout`, `stderr`, `returncode`, and the parsed `job_id`. |
+- Accepts multipart file uploads
+- Checks uploaded files for basic validity before submission
+- Parses Python files with `ast.parse` to catch syntax errors
+- Runs an isolated import check for the entrypoint
+- Validates zip archives and extracts them to a temporary directory
+- Builds and executes a detached `flink run` command
+- Parses the Flink CLI output to extract a job ID when available
 
----
+## Project layout
 
-## What it does NOT do
-
-- Generate Python code from JSON schema — that is the **NodeJS service**.
-- Bundle generation or metadata management.
-- Any UI-facing or user-auth logic.
-- Kafka, MinIO, or PostgreSQL integration.
-- Savepoint / checkpoint management.
-- Multi-job orchestration.
-- Async task queue management.
-
----
-
-## Directory structure
-
-```
+```text
 flink-submission-service/
 ├── app/
-│   ├── main.py          # FastAPI app + routes
-│   ├── models.py        # Pydantic request/response models
-│   ├── settings.py      # Configurable defaults / env vars
-│   ├── validator.py     # Pre-submit validation logic
-│   ├── submitter.py     # Flink CLI builder + executor
-│   ├── parser.py        # job_id regex extractor
-│   └── exceptions.py    # Custom exception types
-├── requirements.txt
+│   ├── api/
+│   │   └── submit.py
+│   ├── core/
+│   │   ├── submission/
+│   │   └── validation/
+│   ├── schemas/
+│   ├── utils/
+│   └── main.py
+├── test/
+│   └── test_zip_submission.py
 ├── Dockerfile
+├── requirements.txt
 └── README.md
 ```
 
----
+## Configuration
 
-## Environment variables
+Environment variables used by the service:
 
 | Variable | Default | Description |
-|---|---|---|
+| --- | --- | --- |
 | `FLINK_JOBMANAGER` | `jobmanager:8081` | Flink JobManager REST address |
 | `FLINK_BIN` | `flink` | Path to the `flink` CLI binary |
 | `CHECK_TIMEOUT` | `30` | Seconds before pre-submit checks time out |
 | `SUBMIT_TIMEOUT` | `120` | Seconds before `flink run` times out |
-
----
+| `MAX_ZIP_SIZE_MB` | `1` | Maximum allowed size for zip uploads |
+| `TEMP_EXTRACTION_DIR` | `/tmp/flink-submissions` | Temporary directory for extracted zip uploads |
 
 ## API endpoints
 
@@ -70,161 +60,111 @@ flink-submission-service/
 
 Liveness probe.
 
-```
-GET http://localhost:8000/health
+```bash
+curl http://localhost:8000/health
 ```
 
-**Response**
+Example response:
+
 ```json
 { "status": "ok" }
 ```
 
----
+### `POST /submit-file`
 
-### `POST /submit`
+Upload a single `.py` file. The file is saved as `main.py` in a temporary directory and submitted as a one-file job.
 
-Validate a job bundle and submit it to the Flink Session Cluster.
-
-```
-POST http://localhost:8000/submit
-Content-Type: application/json
+```bash
+curl -X POST http://localhost:8000/submit-file \
+  -F "file=@main.py"
 ```
 
-**Request body**
+Validation for this endpoint:
 
-```json
-{
-  "entrypoint": "/workspace/job_bundle/main.py",
-  "pyfiles_path": "/workspace/job_bundle/pyfiles",
-  "requirements_path": "/workspace/job_bundle/requirements.txt"
-}
+- The uploaded file must end in `.py`
+- The uploaded file must not be empty
+- The file is copied to a temporary `main.py`
+- The same pre-submit checks used for extracted bundles are then applied
+
+### `POST /submit-zip`
+
+Upload a zip bundle with a strict root layout:
+
+- `main.py` at the root is required
+- `requirements.txt` at the root is optional
+- `modules/` is optional and may contain only `.py` files
+
+```bash
+curl -X POST http://localhost:8000/submit-zip \
+  -F "file=@job_bundle.zip"
 ```
 
-**Successful response**
+Validation for this endpoint:
 
-```json
-{
-  "success": true,
-  "command": [
-    "flink", "run", "--detached",
-    "--jobmanager", "jobmanager:8081",
-    "--python", "/workspace/job_bundle/main.py",
-    "--pyFiles", "/workspace/job_bundle/pyfiles",
-    "--pyRequirements", "/workspace/job_bundle/requirements.txt"
-  ],
-  "returncode": 0,
-  "stdout": "Job has been submitted with JobID abcdef1234567890abcdef1234567890",
-  "stderr": "",
-  "job_id": "abcdef1234567890abcdef1234567890",
-  "validation": {
-    "success": true,
-    "steps": [
-      { "step": "bundle.entrypoint_exists",     "success": true, ... },
-      { "step": "bundle.pyfiles_path_exists",   "success": true, ... },
-      { "step": "bundle.requirements_path_exists", "success": true, ... },
-      { "step": "py_compile.entrypoint",        "success": true, ... },
-      { "step": "compileall.pyfiles",           "success": true, ... },
-      { "step": "import_check.entrypoint",      "success": true, ... }
-    ]
-  }
-}
-```
+- The zip must be valid and within the configured size limit
+- Only `main.py`, optional `requirements.txt`, and optional `modules/` content are allowed
+- Files inside `modules/` must be Python files with no nested subdirectories
+- `main.py` must exist at the zip root
+- The extracted bundle is then checked with the same pre-submit pipeline as `submit-file`
 
-**Validation failure response** (Flink is NOT called)
+## Validation flow
 
-```json
-{
-  "success": false,
-  "command": [],
-  "returncode": -1,
-  "stdout": "",
-  "stderr": "Pre-submit validation failed",
-  "job_id": null,
-  "validation": {
-    "success": false,
-    "steps": [ ... ],
-    "error": "Import check failed on entrypoint"
-  }
-}
-```
+The worker validates inputs in order and stops at the first failure:
 
----
+1. Path existence checks for the extracted or staged bundle
+2. `ast.parse` on the entrypoint
+3. `ast.parse` on every Python file under the bundle directory when extra files are present
+4. Import check in an isolated subprocess with `PYTHONPATH` configured
 
-## How validation works
+For zip uploads, validation also checks:
 
-The validation pipeline runs in order and **stops at the first failure**:
+- Zip integrity
+- Maximum archive size
+- Root-level file restrictions
+- Presence of `main.py`
+- `modules/` folder rules
 
-1. **Path existence checks** — `pathlib.Path.is_file()` / `.is_dir()`. No subprocess.
-2. **AST syntax check on entrypoint** — `ast.parse(<entrypoint source>)`. Catches syntax errors in `main.py` without executing it.
-3. **AST syntax check on pyfiles** — `ast.parse(<module source>)` for each `*.py` file under `pyfiles_path`. Catches syntax errors in all bundle modules.
-4. **Import check** — Runs `python -c "import main"` with `PYTHONPATH=<pyfiles_path>:<entrypoint_dir>` in an isolated subprocess. Simulates Flink's `--pyFiles` injection.
+## Submission flow
 
-Each step returns structured detail: step name, command executed, success flag, stdout, stderr.
+If validation passes, the worker runs a detached Flink submission using the configured JobManager address and captures:
 
----
+- `stdout`
+- `stderr`
+- `returncode`
+- Parsed `job_id` when Flink prints one
 
-## How submit works
+The Flink command includes `--python` for the entrypoint, and `--pyFiles` or `--pyRequirements` when the staged bundle provides them.
 
-If all validation steps pass, the worker builds:
+## Local development
 
-```
-flink run
-  --jobmanager <jobmanager_address>
-  --python     <entrypoint>
-  [--pyFiles        <pyfiles_path>]
-  [--pyRequirements <requirements_path>]
-```
-
-The command is executed with `subprocess.run(capture_output=True, text=True, timeout=<SUBMIT_TIMEOUT>)`.
-
-The output is parsed with a regex to extract the `job_id` from patterns like:
-
-```
-Job has been submitted with JobID <32-char-hex>
-```
-
----
-
-## Running locally (development)
-
-> **Note for Debian / Ubuntu users:** Modern Debian-based systems (Ubuntu 23.04+, Debian 12+) mark the
-> system Python as *externally managed* (PEP 668). Running `pip install` directly will fail with:
-> ```
-> error: externally-managed-environment
-> ```
-> Always use a **virtual environment** instead.
-
-### 1 — Create and activate a virtual environment
+### 1. Create and activate a virtual environment
 
 ```bash
 cd modules/processing/flink-submission-service
-
-# Create the venv (once)
 python3 -m venv .venv
-
-# Activate it (every new shell session)
 source .venv/bin/activate
 ```
 
-> On Windows (PowerShell inside WSL you can also use `.venv/bin/activate`; inside native PowerShell use `.venv\Scripts\Activate.ps1`).
-
-### 2 — Install dependencies
+### 2. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3 — Start the service
+### 3. Run the service
 
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-Interactive API docs: http://localhost:8000/docs
+OpenAPI docs:
 
----
+- http://localhost:8000/docs
+- http://localhost:8000/redoc
 
-## Running with Docker
+## Docker
+
+The Docker image is based on a Flink-compatible image and includes Python plus the dependencies needed by this worker.
 
 ```bash
 docker build -t flink-submission-worker .
@@ -233,31 +173,7 @@ docker run --rm -p 8000:8000 \
   flink-submission-worker
 ```
 
-> **Note:** In Phase 1 the Docker image is a plain Python image. The `flink` CLI binary is **not** present.  
-> To perform real submissions you must switch the base image to a Flink-compatible image (see the Dockerfile comments).
+## Notes
 
----
-
-## Future integration notes
-
-### NodeJS ↔ Python worker boundary
-
-```
-NodeJS service                       Python submission worker
-──────────────────────────────       ────────────────────────────────────────
-• JSON schema → Python code          • Validate prepared bundle
-• Bundle generation                  • Run pre-submit Python checks
-• Metadata / tracking                • Submit via Flink CLI
-• UI communication                   • Return job_id / structured result
-• Kafka / MinIO coordination         (internal only)
-```
-
-The worker is stateless and idempotent by design: it only reads the filesystem paths provided in the request and calls Flink.
-
-### Phase 2 – Flink-compatible image
-
-Replace the `FROM python:3.11-slim` base in `Dockerfile` with the same `flink:1.18.1` image used by the cluster. See comments inside the Dockerfile.
-
-### Phase 3 – Kafka trigger
-
-Rather than HTTP polling, the NodeJS service can publish a submit event to a Kafka topic. A future version of this worker can consume that topic using `aiokafka` or similar, replacing the FastAPI `/submit` endpoint.
+- This service is internal and should not be exposed directly to end users.
+- Temporary extraction directories are cleaned up after requests complete.

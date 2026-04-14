@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 
 class SubmitRequest(BaseModel):
-    """Payload sent by the caller to the JSON-based /submit endpoint."""
+    """Payload used to submit a staged job bundle to the Flink executor."""
 
     entrypoint: str = Field(
         ...,

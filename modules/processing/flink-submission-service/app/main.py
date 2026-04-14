@@ -1,10 +1,11 @@
 """
-main.py – FastAPI entrypoint for the Flink submission worker.
+main.py – FastAPI entrypoint for the Flink submission service.
 
-Exposes two endpoints:
+Exposes:
 
-  GET  /health   → liveness probe
-  POST /submit   → validate bundle + submit to Flink Session Cluster
+    GET  /health       -> liveness probe
+    POST /submit-file  -> submit a single Python file as main.py
+    POST /submit-zip   -> submit a strict zip bundle upload
 
 This service is an *internal* worker. It is not exposed to the UI layer.
 """

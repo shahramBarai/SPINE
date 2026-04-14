@@ -1,5 +1,9 @@
 """
-api/submit.py – POST /submit endpoint: validate bundle and submit to Flink.
+api/submit.py – upload-based submission endpoints for PyFlink jobs.
+
+Exposes:
+    POST /submit-file  -> submit a single Python file as main.py
+    POST /submit-zip   -> submit a strict zip bundle upload
 """
 
 from __future__ import annotations
