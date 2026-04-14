@@ -20,17 +20,39 @@ from app.core.validation import (
 from app.schemas import SubmitRequest, SubmitResult
 from app.utils import get_logger, config
 
-router = APIRouter(tags=["submission"])
+router = APIRouter(tags=["Job Submission"])
 logger = get_logger(__name__)
 
 
-@router.post("/submit-file", response_model=SubmitResult)
-async def submit_file(file: UploadFile = File(...)) -> SubmitResult:
+@router.post(
+    "/submit-file",
+    response_model=SubmitResult,
+    summary="Submit a single Python entrypoint",
+    description=(
+        "Upload one Python file and submit it as `main.py` to the Flink Session Cluster. "
+        "This endpoint is intended for simple jobs that do not require extra modules or "
+        "a requirements file."
+    ),
+    responses={
+        200: {
+            "description": (
+                "Submission result. `success=true` means the job was accepted by Flink; "
+                "`success=false` means validation or submission failed and `error` describes why."
+            )
+        }
+    },
+)
+async def submit_file(
+    file: UploadFile = File(
+        ...,
+        description="Single Python source file (.py). It will be stored as main.py.",
+    )
+) -> SubmitResult:
     """
     Validate and submit a single Python entrypoint file to the Flink Session Cluster.
 
     **Request**
-    Multipart form with a single file field named ``file``.
+    Multipart form-data with a single file field named ``file``.
 
     **Rules**
     - The uploaded file must have a ``.py`` extension.
@@ -98,8 +120,33 @@ async def submit_file(file: UploadFile = File(...)) -> SubmitResult:
                 logger.warning("Failed to clean up temp folder %s: %s", extraction_path, exc)
 
 
-@router.post("/submit-zip", response_model=SubmitResult)
-async def submit_zip(file: UploadFile = File(...)) -> SubmitResult:
+@router.post(
+    "/submit-zip",
+    response_model=SubmitResult,
+    summary="Submit a zipped Python job bundle",
+    description=(
+        "Upload a zip archive containing `main.py` and optional `requirements.txt` and "
+        "`modules/` files. The archive is validated, extracted to a temporary directory, "
+        "and submitted to Flink using the same pre-submit checks as path-based submission."
+    ),
+    responses={
+        200: {
+            "description": (
+                "Submission result. `success=true` means the job was accepted by Flink; "
+                "`success=false` means validation, extraction, pre-submit checks, or submission failed."
+            )
+        }
+    },
+)
+async def submit_zip(
+    file: UploadFile = File(
+        ...,
+        description=(
+            "Zip archive containing a strict root structure: main.py (required), "
+            "requirements.txt (optional), and modules/ (optional, .py files only)."
+        ),
+    )
+) -> SubmitResult:
     """
     Validate a job bundle from a zip file and submit it to the Flink Session Cluster.
 

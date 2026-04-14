@@ -27,6 +27,19 @@ logger = get_logger(__name__)
 # App
 # ---------------------------------------------------------------------------
 
+openapi_tags = [
+    {
+        "name": "Job Submission",
+        "description": (
+            "Endpoints to validate and submit PyFlink jobs to the Flink Session Cluster. "
+        ),
+    },
+    {
+        "name": "ops",
+        "description": "Operational endpoints for service health and readiness.",
+    },
+]
+
 app = FastAPI(
     title=config.SERVICE_NAME,
     version=config.SERVICE_VERSION,
@@ -35,6 +48,7 @@ app = FastAPI(
         "Validates a prepared job bundle, then submits it to the running "
         "Flink Session Cluster via the Flink CLI."
     ),
+    openapi_tags=openapi_tags,
     docs_url="/docs",
     redoc_url="/redoc",
 )
