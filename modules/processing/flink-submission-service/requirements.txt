@@ -1,9 +1,9 @@
-# Flink Submission Worker – Python dependencies
-#
-# Keep this minimal. This service does NOT need PyFlink itself;
-# PyFlink is only needed inside the Flink cluster runtime.
-
+# Flink Submission Service – Python dependencies
 fastapi>=0.111.0,<1.0.0
 uvicorn[standard]>=0.29.0,<1.0.0
 pydantic>=2.0.0,<3.0.0
 python-multipart>=0.0.9,<1.0.0
+
+# Flink dependencies for local validation and testing
+# Note: Make sure this matches the version used in docker containers to avoid compatibility issues
+apache-flink==1.20.3

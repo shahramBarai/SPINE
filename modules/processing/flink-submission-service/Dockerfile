@@ -26,7 +26,6 @@ WORKDIR /opt/pyFlink
 COPY requirements.txt .
 RUN python3 -m venv .venv && \
     .venv/bin/pip install --upgrade pip && \
-    .venv/bin/pip install apache-flink==1.20.3 && \
     .venv/bin/pip install --no-cache-dir -r requirements.txt
 ENV PATH="/opt/pyFlink/.venv/bin:${PATH}"
 
