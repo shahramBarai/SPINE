@@ -19,12 +19,6 @@ from app.utils import config, get_logger
 
 logger = get_logger(__name__)
 
-
-class ZipValidationError(Exception):
-    """Raised when a zip file fails validation."""
-
-    pass
-
 def validate_zip_file(file_bytes: bytes, max_size_mb: int = None) -> dict:
     """
     Validate a zip file for integrity, size, and content restrictions.
@@ -89,7 +83,8 @@ def validate_zip_file(file_bytes: bytes, max_size_mb: int = None) -> dict:
             if bad_file is not None:
                 error_msg = f"Zip file is corrupted: bad file {bad_file}"
                 logger.error(error_msg)
-                raise ZipValidationError(error_msg)
+                result["error"] = error_msg
+                return result
 
             # Get all files in the zip
             result["file_list"] = zf.namelist()
@@ -113,7 +108,8 @@ def validate_zip_file(file_bytes: bytes, max_size_mb: int = None) -> dict:
                             f"Found: {fname}"
                         )
                         logger.error(error_msg)
-                        raise ZipValidationError(error_msg)
+                        result["error"] = error_msg
+                        return result
                     
                     # For files in modules/, validate structure
                     # Must be modules/{filename}.py with no further nesting
@@ -126,16 +122,18 @@ def validate_zip_file(file_bytes: bytes, max_size_mb: int = None) -> dict:
                             f"(no subdirectories). Found: {fname}"
                         )
                         logger.error(error_msg)
-                        raise ZipValidationError(error_msg)
-                    
+                        result["error"] = error_msg
+                        return result
+
                     # Only .py files allowed in modules/
-                    if not fname.endswith(".py"):
+                    if parts[1] != "" and not parts[1].endswith(".py"):
                         error_msg = (
                             f"Only .py files allowed in 'modules/' folder. "
                             f"Found: {fname}"
                         )
                         logger.error(error_msg)
-                        raise ZipValidationError(error_msg)
+                        result["error"] = error_msg
+                        return result
                 else:
                     # Only specified files allowed at root level
                     if fname not in allowed_root_files:
@@ -145,7 +143,8 @@ def validate_zip_file(file_bytes: bytes, max_size_mb: int = None) -> dict:
                             f"are allowed at root. Additional modules must go in 'modules/' folder."
                         )
                         logger.error(error_msg)
-                        raise ZipValidationError(error_msg)
+                        result["error"] = error_msg
+                        return result
 
             # Check for main.py
             has_main_py = "main.py" in result["file_list"]
@@ -154,7 +153,8 @@ def validate_zip_file(file_bytes: bytes, max_size_mb: int = None) -> dict:
                     "Zip file must contain a 'main.py' file at the root level"
                 )
                 logger.error(error_msg)
-                raise ZipValidationError(error_msg)
+                result["error"] = error_msg
+                return result
 
             has_requirements_txt = "requirements.txt" in result["file_list"]
             has_modules_folder = any(f.startswith("modules/") for f in result["file_list"])
@@ -196,11 +196,6 @@ def extract_zip_to_temp(
     str
         Absolute path to the extraction directory.
     # or None if extraction fails.
-
-    Raises
-    ------
-    Exception
-        If extraction fails.
     """
     if session_id is None:
         session_id = str(uuid.uuid4())

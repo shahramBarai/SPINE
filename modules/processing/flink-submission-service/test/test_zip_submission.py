@@ -33,8 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from app.core.validation.zip_handler import (
     validate_zip_file,
     extract_zip_to_temp,
-    cleanup_extraction,
-    ZipValidationError,
+    cleanup_extraction
 )
 
 
@@ -58,13 +57,11 @@ def create_zip_with_files(files_dict) -> bytes:
 
 def get_validation_error(zip_bytes: bytes) -> str:
     """Return the validation error message for an invalid zip, regardless of contract style."""
-    try:
-        result = validate_zip_file(zip_bytes)
-        if isinstance(result, dict) and not result.get("is_valid", False):
-            return result.get("error") or "Zip validation failed"
-        return "Zip validation unexpectedly passed"
-    except ZipValidationError as exc:
-        return str(exc)
+
+    result = validate_zip_file(zip_bytes)
+    if isinstance(result, dict) and not result.get("is_valid", False):
+        return result.get("error") or "Zip validation failed"
+    return "Zip validation unexpectedly passed"
 
 
 def test_valid_main_py_only():

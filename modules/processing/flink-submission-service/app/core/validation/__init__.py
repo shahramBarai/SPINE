@@ -11,16 +11,14 @@ Validation steps:
 
 from .pre_submit_checks import run_pre_submit_checks
 from .zip_handler import (
-    ZipValidationError,
     cleanup_extraction,
     extract_zip_to_temp,
-    validate_zip_file,
+    validate_zip_file
 )
 
 __all__ = [
     "run_pre_submit_checks",
     "validate_zip_file",
     "extract_zip_to_temp",
-    "cleanup_extraction",
-    "ZipValidationError",
+    "cleanup_extraction"
 ]
