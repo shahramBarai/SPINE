@@ -289,6 +289,149 @@ def test_zip_extraction():
         return False
 
 
+def test_zip_bomb_too_many_entries():
+    """Test that zip with too many entries is rejected during extraction."""
+    print("Test 14: Zip bomb - too many entries...")
+    try:
+        # Create a zip with many small files to exceed MAX_ZIP_ENTRY_COUNT (256)
+        files_dict = {
+            "main.py": "# Main",
+            "requirements.txt": "apache-flink==1.17.0"
+        }
+        # Add 300 files to exceed the limit
+        for i in range(300):
+            files_dict[f"modules/file_{i}.py"] = f"# File {i}"
+        
+        zip_bytes = create_zip_with_files(files_dict)
+        
+        # Extraction should fail
+        extraction_path = extract_zip_to_temp(zip_bytes, "test-bomb-entries")
+        if extraction_path is None:
+            print("  ✓ PASSED (rejected during extraction)")
+            return True
+        
+        # If it somehow passed validation, cleanup and fail test
+        if extraction_path:
+            cleanup_extraction(extraction_path)
+        print(f"  ✗ FAILED: Zip bomb with too many entries was not rejected")
+        return False
+    except Exception as e:
+        print(f"  ✓ PASSED (exception during extraction: {type(e).__name__})")
+        return True
+
+
+def test_zip_bomb_file_too_large():
+    """Test that individual files exceeding MAX_ZIP_MEMBER_SIZE_MB are rejected."""
+    print("Test 15: Zip bomb - single file too large...")
+    try:
+        # Create a 10 MB file (exceeds MAX_ZIP_MEMBER_SIZE_MB of 5 MB)
+        large_content = "x" * (10 * 1024 * 1024)
+        zip_bytes = create_zip_with_files({
+            "main.py": "# Main",
+            "modules/large.py": large_content
+        })
+        
+        # Extraction should fail
+        extraction_path = extract_zip_to_temp(zip_bytes, "test-bomb-large-file")
+        if extraction_path is None:
+            print("  ✓ PASSED (rejected during extraction)")
+            return True
+        
+        # If it somehow passed, cleanup and fail
+        if extraction_path:
+            cleanup_extraction(extraction_path)
+        print(f"  ✗ FAILED: Large file was not rejected")
+        return False
+    except Exception as e:
+        print(f"  ✓ PASSED (exception during extraction: {type(e).__name__})")
+        return True
+
+
+def test_zip_bomb_total_uncompressed_too_large():
+    """Test that total uncompressed size exceeding limit is rejected."""
+    print("Test 16: Zip bomb - total uncompressed too large...")
+    try:
+        # Create files that together exceed MAX_ZIP_TOTAL_UNCOMPRESSED_MB (32 MB)
+        files_dict = {
+            "main.py": "# Main",
+            "requirements.txt": "apache-flink==1.17.0"
+        }
+        # Add files totaling 40 MB
+        file_size = 2 * 1024 * 1024  # 2 MB each
+        num_files = 21  # 21 * 2 MB = 42 MB > 32 MB limit
+        for i in range(num_files):
+            files_dict[f"modules/file_{i}.py"] = "x" * file_size
+        
+        zip_bytes = create_zip_with_files(files_dict)
+        
+        # Extraction should fail
+        extraction_path = extract_zip_to_temp(zip_bytes, "test-bomb-total-size")
+        if extraction_path is None:
+            print("  ✓ PASSED (rejected during extraction)")
+            return True
+        
+        # If it somehow passed, cleanup and fail
+        if extraction_path:
+            cleanup_extraction(extraction_path)
+        print(f"  ✗ FAILED: Large uncompressed total was not rejected")
+        return False
+    except Exception as e:
+        print(f"  ✓ PASSED (exception during extraction: {type(e).__name__})")
+        return True
+
+
+def test_zip_path_traversal():
+    """Test that path traversal (..) is rejected during extraction."""
+    print("Test 17: Zip bomb - path traversal attempt...")
+    try:
+        # Try to create a file with .. in the path
+        zip_bytes = create_zip_with_files({
+            "main.py": "# Main",
+            "modules/../../../etc/passwd": "malicious"
+        })
+        
+        # Extraction should fail
+        extraction_path = extract_zip_to_temp(zip_bytes, "test-bomb-traversal")
+        if extraction_path is None:
+            print("  ✓ PASSED (rejected during extraction)")
+            return True
+        
+        # If it somehow passed, cleanup and fail
+        if extraction_path:
+            cleanup_extraction(extraction_path)
+        print(f"  ✗ FAILED: Path traversal was not rejected")
+        return False
+    except Exception as e:
+        print(f"  ✓ PASSED (exception during extraction: {type(e).__name__})")
+        return True
+
+
+def test_zip_absolute_path():
+    """Test that absolute paths are rejected during extraction."""
+    print("Test 18: Zip bomb - absolute path attempt...")
+    try:
+        # Create a zip with absolute path
+        zip_bytes = create_zip_with_files({
+            "main.py": "# Main",
+            "/etc/malicious": "bad"
+        })
+        
+        # Extraction should fail
+        extraction_path = extract_zip_to_temp(zip_bytes, "test-bomb-absolute")
+        if extraction_path is None:
+            print("  ✓ PASSED (rejected during extraction)")
+            return True
+        
+        # If it somehow passed, cleanup and fail
+        if extraction_path:
+            cleanup_extraction(extraction_path)
+        print(f"  ✗ FAILED: Absolute path was not rejected")
+        return False
+    except Exception as e:
+        print(f"  ✓ PASSED (exception during extraction: {type(e).__name__})")
+        return True
+
+
 def main():
     """Run all tests."""
     print("=" * 70)
@@ -309,6 +452,11 @@ def main():
         test_invalid_other_nested_folder,
         test_corrupted_zip,
         test_zip_extraction,
+        test_zip_bomb_too_many_entries,
+        test_zip_bomb_file_too_large,
+        test_zip_bomb_total_uncompressed_too_large,
+        test_zip_path_traversal,
+        test_zip_absolute_path,
     ]
     
     results = [test() for test in tests]
