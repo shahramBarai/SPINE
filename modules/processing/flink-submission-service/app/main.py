@@ -15,13 +15,8 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from app.api import router
-from app.utils import config, configure_logging, get_logger
+from app.utils import config, get_logger
 
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-configure_logging()
 logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
