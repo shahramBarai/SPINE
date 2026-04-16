@@ -4,6 +4,8 @@
 
 FROM flink:1.20.3-scala_2.12-java17
 
+USER root
+
 # Install Python + pip
 RUN apt-get update -y && \
     apt-get install -y python3 python3-pip python3-dev python3-venv && \
@@ -30,6 +32,10 @@ RUN python3 -m venv .venv && \
 ENV PATH="/opt/pyFlink/.venv/bin:${PATH}"
 
 COPY app/ /opt/pyFlink/app/
+
+RUN chown -R flink:flink /opt/pyFlink
+
+USER flink
 
 # --------------------------------------------------------------------------- #
 # Start uvicorn
