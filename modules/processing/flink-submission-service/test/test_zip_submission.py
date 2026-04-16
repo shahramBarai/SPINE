@@ -27,8 +27,8 @@ from pathlib import Path
 
 import zipfile
 
-# Add the app module to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add the service root (which contains the app package) to path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.validation.zip_handler import (
     validate_zip_file,
