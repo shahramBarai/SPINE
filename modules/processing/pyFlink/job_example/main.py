@@ -40,11 +40,6 @@ TIMESCALE_PASSWORD  = "password"
 FLINK_JOB_NAME      = "PyFlink Smoke-Test: Kafka → TimescaleDB + Kafka"
 FLINK_PARALLELISM   = 1
 
-# Paths to connector JARs (populated by download_libs.sh)
-JAR_KAFKA           = "file:///opt/flink/lib/flink-sql-connector-kafka-3.1.0-1.18.jar"
-JAR_JDBC            = "file:///opt/flink/lib/flink-connector-jdbc-3.1.2-1.18.jar"
-JAR_POSTGRES        = "file:///opt/flink/lib/postgresql-42.7.3.jar"
-
 # ===========================================================================
 # Imports
 # ===========================================================================
@@ -79,8 +74,6 @@ def init_env():
     env = StreamExecutionEnvironment.get_execution_environment()
     # Set parallelism
     env.set_parallelism(FLINK_PARALLELISM)
-    # Register connector JARs (downloaded by download_libs.sh)
-    env.add_jars(JAR_KAFKA, JAR_JDBC, JAR_POSTGRES)
     return env
     
 

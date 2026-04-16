@@ -7,6 +7,3 @@ Cargo.lock
 
 # Local env files
 .env
-
-# Custom test files
-test/
