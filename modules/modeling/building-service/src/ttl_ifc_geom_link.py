@@ -8,6 +8,7 @@ import ifcopenshell.geom
 import ifcopenshell.guid
 import ifcopenshell.util
 import ifcopenshell.util.element
+import uuid
 import numpy as np
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
@@ -19,19 +20,8 @@ from itertools import combinations
 from pprint import pprint
 import plotly.graph_objects as go
 from collections import defaultdict, Counter
-from graph_manager import init_graph, save_graph, BRICK, BOT, PROPS, S223, FSO
+from graph_manager import init_graph, save_graph, BRICK, BOT, PROPS, S223, FSO, INST
 from ttl_ifc_system_link import pair_ifc_and_ttl
-
-# Configuration 
-# IFC types of MEP components to be linked
-mep_types = ['IfcEnergyConversionDevice',
- 'IfcFlowController',
- 'IfcFlowFitting',
- 'IfcFlowMovingDevice',
- 'IfcFlowSegment',
- 'IfcFlowTerminal',
- 'IfcFlowTreatmentDevice',
- 'IfcBuildingElementProxy']
 
 # --------------------------------------------------
 # 1️⃣ Geometry Settings
@@ -160,7 +150,6 @@ def get_product_polygon(product, settings, simplify_tolerance=0.001):
 # 4️⃣ Detect Adjacency Using Polygon Contact
 # --------------------------------------------------
 
-
 def polygons_adjacent(poly1, poly2, tolerance=0.2):
     """
     Checks if two polygons are adjacent.
@@ -188,7 +177,6 @@ def polygons_adjacent(poly1, poly2, tolerance=0.2):
     # This natively handles MultiPolygons (disconnected chunks) because Shapely 
     # sums the area of all parts automatically.
     return overlap.area >= min_intersection_area
-
 
 # --------------------------------------------------
 # 5️⃣ Compute Adjacency For One Storey
@@ -438,6 +426,9 @@ def compute_mep_adjacencies(mep_elements, settings, tolerance=0.05):
         # BROAD PHASE: Ask the R-Tree who is nearby (happens instantly)
         candidates = list(idx.intersection(search_box))
         
+        # Add source mesh once per outer element, not once per candidate
+        collision_manager.add_object('part1', data1["mesh"])
+        
         for j in candidates:
             # Prevent comparing an object to itself, and prevent checking (A, B) then (B, A)
             if i >= j:
@@ -448,14 +439,14 @@ def compute_mep_adjacencies(mep_elements, settings, tolerance=0.05):
                 continue
 
             # NARROW PHASE: Exact 3D mesh distance check
-            collision_manager.add_object('part1', data1["mesh"])
             distance = collision_manager.min_distance_single(data2["mesh"])
-            collision_manager.remove_object('part1') # clean up manager for next loop
             
             if distance is not None and distance <= tolerance:
                 # We found a verified connection!
                 unique_pair = tuple(sorted([data1["global_id"], data2["global_id"]]))
                 adjacencies.add(unique_pair)
+        
+        collision_manager.remove_object('part1')  # clean up for next outer element
 
     return list(adjacencies)
 
@@ -464,9 +455,7 @@ def get_all_system_adjacencies(ifc, settings, tolerance=0.05):
     # 1. Group elements using your custom function
     systems_dict = mep_elements_by_system(ifc)
     
-    # Use a global set to prevent duplicates (in case two elements 
-    # somehow belong to multiple of the same systems)
-    all_adjacencies = set()
+    system_adjacencies_dict = {}
     
     # 2. Loop through each isolated system
     for system_id, elements in systems_dict.items():
@@ -483,48 +472,14 @@ def get_all_system_adjacencies(ifc, settings, tolerance=0.05):
             tolerance
         )
         
-        # Add the results to our master list
-        all_adjacencies.update(system_adjacencies)
-        
-    return list(all_adjacencies)
+        # Check if pairs were found, then assign them to the dictionary key
+        if system_adjacencies:
+            system_adjacencies_dict[system_id] = list(system_adjacencies)
+        else:
+            # Optional: You can choose to include systems with no adjacencies as empty lists
+            system_adjacencies_dict[system_id] = []            
 
-
-def link_mep_components(graph, mep_ttl, adjacencies):
-    """
-    For paired MEP components, link them using FSO.connectedWith.
-    The directions are not in the model, using symmetric relations.
-    """            
-    graph_read = Graph()    
-    graph_read.parse(mep_ttl, format="ttl")    
-    
-    linked_components_count = 0     
-
-    for (guid_0, guid_1) in adjacencies:
-        # 1. Fetch URI for the first GUID
-        uri_0 = next(
-            graph_read.subjects(PROPS.globalIdIfcRoot_attribute_simple, Literal(guid_0)),
-            None
-        )
-        if uri_0 is None:
-            print(f"Warning: No URI found for GUID {guid_0}")
-            continue
-
-        # 2. Fetch URI for the second GUID
-        uri_1 = next(
-            graph_read.subjects(PROPS.globalIdIfcRoot_attribute_simple, Literal(guid_1)),
-            None
-        )
-        if uri_1 is None:
-            print(f"Warning: No URI found for GUID {guid_1}")
-            continue
-        
-        graph.add((uri_1, FSO.connectedWith, uri_0))
-        linked_components_count += 1
-                    
-    print(f"Linked {linked_components_count} adjacent MEP components (fso:connectedWith).") 
-    
-    return graph
-
+    return system_adjacencies_dict
 
 def get_connected_runs(pairs):
     """
@@ -563,6 +518,207 @@ def get_connected_runs(pairs):
 
     return connected_runs
 
+def get_simplified_chains_by_run(pairs, runs, rdf_graph):
+    """
+    Takes pre-computed pairs and connected runs, and extracts 
+    the separated components and grouped s223:connection(pipe,duct,cable) chains per run.
+    Uses the RDF graph to determine component types based on their subject URIs.
+    """
+    print("Building global adjacency graph...")
+    # 1. Build the global connection graph ONCE for O(1) lookups
+    graph = defaultdict(set)
+    for a, b in pairs:
+        graph[a].add(b)
+        graph[b].add(a)
+
+    # Cache for GUID to URI string lookups to keep it fast
+    guid_to_uri_str = {}
+    
+    def get_uri_string(guid):
+        if guid not in guid_to_uri_str:
+            uri = next(rdf_graph.subjects(PROPS.globalIdIfcRoot_attribute_simple, Literal(guid)), None)
+            # Store as lowercase string for easy substring matching
+            guid_to_uri_str[guid] = str(uri).lower() if uri else None
+        return guid_to_uri_str[guid]
+
+    simplified_runs = []
+
+    # 2. Process each isolated run independently
+    for run_idx, run_nodes in enumerate(runs):
+        separate_components = set()
+        pass_throughs = set()
+
+        # A. Categorize the nodes in THIS specific run
+        for guid in run_nodes:
+            neighbors = graph[guid]
+            
+            if len(neighbors) != 2:
+                separate_components.add(guid)
+            else:
+                uri_str = get_uri_string(guid)
+                
+                if not uri_str:
+                    # If it's missing from the graph for any reason, default to separate
+                    separate_components.add(guid)
+                    continue
+                
+                # Check if the subject URI contains the target type keywords
+                if "flowsegment" in uri_str or "flowfitting" in uri_str:
+                    pass_throughs.add(guid)
+                else:
+                    separate_components.add(guid)
+
+        # B. Group the continuous chains (s223:pipes)
+        grouped_chains = []
+        visited = set()
+
+        for node in pass_throughs:
+            if node not in visited:
+                current_chain = []
+                stack = [node]
+                
+                while stack:
+                    curr = stack.pop()
+                    if curr not in visited:
+                        visited.add(curr)
+                        current_chain.append(curr)
+                        
+                        for neighbor in graph[curr]:
+                            if neighbor in pass_throughs and neighbor not in visited:
+                                stack.append(neighbor)
+                
+                grouped_chains.append(current_chain)
+
+        # C. Save the parsed run data
+        simplified_runs.append({
+            "run_index": run_idx,
+            "separate": list(separate_components),
+            "chains": grouped_chains
+        })
+
+    return simplified_runs
+
+def chains_by_system(system_id, adjacencies, rdf_graph):
+    """
+    Link chains for a specific system. 
+    Returns a list of simplified runs with separate components and grouped chains.
+    """
+    if system_id not in adjacencies:
+        print(f"System {system_id} not found in adjacencies.")
+        return None
+
+    pairs = adjacencies[system_id]
+    runs = get_connected_runs(pairs)
+    simplified_runs = get_simplified_chains_by_run(pairs, runs, rdf_graph)
+    return simplified_runs  
+    
+
+def link_by_system(graph, system_guid, simplified_runs, all_pairs):
+    """
+    Generates a complete semantic graph in a single pass:
+    1. S223 / Brick hierarchical systems, runs, and chains.
+    2. FSO.connectedWith links between all adjacent physical components.
+    3. S223.cnx links between adjacent macro-entities (chains and junctions).
+    """
+    g = init_graph()
+    # 1. Centralized URI Cache
+    # Prevents querying the graph multiple times for the same GUID
+    guid_to_element_uri = {}
+    
+    def get_element_uri(guid):
+        if guid not in guid_to_element_uri:
+            uri = next(graph.subjects(PROPS.globalIdIfcRoot_attribute_simple, Literal(guid)), None)
+            guid_to_element_uri[guid] = uri
+        return guid_to_element_uri[guid]
+
+    # Get System URI
+    system_uuid = uuid.UUID(ifcopenshell.guid.expand(system_guid))
+    system_uri = INST[f"system_{system_uuid}"]
+    
+    # Dictionary to map raw GUIDs to their S223 Macro Entity URI (Junctions or Chains)
+    guid_to_macro_uri = {}
+
+    # ==========================================
+    # PHASE 1: Build S223 Hierarchy (without run entities)
+    # ==========================================
+    for run_data in simplified_runs:
+        # Process Separate Components (Junction-like macro entities)
+        for guid in run_data["separate"]:
+            element_uri = get_element_uri(guid)
+            if element_uri:
+                guid_to_macro_uri[guid] = element_uri  # Represents itself
+
+        # Process Chains (Connections)
+        for chain in run_data["chains"]:
+            chain_identifier = "_".join(sorted(chain))
+            connection_uri = INST[f"connection_{uuid.uuid5(uuid.NAMESPACE_OID, chain_identifier)}"]
+            
+            g.add((connection_uri, RDF.type, S223.Connection))
+            g.add((connection_uri, BRICK.isPartOf, system_uri)) 
+            
+            for guid in chain:
+                element_uri = get_element_uri(guid)
+                if element_uri:
+                    g.add((connection_uri, BRICK.hasPart, element_uri))
+                    guid_to_macro_uri[guid] = connection_uri # Mapped to parent chain
+
+    # ==========================================
+    # PHASE 2: Build Topological Links
+    # ==========================================
+    fso_count = 0
+    s223_cnx_count = 0
+    established_s223_cnx = set()
+
+    for guid1, guid2 in all_pairs:
+        uri1 = get_element_uri(guid1)
+        uri2 = get_element_uri(guid2)
+
+        if not uri1 or not uri2:
+            continue
+
+        # --- A. FSO Micro-Topology (Physical Adjacency) ---
+        # Adding symmetric relations since directionality isn't known
+        g.add((uri1, FSO.connectedWith, uri2))
+        g.add((uri2, FSO.connectedWith, uri1))
+        fso_count += 1
+
+        # --- B. S223 Macro-Topology (Chain/Junction Adjacency) ---
+        # Ensure both components are mapped within our current system runs
+        if guid1 in guid_to_macro_uri and guid2 in guid_to_macro_uri:
+            macro_uri_1 = guid_to_macro_uri[guid1]
+            macro_uri_2 = guid_to_macro_uri[guid2]
+
+            # If they belong to DIFFERENT macro entities, link the entities
+            if macro_uri_1 != macro_uri_2:
+                cnx_pair = tuple(sorted([str(macro_uri_1), str(macro_uri_2)]))
+                
+                if cnx_pair not in established_s223_cnx:
+                    g.add((macro_uri_1, S223.cnx, macro_uri_2))
+                    g.add((macro_uri_2, S223.cnx, macro_uri_1)) # Added symmetric cnx as well
+                    established_s223_cnx.add(cnx_pair)
+                    s223_cnx_count += 1
+
+    print(f"Graph population complete:")
+    print(f" - {fso_count} physical adjacencies added (FSO.connectedWith)")
+    print(f" - {s223_cnx_count} macro-topology links added (S223.cnx)")
+    
+    return g
+
+def link_mep_components(graph, mep_ttl, adjacencies):
+    """
+    For paired MEP components, link them using FSO.connectedWith.
+    The directions are not in the model, using symmetric relations.
+    """            
+    graph_read = Graph()    
+    graph_read.parse(mep_ttl, format="ttl")    
+
+    for system_id, pairs in adjacencies.items():
+        chains = chains_by_system(system_id, adjacencies, graph_read)
+        if chains is None:
+            continue
+        graph += link_by_system(graph_read, system_id, chains, pairs)
+    
+    return graph
 
 def visualize_ifc_elements(ifc, guids):
     """
@@ -600,7 +756,7 @@ def visualize_ifc_elements(ifc, guids):
 
     # Loop through the list of GUIDs
     for guid in guids:
-        element = ifc.by_id(guid)
+        element = ifc.by_guid(guid)
         
         if not element:
             print(f"Warning: GUID {guid} not found in the file.")
@@ -658,17 +814,11 @@ def link_mep_components_save(mep_ifc_folder, mep_ttl_folder, save_folder, tolera
     matched_pairs, no_ttl, no_ifc = pair_ifc_and_ttl(mep_ifc_folder, mep_ttl_folder)    
     for ifc_path, ttl_path in matched_pairs:
         print(f"Processing pair:\n  IFC: {ifc_path}\n  TTL: {ttl_path}")
-        mep_ifc = ifcopenshell.open(ifc_path)        
-        #mep_elements = []
-        #for mep_type in mep_types:
-        #    mep_elements.extend(mep_ifc.by_type(mep_type))
-        #print(f"Total MEP elements found: {len(mep_elements)}")
+        mep_ifc = ifcopenshell.open(ifc_path)     
         settings = create_geometry_settings()
-        #adjacencies = compute_mep_adjacencies(mep_elements, settings, tolerance)
-        #adjacencies = compute_mep_adjacencies_by_system(mep_ifc, mep_elements, settings, tolerance)
         adjacencies = get_all_system_adjacencies(mep_ifc, settings, tolerance)
         print(f"Total MEP adjacencies found: {len(adjacencies)}")
-        link_mep_components(graph, ttl_path, adjacencies)        
+        link_mep_components(graph, ttl_path, adjacencies)
         processed_ifc_count += 1
 
         save_file_name = Path(ttl_path).stem + "_connected.ttl"
