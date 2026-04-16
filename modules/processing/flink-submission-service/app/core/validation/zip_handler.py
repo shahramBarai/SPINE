@@ -157,7 +157,7 @@ def validate_zip_file(file_bytes: bytes, max_size_mb: int = None) -> dict:
                 return result
 
             has_requirements_txt = "requirements.txt" in result["file_list"]
-            has_modules_folder = any(f.startswith("modules/") for f in result["file_list"])
+            has_modules_folder = any(f.replace("\\", "/").startswith("modules/") for f in result["file_list"])
 
             logger.info(
                 f"Zip validation passed. Files: {len(result['file_list'])}, "
@@ -193,9 +193,8 @@ def extract_zip_to_temp(
 
     Returns
     -------
-    str
-        Absolute path to the extraction directory.
-    # or None if extraction fails.
+    str | None
+        Absolute path to the extraction directory, or None if extraction fails.
     """
     if session_id is None:
         session_id = str(uuid.uuid4())
@@ -210,7 +209,32 @@ def extract_zip_to_temp(
 
     try:
         with zipfile.ZipFile(BytesIO(file_bytes), "r") as zf:
-            zf.extractall(path=str(extraction_path))
+            infos = zf.infolist()
+            _validate_zip_members_for_extraction(infos)
+
+            base_path = extraction_path.resolve()
+            for info in infos:
+                normalized_name = info.filename.replace("\\", "/")
+
+                if info.is_dir():
+                    target_dir = (extraction_path / normalized_name).resolve()
+                    try:
+                        target_dir.relative_to(base_path)
+                    except ValueError:
+                        raise ValueError(f"Unsafe zip entry path: {info.filename}")
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    continue
+
+                target_path = (extraction_path / normalized_name).resolve()
+                try:
+                    target_path.relative_to(base_path)
+                except ValueError:
+                    raise ValueError(f"Unsafe zip entry path: {info.filename}")
+
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                with zf.open(info, "r") as src, target_path.open("wb") as dst:
+                    shutil.copyfileobj(src, dst)
+
         logger.info(f"Zip file extracted to {extraction_path}")
         return str(extraction_path)
     except Exception as exc:
@@ -219,6 +243,47 @@ def extract_zip_to_temp(
         if extraction_path.exists():
             shutil.rmtree(extraction_path)
         return None
+
+
+def _validate_zip_members_for_extraction(infos: list[zipfile.ZipInfo]) -> None:
+    """Reject suspicious zip metadata before extracting to disk."""
+    if len(infos) > config.MAX_ZIP_ENTRY_COUNT:
+        raise ValueError(
+            f"Zip contains too many entries ({len(infos)}). "
+            f"Maximum allowed is {config.MAX_ZIP_ENTRY_COUNT}."
+        )
+
+    max_member_size = config.MAX_ZIP_MEMBER_SIZE_MB * 1024 * 1024
+    max_total_size = config.MAX_ZIP_TOTAL_UNCOMPRESSED_MB * 1024 * 1024
+
+    total_uncompressed_size = 0
+    for info in infos:
+        normalized_name = info.filename.replace("\\", "/")
+
+        # Reject absolute and traversal paths even if a caller bypasses validate_zip_file().
+        if normalized_name.startswith("/"):
+            raise ValueError(f"Unsafe absolute zip path: {info.filename}")
+
+        parts = [part for part in normalized_name.split("/") if part not in {"", "."}]
+        if any(part == ".." for part in parts):
+            raise ValueError(f"Unsafe traversal zip path: {info.filename}")
+
+        # Ignore directories for size checks.
+        if info.is_dir():
+            continue
+
+        if info.file_size > max_member_size:
+            raise ValueError(
+                f"Zip entry '{info.filename}' is too large ({info.file_size} bytes). "
+                f"Maximum per file is {max_member_size} bytes."
+            )
+
+        total_uncompressed_size += info.file_size
+        if total_uncompressed_size > max_total_size:
+            raise ValueError(
+                f"Zip expands to too much data ({total_uncompressed_size} bytes). "
+                f"Maximum allowed total is {max_total_size} bytes."
+            )
 
 
 def cleanup_extraction(extraction_path: str) -> None:

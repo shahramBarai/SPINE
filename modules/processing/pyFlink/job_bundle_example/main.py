@@ -6,7 +6,7 @@ Submit with:
   flink run --detached \\
     --jobmanager jobmanager:8081 \\
     --python  ./job_bundle/main.py \\
-    --pyFiles ./job_bundle/modules \\
+    --pyFiles ./job_bundle \\
     --pyRequirements ./job_bundle/requirements.txt
 """
 

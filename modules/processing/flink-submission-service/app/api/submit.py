@@ -225,14 +225,8 @@ async def submit_zip(
         
         temp_request = SubmitRequest(
             entrypoint=f"{extraction_path}/main.py",
-            pyfiles_path=extraction_path,  # Includes modules/ folder and root .py files
+            pyfiles_path=extraction_path if has_modules else None,
             requirements_path=f"{extraction_path}/requirements.txt" if has_requirements else None,
-        )
-        
-        logger.info(
-            "Extracted bundle: entrypoint=main.py, modules=%s, requirements=%s",
-            has_modules,
-            has_requirements,
         )
 
         # -- Pre-submit validation ----------------------------------------------------

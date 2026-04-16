@@ -63,6 +63,6 @@ def submit_job(
 
     return SubmitResult(
         success=success,
-        error=proc.stderr.strip(),
+        error=None if success else proc.stderr.strip(),
         job_id=job_id,
     )

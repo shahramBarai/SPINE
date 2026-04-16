@@ -43,7 +43,6 @@ def run_pre_submit_checks(request: SubmitRequest) -> ValidationResult:
     3. Python syntax check on pyfiles directory (ast.parse)
     4. Import check on entrypoint (PYTHONPATH injection)
     """
-    all_steps = []
 
     # 1. Bundle path validation (files/directories exist)
     bundle_step = _validate_bundle_structure(request)
@@ -206,21 +205,24 @@ def _run_compileall_check(pyfiles_path: str) -> ValidationResult:
 
 def _run_import_check(entrypoint: str, pyfiles_path: str | None) -> ValidationResult:
     """
-    Try to import the entrypoint module with ``pyfiles_path`` on ``PYTHONPATH``.
+    Try to import the entrypoint module with staged bundle paths on PYTHONPATH.
 
-    The entrypoint ``main.py`` imports from ``spine_job.*`` which lives under
-    ``pyfiles/``.  We simulate Flink's ``--pyFiles`` behaviour by injecting the
-    directory onto ``PYTHONPATH`` before running a bare import check.
+    This check is generic for uploaded job bundles. It does not assume any
+    package name (for example, modules.*) or fixed folder name. Instead, it
+    simulates Flink's --pyFiles behavior by adding the provided bundle path
+    to PYTHONPATH, along with the entrypoint's own directory, and then trying
+    to import the entrypoint module.
 
-    The check runs in an isolated subprocess so it cannot pollute the worker
-    process if the bundle has side-effects at module level.
+    The check runs in an isolated subprocess so import-time side effects do not
+    pollute the worker process.
 
     Parameters
     ----------
     entrypoint:
-        Absolute path to the bundle's ``main.py``.
+        Absolute path to the staged bundle entrypoint (typically main.py).
     pyfiles_path:
-        Absolute path to the bundle's ``pyfiles`` directory, or ``None``.
+        Optional absolute path to additional Python files/directories to place on
+        PYTHONPATH (for example, an extracted bundle root or modules directory).
 
     Returns
     -------

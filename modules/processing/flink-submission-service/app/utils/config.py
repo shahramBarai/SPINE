@@ -40,13 +40,14 @@ SUBMIT_TIMEOUT: int = int(os.getenv("SUBMIT_TIMEOUT", "120"))
 # Maximum allowed zip file size in MB
 MAX_ZIP_SIZE_MB: int = int(os.getenv("MAX_ZIP_SIZE_MB", "1"))
 
-# Allowed file extensions within zip (comma-separated)
-ALLOWED_ZIP_EXTENSIONS: list[str] = os.getenv(
-    "ALLOWED_ZIP_EXTENSIONS", ".py,.txt"
-).split(",")
+# Maximum number of entries allowed in a zip file
+MAX_ZIP_ENTRY_COUNT: int = int(os.getenv("MAX_ZIP_ENTRY_COUNT", "256"))
 
-# Timeout for extracting zip files (seconds)
-ZIP_EXTRACT_TIMEOUT: int = int(os.getenv("ZIP_EXTRACT_TIMEOUT", "30"))
+# Maximum uncompressed size per zip entry in MB
+MAX_ZIP_MEMBER_SIZE_MB: int = int(os.getenv("MAX_ZIP_MEMBER_SIZE_MB", "5"))
+
+# Maximum total uncompressed size for all zip entries in MB
+MAX_ZIP_TOTAL_UNCOMPRESSED_MB: int = int(os.getenv("MAX_ZIP_TOTAL_UNCOMPRESSED_MB", "32"))
 
 # Directory for extracting temporary zip files
 TEMP_EXTRACTION_DIR: str = os.getenv("TEMP_EXTRACTION_DIR", "/tmp/flink-submissions")
