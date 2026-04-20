@@ -1,5 +1,5 @@
 import mqtt, { MqttClient, IClientOptions } from "mqtt";
-import { getMQTTConfig, type MQTTConfig } from "../utils/config";
+import { getMQTTConfig, type MQTTConfig } from "../utils/mqtt_config";
 import { logger } from "@spine/shared";
 
 interface ConnectionState {
