@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@spine/shared": "workspace:*",
-    "pusher-js": "^8.4.0",
     "dotenv": "^17.2.2"
   },
   "devDependencies": {

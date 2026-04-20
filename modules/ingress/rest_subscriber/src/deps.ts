@@ -5,7 +5,7 @@ import * as configs from "./utils/config";
 
 // Initialize services
 import { KafkaProducer, ServiceSchemaManager } from "@spine/messaging";
-import { EmpathicBuildingService } from "@spine/ingress";
+import { EmpathicBuildingService } from "./services/EmpathicBuildingService";
 import { getEmpathicBuildingConfig } from "./utils/config";
 import { ExcelService } from "./services/ExcelService";
 

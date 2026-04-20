@@ -7,7 +7,7 @@
 
 import { logger } from "@spine/shared";
 import { empathicBuildingService, kafkaProducer, excelService, configs } from "../deps";
-import type { DecodedEvent } from "@spine/ingress";
+import type { DecodedEvent } from "./eb_types";
 import {
     extractMeasurements,
     resolveCampusId,
@@ -97,7 +97,7 @@ function setupEmpathicBuildingHandlers(): void {
 
     // Error handling
     empathicBuildingService.on("error", (error: unknown) => {
-        logger.error("Empathic Building service error:", error);
+        logger.debug("Empathic Building service error event observed", { error });
     });
 
     empathicBuildingService.on("tokenRefreshError", (error: unknown) => {

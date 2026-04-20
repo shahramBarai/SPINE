@@ -19,7 +19,7 @@
         "@spine/ingress": ["../ingress/src/index.ts"]
       }
     },
-    "include": ["src/**/*.ts", "src/utils/config.ts"],
+    "include": ["src/**/*.ts"],
     "exclude": ["node_modules", "dist"],
     "references": [
       { "path": "../shared", "composite": true }

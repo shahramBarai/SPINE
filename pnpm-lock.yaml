@@ -334,9 +334,6 @@ importers:
       dotenv:
         specifier: ^17.2.2
         version: 17.2.3
-      pusher-js:
-        specifier: ^8.4.0
-        version: 8.4.0
     devDependencies:
       '@types/node':
         specifier: ^18.0.0
