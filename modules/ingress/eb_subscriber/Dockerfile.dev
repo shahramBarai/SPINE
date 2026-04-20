@@ -14,10 +14,10 @@ COPY packages/shared ./packages/shared
 COPY packages/ingress ./packages/ingress
 
 # Copy this module
-COPY modules/ingress/rest_subscriber ./modules/ingress/rest_subscriber
+COPY modules/ingress/eb_subscriber ./modules/ingress/eb_subscriber
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 RUN pnpm install --frozen-lockfile
 
-WORKDIR /workspace/modules/ingress/rest_subscriber
+WORKDIR /workspace/modules/ingress/eb_subscriber
 CMD ["pnpm", "run", "dev"]
