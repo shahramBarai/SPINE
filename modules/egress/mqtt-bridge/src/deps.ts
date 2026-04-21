@@ -1,5 +1,5 @@
-import { KafkaConsumerService, MQTTService } from "./services";
 import * as config from "./utils";
+import { KafkaConsumerService, MQTTService } from "./services";
 
 const KafkaConsumer = new KafkaConsumerService({ 
     config: config.getKafkaConfig(),
