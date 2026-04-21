@@ -5,7 +5,6 @@ if (!clientId) {
 
 // MQTT configuration
 interface MQTTConfig {
-    enabled: boolean;
     brokerUrl: string;
     clientId: string;
     qos: 0 | 1 | 2;
@@ -19,14 +18,7 @@ interface MQTTConfig {
 
 let mqttConfig: MQTTConfig | undefined = undefined;
 
-const getMQTTConfig = (): MQTTConfig | null => {
-    const MQTT_ENABLED = process.env.MQTT_ENABLED;
-    
-    // If MQTT is explicitly disabled, return null
-    if (MQTT_ENABLED === "false") {
-        return null;
-    }
-
+const getMQTTConfig = (): MQTTConfig => {
     if (mqttConfig) {
         return mqttConfig;
     }
@@ -42,7 +34,7 @@ const getMQTTConfig = (): MQTTConfig | null => {
 
     // If no broker URL is provided, MQTT is disabled
     if (!MQTT_BROKER_URL) {
-        return null;
+        throw new Error("MQTT_BROKER_URL is not set");
     }
 
     const qos = (MQTT_QOS ? parseInt(MQTT_QOS) : 0) as 0 | 1 | 2;
@@ -56,7 +48,6 @@ const getMQTTConfig = (): MQTTConfig | null => {
         : 30000;
 
     mqttConfig = {
-        enabled: true,
         brokerUrl: MQTT_BROKER_URL,
         clientId: `${clientId}-mqtt`,
         qos,
@@ -71,14 +62,8 @@ const getMQTTConfig = (): MQTTConfig | null => {
     return mqttConfig;
 };
 
-// Helper to check if MQTT is enabled
-const isMQTTEnabled = (): boolean => {
-    return getMQTTConfig() !== null;
-};
-
 export {
     getMQTTConfig,
-    type MQTTConfig,
-    isMQTTEnabled,
+    type MQTTConfig
 };
 

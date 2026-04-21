@@ -5,6 +5,6 @@ const KafkaConsumer = new KafkaConsumerService({
     config: config.getKafkaConfig(),
     topic: config.getKafkaTopic()
 });
-const MQTTClient = new MQTTService();
+const MQTTClient = new MQTTService(config.getMQTTConfig());
 
 export { KafkaConsumer, MQTTClient };
