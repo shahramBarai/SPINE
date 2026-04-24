@@ -1,19 +1,34 @@
 // Core dependencies
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import * as config from "./utils/config";
 
 // Types
 import { FastifyPluginAsync, FastifyInstance } from "fastify";
 
 // Initialize services
-import { KafkaProducerService } from "./services/KafkaProducerService";
-import { ServiceSchemaManager } from "./services/SchemaRegistryService";
+import { KafkaProducer, ServiceSchemaManager } from "@spine/messaging";
 import { MQTTService } from "./services/MQTTService";
 
-const KafkaProducer = new KafkaProducerService();
-const SchemaManager = new ServiceSchemaManager();
-const MqttService = new MQTTService(SchemaManager, KafkaProducer);
+let kafkaConfig: config.KafkaConfig | undefined = undefined;
+let kafkaTopic: string | undefined = undefined;
+let schemaRegistryConfig: config.SchemaRegistryConfig | undefined = undefined;
+let mqttConfig: config.MQTTConfig | undefined = undefined;
+
+try {
+    kafkaConfig = config.getKafkaConfig(config.CLIENT_ID);
+    kafkaTopic = config.getKafkaTopic();
+    schemaRegistryConfig = config.getSchemaRegistryConfig();
+    mqttConfig = config.getMQTTConfig(config.CLIENT_ID);
+} catch (error) {
+    console.error("Error loading configuration:", error);
+    process.exit(1);
+}
+
+const kafkaProducer = new KafkaProducer(kafkaConfig, kafkaTopic);
+const schemaManager = new ServiceSchemaManager(schemaRegistryConfig);
+const mqttService = new MQTTService(mqttConfig, schemaManager, kafkaProducer);
 
 export { Fastify, cors };
 export type { FastifyPluginAsync, FastifyInstance };
-export { KafkaProducer, SchemaManager, MqttService };
+export { kafkaProducer, schemaManager, mqttService };

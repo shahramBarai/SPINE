@@ -2,9 +2,9 @@ import * as configs from "./utils/config";
 import {
     Fastify,
     cors,
-    KafkaProducer,
-    SchemaManager,
-    MqttService,
+    kafkaProducer,
+    schemaManager,
+    mqttService,
 } from "./deps";
 import { logger } from "./utils/logger";
 import { healthRoutes } from "./routes/health";
@@ -53,26 +53,26 @@ async function setupServer() {
 async function main() {
     // Connect to Kafka producer
     // TODO: Add reconncetion logic in to KafkaProducerService
-    if (!(await KafkaProducer.connect())) {
+    if (!(await kafkaProducer.connect())) {
         throw new Error(`Kafka producer is not connected!`);
     }
 
     // Initialize schema manager
     // TODO: Add reconncetion logic in here
-    if (!(await SchemaManager.initialize())) {
+    if (!(await schemaManager.initialize())) {
         throw new Error(`Schema manager is not connected!`);
     }
     // Connect and start MQTT service
-    MqttService.initialize();
+    mqttService.initialize();
 
     // Handle graceful shutdown
     const shutdown = async () => {
         logger.error("\n\nShutting down MQTT Subscriber Service...");
         // clearInterval(keepAlive);
 
-        await MqttService.disconnect();
+        await mqttService.disconnect();
 
-        await KafkaProducer.disconnect();
+        await kafkaProducer.disconnect();
 
         logger.debug("Service shutdown complete");
         process.exit(0);

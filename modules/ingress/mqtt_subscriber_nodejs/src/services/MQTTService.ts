@@ -7,9 +7,8 @@ import mqtt, {
     IConnackPacket,
     IPublishPacket,
 } from "mqtt";
-import { getMQTTConfig, MQTTConfig } from "../utils/config";
-import { ServiceSchemaManager } from "./SchemaRegistryService";
-import { KafkaProducerService } from "./KafkaProducerService";
+import { MQTTConfig } from "../utils/config";
+import type { KafkaProducer, ServiceSchemaManager } from "@spine/messaging";
 import { logger } from "../utils/logger";
 
 interface ConnectionState {
@@ -33,13 +32,14 @@ class MQTTService {
         reconnectAttempts: 0,
     };
     private schemaManager: ServiceSchemaManager;
-    private kafkaProducer: KafkaProducerService;
+    private kafkaProducer: KafkaProducer;
 
     constructor(
+        config: MQTTConfig,
         schemaManager: ServiceSchemaManager,
-        kafkaProducer: KafkaProducerService,
+        kafkaProducer: KafkaProducer,
     ) {
-        this.config = getMQTTConfig();
+        this.config = config;
         this.schemaManager = schemaManager;
         this.kafkaProducer = kafkaProducer;
     }
@@ -271,9 +271,10 @@ class MQTTService {
             }
 
             // Send to Kafka
-            await this.kafkaProducer.sendMessage(
-                JSON.stringify(processedMessage),
-            );
+            await this.kafkaProducer.sendMessage({
+                key: processedMessage.sensor_id,
+                value: JSON.stringify(processedMessage),
+            });
             logger.debug(
                 `MQTT service: Successfully processed and sent message from topic ${topic} to Kafka`,
             );
