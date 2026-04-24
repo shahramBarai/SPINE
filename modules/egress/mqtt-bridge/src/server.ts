@@ -19,10 +19,8 @@ async function kafkaConsumerMessageHandler(message: string, topic: string, parti
         const topic = `${messageData.campusId}/${messageData.sensorId}`;
         const messageOutput = JSON.stringify(messageData.measurement);
 
-        // Publish to MQTT (if enabled)
-        if (MQTTClient.isEnabled()) {
-            await MQTTClient.publish(topic, messageOutput);
-        }
+        // Publish to MQTT
+        await MQTTClient.publish(topic, messageOutput);
 
         // Log successful processing
         logger.debug(`MQTT bridge service: Processed message for topic ${topic}`);

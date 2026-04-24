@@ -104,36 +104,8 @@ const parseCustomHeaders = (rawHeaders: string | undefined) => {
     );
 };
 
-const parseMethod = (value: string | undefined, fallback: SupportedMethod) => {
-    if (!value) {
-        return fallback;
-    }
-    return value.toUpperCase() === "POST" ? "POST" : "GET";
-};
-
-const parseEndpoints = (
-    rawEndpoints: string,
-    fallbackMethod: SupportedMethod,
-): RestEndpointConfig[] => {
-    return rawEndpoints
-        .split(",")
-        .map((entry) => entry.trim())
-        .filter(Boolean)
-        .map((entry) => {
-            const [path, method, body] = entry.split("|").map((part) => part.trim());
-            if (!path) {
-                throw new Error("REST_API_ENDPOINTS contains an empty path");
-            }
-            return {
-                path,
-                method: parseMethod(method, fallbackMethod),
-                bodyTemplate: parseJSON(body),
-            };
-        });
-};
-
 // Empathic Building API configuration
-import type { EmpathicBuildingConfig } from "@spine/ingress";
+import type { EmpathicBuildingConfig } from "../eb_types";
 
 let empathicBuildingConfig: EmpathicBuildingConfig | undefined = undefined;
 

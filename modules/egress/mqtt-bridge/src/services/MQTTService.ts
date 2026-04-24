@@ -1,5 +1,5 @@
 import mqtt, { MqttClient, IClientOptions } from "mqtt";
-import { getMQTTConfig, type MQTTConfig } from "../utils/config";
+import { type MQTTConfig } from "../utils/mqtt_config";
 import { logger } from "@spine/shared";
 
 interface ConnectionState {
@@ -11,7 +11,7 @@ interface ConnectionState {
 }
 
 class MQTTService {
-    private config: MQTTConfig | null;
+    private config: MQTTConfig;
     private client: MqttClient | null = null;
     private connectionState: ConnectionState = {
         isConnected: false,
@@ -19,26 +19,14 @@ class MQTTService {
         reconnectAttempts: 0,
     };
 
-    constructor() {
-        this.config = getMQTTConfig();
-    }
-
-    /**
-     * Check if MQTT gateway is enabled
-     */
-    isEnabled(): boolean {
-        return this.config !== null;
+    constructor(config: MQTTConfig) {
+        this.config = config;
     }
 
     /**
      * Connect to MQTT broker
      */
     async connect(): Promise<boolean> {
-        if (!this.config) {
-            logger.info("MQTT gateway: MQTT is disabled, skipping connection");
-            return false;
-        }
-
         if (this.connectionState.isConnected || this.connectionState.isConnecting) {
             logger.warn("MQTT gateway: Already connected or connecting");
             return this.connectionState.isConnected;
@@ -113,11 +101,6 @@ class MQTTService {
      * Publish sensor data to MQTT broker
      */
     async publish(topic: string, message: string): Promise<void> {
-        if (!this.config) {
-            // MQTT is disabled, silently skip
-            return;
-        }
-
         if (!this.client || !this.connectionState.isConnected) {
             logger.warn(
                 "MQTT gateway: Cannot publish, not connected to MQTT broker",
@@ -127,7 +110,7 @@ class MQTTService {
 
         try {
             await new Promise<void>((resolve, reject) => {
-                if (!this.client || !this.config) {
+                if (!this.client) {
                     reject(new Error("MQTT client not available"));
                     return;
                 }

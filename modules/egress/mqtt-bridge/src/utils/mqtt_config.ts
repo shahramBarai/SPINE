@@ -1,21 +1,10 @@
-import dotenv from "dotenv";
-dotenv.config();
-
 const clientId = process.env.CLIENT_ID;
 if (!clientId) {
     throw new Error("CLIENT_ID is not set");
 }
 
-const NODE_ENV: "prod" | "dev" = (process.env.NODE_ENV || "prod") as
-    | "prod"
-    | "dev";
-
-const HOST = process.env.HOST || "0.0.0.0";
-const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
-
 // MQTT configuration
 interface MQTTConfig {
-    enabled: boolean;
     brokerUrl: string;
     clientId: string;
     qos: 0 | 1 | 2;
@@ -29,14 +18,26 @@ interface MQTTConfig {
 
 let mqttConfig: MQTTConfig | undefined = undefined;
 
-const getMQTTConfig = (): MQTTConfig | null => {
-    const MQTT_ENABLED = process.env.MQTT_ENABLED;
-    
-    // If MQTT is explicitly disabled, return null
-    if (MQTT_ENABLED === "false") {
-        return null;
-    }
-
+/**
+ * Reads MQTT configuration from environment variables and returns an MQTTConfig object.
+ * 
+ * Environment variables:
+ * - MQTT_BROKER_URL: The URL of the MQTT broker (required)
+ * - MQTT_QOS: The Quality of Service level (0, 1, or 2) (default: 0)
+ * - MQTT_RETAIN: Whether to retain messages (true or false) (default: false)
+ * - MQTT_KEEPALIVE: Keep-alive interval in seconds (default: 60)
+ * - MQTT_RECONNECT_PERIOD: Reconnect period in milliseconds (default: 1000)
+ * - MQTT_CONNECT_TIMEOUT: Connection timeout in milliseconds (default: 30000)
+ * - MQTT_USERNAME: Username for MQTT authentication (optional)
+ * - MQTT_PASSWORD: Password for MQTT authentication (optional)
+ * 
+ * If MQTT_BROKER_URL is not set, an error is thrown.
+ * The function caches the configuration after the first read to avoid redundant processing.
+ * 
+ * @returns {MQTTConfig} The MQTT configuration object
+ * @throws {Error} If MQTT_BROKER_URL is not set
+ */
+const getMQTTConfig = (): MQTTConfig => {
     if (mqttConfig) {
         return mqttConfig;
     }
@@ -52,7 +53,7 @@ const getMQTTConfig = (): MQTTConfig | null => {
 
     // If no broker URL is provided, MQTT is disabled
     if (!MQTT_BROKER_URL) {
-        return null;
+        throw new Error("MQTT_BROKER_URL is not set");
     }
 
     const qos = (MQTT_QOS ? parseInt(MQTT_QOS) : 0) as 0 | 1 | 2;
@@ -66,7 +67,6 @@ const getMQTTConfig = (): MQTTConfig | null => {
         : 30000;
 
     mqttConfig = {
-        enabled: true,
         brokerUrl: MQTT_BROKER_URL,
         clientId: `${clientId}-mqtt`,
         qos,
@@ -81,17 +81,8 @@ const getMQTTConfig = (): MQTTConfig | null => {
     return mqttConfig;
 };
 
-// Helper to check if MQTT is enabled
-const isMQTTEnabled = (): boolean => {
-    return getMQTTConfig() !== null;
-};
-
+export type { MQTTConfig };
 export {
-    NODE_ENV,
-    HOST,
-    PORT,
-    getMQTTConfig,
-    type MQTTConfig,
-    isMQTTEnabled,
+    getMQTTConfig
 };
 

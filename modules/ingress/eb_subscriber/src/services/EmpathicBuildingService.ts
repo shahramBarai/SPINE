@@ -3,7 +3,7 @@ import Pusher, { Channel} from "pusher-js";
 import { logger } from "@spine/shared";
 import { gunzipSync } from "node:zlib";
 import { Buffer } from "node:buffer";
-import type { EmpathicBuildingConfig, DecodedEvent, ChannelSubscription, TokenData } from "./types";
+import type { EmpathicBuildingConfig, DecodedEvent, ChannelSubscription, TokenData } from "../utils/eb_types";
 
 class EmpathicBuildingService extends EventEmitter {
     private readonly config: EmpathicBuildingConfig;
@@ -14,6 +14,10 @@ class EmpathicBuildingService extends EventEmitter {
     private tokenRefreshTimer?: NodeJS.Timeout;
     private isConnected = false;
     private tokenData?: TokenData;
+
+    private hasCredentialAuth(): boolean {
+        return Boolean(this.config.username && this.config.password);
+    }
 
     constructor(config: EmpathicBuildingConfig) {
         super();
@@ -31,12 +35,6 @@ class EmpathicBuildingService extends EventEmitter {
      * Authenticate with Empathic Building API
      */
     private async authenticate(): Promise<string> {
-        // If bearerToken is provided, use it directly
-        if (this.config.bearerToken) {
-            logger.debug("Using provided bearer token");
-            return this.config.bearerToken;
-        }
-
         // If we have valid token data and it's not expired, use it
         if (this.tokenData && Date.now() < this.tokenData.expiresAt - 60000) {
             // Refresh 1 minute before expiration
@@ -56,15 +54,23 @@ class EmpathicBuildingService extends EventEmitter {
             }
         }
 
-        // Perform new login
-        if (!this.config.username || !this.config.password) {
+        // Prefer credential-based authentication when credentials are available,
+        // even if a static bearer token is also configured. This enables refresh.
+        if (!this.hasCredentialAuth()) {
+            if (this.config.bearerToken) {
+                logger.debug("Using provided bearer token");
+                return this.config.bearerToken;
+            }
             throw new Error("Username and password required for authentication");
         }
 
+        const username = this.config.username as string;
+        const password = this.config.password as string;
+
         logger.info("Authenticating with Empathic Building API...");
         const formData = new URLSearchParams();
-        formData.append("email", this.config.username);
-        formData.append("password", this.config.password);
+        formData.append("email", username);
+        formData.append("password", password);
 
         const response = await fetch(`${this.config.baseUrl}/v1/login`, {
             method: "POST",
@@ -152,7 +158,7 @@ class EmpathicBuildingService extends EventEmitter {
         }
 
         // Only schedule if we have credentials to refresh
-        if (!this.config.username || !this.config.password) {
+        if (!this.hasCredentialAuth()) {
             return; // Can't refresh without credentials
         }
 
@@ -342,8 +348,7 @@ class EmpathicBuildingService extends EventEmitter {
                         error !== null &&
                         "status" in error &&
                         (error.status === 401 || error.status === 403) &&
-                        this.config.username &&
-                        this.config.password
+                        this.hasCredentialAuth()
                     ) {
                         logger.warn(
                             "Authentication error detected. Will attempt to re-authenticate and reconnect.",
@@ -516,6 +521,7 @@ class EmpathicBuildingService extends EventEmitter {
         this.reconnectTimer = setTimeout(() => {
             this.connect().catch((error) => {
                 logger.error("Reconnection attempt failed:", error);
+                this.handleReconnect();
             });
         }, delay);
     }
@@ -615,4 +621,3 @@ class EmpathicBuildingService extends EventEmitter {
 }
 
 export { EmpathicBuildingService };
-

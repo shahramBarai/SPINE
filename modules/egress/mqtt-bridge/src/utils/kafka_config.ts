@@ -4,6 +4,22 @@ import type { KafkaConfig, SchemaRegistryConfig } from "@spine/messaging";
 let kafkaConfig: KafkaConfig | undefined = undefined;
 let kafkaTopic: string | undefined = undefined;
 
+/**
+ * Reads Kafka configuration from environment variables and returns a KafkaConfig object.
+ * 
+ * Environment variables:
+ * - KAFKA_BROKERS: Comma-separated list of Kafka broker addresses (required)
+ * - KAFKA_CONNECTION_TIMEOUT: Connection timeout in milliseconds (default: 10000)
+ * - KAFKA_REQUEST_TIMEOUT: Request timeout in milliseconds (default: 30000)
+ * - KAFKA_RETRY_RETRIES: Number of retry attempts for failed requests (default: 5)
+ * - CLIENT_ID: Client ID for Kafka producer/consumer (default: "eb_subscriber")
+ * 
+ * If KAFKA_BROKERS is not set, an error is thrown.
+ * The function caches the configuration after the first read to avoid redundant processing.
+ * 
+ * @returns {KafkaConfig} The Kafka configuration object
+ * @throws {Error} If KAFKA_BROKERS is not set
+ */
 const getKafkaConfig = (): KafkaConfig => {
     if (kafkaConfig) return kafkaConfig;
     const KAFKA_BROKERS = process.env.KAFKA_BROKERS;
@@ -11,17 +27,9 @@ const getKafkaConfig = (): KafkaConfig => {
         throw new Error(`Kafka configuration is not set: KAFKA_BROKERS=${KAFKA_BROKERS}`);
     }
 
-    let KAFKA_CONNECTION_TIMEOUT: number;
-    let KAFKA_REQUEST_TIMEOUT: number;
-    let KAFKA_RETRY_RETRIES: number;
-
-    try {
-        KAFKA_CONNECTION_TIMEOUT = parseInt(process.env.KAFKA_CONNECTION_TIMEOUT || "10000");
-        KAFKA_REQUEST_TIMEOUT = parseInt(process.env.KAFKA_REQUEST_TIMEOUT || "30000");
-        KAFKA_RETRY_RETRIES = parseInt(process.env.KAFKA_RETRY_RETRIES || "5");
-    } catch (error) {
-        throw new Error("Kafka configuration is not set properly. Make sure KAFKA_CONNECTION_TIMEOUT, KAFKA_REQUEST_TIMEOUT, and KAFKA_RETRY_RETRIES are set to valid numbers.");
-    }
+    const KAFKA_CONNECTION_TIMEOUT: number = parseInt(process.env.KAFKA_CONNECTION_TIMEOUT || "10000");
+    const KAFKA_REQUEST_TIMEOUT: number = parseInt(process.env.KAFKA_REQUEST_TIMEOUT || "30000");
+    const KAFKA_RETRY_RETRIES: number = parseInt(process.env.KAFKA_RETRY_RETRIES || "5");
 
     const CLIENT_ID = process.env.CLIENT_ID || "eb_subscriber";
 
@@ -36,6 +44,18 @@ const getKafkaConfig = (): KafkaConfig => {
     return kafkaConfig;
 };
 
+/**
+ * Reads Kafka topic from environment variable and returns it as a string.
+ * 
+ * Environment variable:
+ * - KAFKA_TOPIC_SENSOR_DATA: The Kafka topic to subscribe to for sensor data (required)
+ * 
+ * If KAFKA_TOPIC_SENSOR_DATA is not set, an error is thrown.
+ * The function caches the topic after the first read to avoid redundant processing.
+ * 
+ * @returns {string} The Kafka topic
+ * @throws {Error} If KAFKA_TOPIC_SENSOR_DATA is not set
+ */
 const getKafkaTopic = (): string => {
     if (kafkaTopic) return kafkaTopic;
     kafkaTopic = process.env.KAFKA_TOPIC_SENSOR_DATA;
@@ -72,6 +92,8 @@ const getSchemaRegistryConfig = (): SchemaRegistryConfig => {
     };
     return schemaRegistryConfig;
 };
+
+export type { KafkaConfig, SchemaRegistryConfig };
 
 export {
     getKafkaConfig,
