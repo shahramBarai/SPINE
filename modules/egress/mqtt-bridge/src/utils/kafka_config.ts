@@ -11,17 +11,9 @@ const getKafkaConfig = (): KafkaConfig => {
         throw new Error(`Kafka configuration is not set: KAFKA_BROKERS=${KAFKA_BROKERS}`);
     }
 
-    let KAFKA_CONNECTION_TIMEOUT: number;
-    let KAFKA_REQUEST_TIMEOUT: number;
-    let KAFKA_RETRY_RETRIES: number;
-
-    try {
-        KAFKA_CONNECTION_TIMEOUT = parseInt(process.env.KAFKA_CONNECTION_TIMEOUT || "10000");
-        KAFKA_REQUEST_TIMEOUT = parseInt(process.env.KAFKA_REQUEST_TIMEOUT || "30000");
-        KAFKA_RETRY_RETRIES = parseInt(process.env.KAFKA_RETRY_RETRIES || "5");
-    } catch (error) {
-        throw new Error("Kafka configuration is not set properly. Make sure KAFKA_CONNECTION_TIMEOUT, KAFKA_REQUEST_TIMEOUT, and KAFKA_RETRY_RETRIES are set to valid numbers.");
-    }
+    const KAFKA_CONNECTION_TIMEOUT: number = parseInt(process.env.KAFKA_CONNECTION_TIMEOUT || "10000");
+    const KAFKA_REQUEST_TIMEOUT: number = parseInt(process.env.KAFKA_REQUEST_TIMEOUT || "30000");
+    const KAFKA_RETRY_RETRIES: number = parseInt(process.env.KAFKA_RETRY_RETRIES || "5");
 
     const CLIENT_ID = process.env.CLIENT_ID || "eb_subscriber";
 
