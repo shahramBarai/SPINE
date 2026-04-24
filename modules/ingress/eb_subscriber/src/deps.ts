@@ -1,6 +1,5 @@
 import Fastify, { type FastifyPluginAsync, type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
-import { z } from "zod";
 import * as configs from "./utils/config";
 
 // Initialize services
@@ -26,7 +25,6 @@ export {
     FastifyPluginAsync,
     FastifyInstance,
     cors,
-    z,
     configs,
     excelService,
     kafkaProducer,
