@@ -4,6 +4,22 @@ import type { KafkaConfig, SchemaRegistryConfig } from "@spine/messaging";
 let kafkaConfig: KafkaConfig | undefined = undefined;
 let kafkaTopic: string | undefined = undefined;
 
+/**
+ * Reads Kafka configuration from environment variables and returns a KafkaConfig object.
+ * 
+ * Environment variables:
+ * - KAFKA_BROKERS: Comma-separated list of Kafka broker addresses (required)
+ * - KAFKA_CONNECTION_TIMEOUT: Connection timeout in milliseconds (default: 10000)
+ * - KAFKA_REQUEST_TIMEOUT: Request timeout in milliseconds (default: 30000)
+ * - KAFKA_RETRY_RETRIES: Number of retry attempts for failed requests (default: 5)
+ * - CLIENT_ID: Client ID for Kafka producer/consumer (default: "eb_subscriber")
+ * 
+ * If KAFKA_BROKERS is not set, an error is thrown.
+ * The function caches the configuration after the first read to avoid redundant processing.
+ * 
+ * @returns {KafkaConfig} The Kafka configuration object
+ * @throws {Error} If KAFKA_BROKERS is not set
+ */
 const getKafkaConfig = (): KafkaConfig => {
     if (kafkaConfig) return kafkaConfig;
     const KAFKA_BROKERS = process.env.KAFKA_BROKERS;
@@ -28,6 +44,18 @@ const getKafkaConfig = (): KafkaConfig => {
     return kafkaConfig;
 };
 
+/**
+ * Reads Kafka topic from environment variable and returns it as a string.
+ * 
+ * Environment variable:
+ * - KAFKA_TOPIC_SENSOR_DATA: The Kafka topic to subscribe to for sensor data (required)
+ * 
+ * If KAFKA_TOPIC_SENSOR_DATA is not set, an error is thrown.
+ * The function caches the topic after the first read to avoid redundant processing.
+ * 
+ * @returns {string} The Kafka topic
+ * @throws {Error} If KAFKA_TOPIC_SENSOR_DATA is not set
+ */
 const getKafkaTopic = (): string => {
     if (kafkaTopic) return kafkaTopic;
     kafkaTopic = process.env.KAFKA_TOPIC_SENSOR_DATA;
@@ -64,6 +92,8 @@ const getSchemaRegistryConfig = (): SchemaRegistryConfig => {
     };
     return schemaRegistryConfig;
 };
+
+export type { KafkaConfig, SchemaRegistryConfig };
 
 export {
     getKafkaConfig,

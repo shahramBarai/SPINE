@@ -24,13 +24,6 @@ class MQTTService {
     }
 
     /**
-     * Check if MQTT gateway is enabled
-     */
-    isEnabled(): boolean {
-        return this.config !== null;
-    }
-
-    /**
      * Connect to MQTT broker
      */
     async connect(): Promise<boolean> {
@@ -117,7 +110,7 @@ class MQTTService {
 
         try {
             await new Promise<void>((resolve, reject) => {
-                if (!this.client || !this.config) {
+                if (!this.client) {
                     reject(new Error("MQTT client not available"));
                     return;
                 }

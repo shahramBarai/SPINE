@@ -104,13 +104,6 @@ const parseCustomHeaders = (rawHeaders: string | undefined) => {
     );
 };
 
-const parseMethod = (value: string | undefined, fallback: SupportedMethod) => {
-    if (!value) {
-        return fallback;
-    }
-    return value.toUpperCase() === "POST" ? "POST" : "GET";
-};
-
 // Empathic Building API configuration
 import type { EmpathicBuildingConfig } from "../eb_types";
 

@@ -18,6 +18,25 @@ interface MQTTConfig {
 
 let mqttConfig: MQTTConfig | undefined = undefined;
 
+/**
+ * Reads MQTT configuration from environment variables and returns an MQTTConfig object.
+ * 
+ * Environment variables:
+ * - MQTT_BROKER_URL: The URL of the MQTT broker (required)
+ * - MQTT_QOS: The Quality of Service level (0, 1, or 2) (default: 0)
+ * - MQTT_RETAIN: Whether to retain messages (true or false) (default: false)
+ * - MQTT_KEEPALIVE: Keep-alive interval in seconds (default: 60)
+ * - MQTT_RECONNECT_PERIOD: Reconnect period in milliseconds (default: 1000)
+ * - MQTT_CONNECT_TIMEOUT: Connection timeout in milliseconds (default: 30000)
+ * - MQTT_USERNAME: Username for MQTT authentication (optional)
+ * - MQTT_PASSWORD: Password for MQTT authentication (optional)
+ * 
+ * If MQTT_BROKER_URL is not set, an error is thrown.
+ * The function caches the configuration after the first read to avoid redundant processing.
+ * 
+ * @returns {MQTTConfig} The MQTT configuration object
+ * @throws {Error} If MQTT_BROKER_URL is not set
+ */
 const getMQTTConfig = (): MQTTConfig => {
     if (mqttConfig) {
         return mqttConfig;
@@ -62,8 +81,8 @@ const getMQTTConfig = (): MQTTConfig => {
     return mqttConfig;
 };
 
+export type { MQTTConfig };
 export {
-    getMQTTConfig,
-    type MQTTConfig
+    getMQTTConfig
 };
 
