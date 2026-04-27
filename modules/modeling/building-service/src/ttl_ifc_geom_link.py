@@ -621,15 +621,19 @@ def link_by_system(graph, system_guid, simplified_runs, all_pairs):
     3. S223.cnx links between adjacent macro-entities (chains and junctions).
     """
     g = init_graph()
-    # 1. Centralized URI Cache
-    # Prevents querying the graph multiple times for the same GUID
+    required_guids = {guid for pair in all_pairs for guid in pair}
+    guid_literals = {Literal(guid): guid for guid in required_guids}
     guid_to_element_uri = {}
-    
+
+    for subject, guid_literal in graph.subject_objects(PROPS.globalIdIfcRoot_attribute_simple):
+        guid = guid_literals.get(guid_literal)
+        if guid is not None and guid not in guid_to_element_uri:
+            guid_to_element_uri[guid] = subject
+            if len(guid_to_element_uri) == len(required_guids):
+                break
+
     def get_element_uri(guid):
-        if guid not in guid_to_element_uri:
-            uri = next(graph.subjects(PROPS.globalIdIfcRoot_attribute_simple, Literal(guid)), None)
-            guid_to_element_uri[guid] = uri
-        return guid_to_element_uri[guid]
+        return guid_to_element_uri.get(guid)
 
     # Get System URI
     system_uuid = uuid.UUID(ifcopenshell.guid.expand(system_guid))
@@ -639,13 +643,21 @@ def link_by_system(graph, system_guid, simplified_runs, all_pairs):
     guid_to_macro_uri = {}
 
     # ==========================================
-    # PHASE 1: Build S223 Hierarchy (without run entities)
+    # PHASE 1: Build S223 Hierarchy
     # ==========================================
     for run_data in simplified_runs:
+        all_run_guids = run_data["separate"] + [guid for chain in run_data["chains"] for guid in chain]
+        run_identifier = "_".join(sorted(all_run_guids))
+        run_uri = INST[f"connectedRun_{uuid.uuid5(uuid.NAMESPACE_OID, run_identifier)}"]
+
+        g.add((run_uri, RDF.type, BRICK.Collection))
+        g.add((run_uri, BRICK.isPartOf, system_uri))
+
         # Process Separate Components (Junction-like macro entities)
         for guid in run_data["separate"]:
             element_uri = get_element_uri(guid)
             if element_uri:
+                g.add((run_uri, BRICK.hasPart, element_uri))
                 guid_to_macro_uri[guid] = element_uri  # Represents itself
 
         # Process Chains (Connections)
@@ -654,7 +666,7 @@ def link_by_system(graph, system_guid, simplified_runs, all_pairs):
             connection_uri = INST[f"connection_{uuid.uuid5(uuid.NAMESPACE_OID, chain_identifier)}"]
             
             g.add((connection_uri, RDF.type, S223.Connection))
-            g.add((connection_uri, BRICK.isPartOf, system_uri)) 
+            g.add((connection_uri, BRICK.isPartOf, run_uri)) 
             
             for guid in chain:
                 element_uri = get_element_uri(guid)

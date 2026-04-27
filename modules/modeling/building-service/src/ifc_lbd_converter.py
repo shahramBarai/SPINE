@@ -17,7 +17,7 @@ def load_json(filepath):
         print(f"Error: Configuration file '{filepath}' missing.")
         sys.exit(1)
 
-def run_conversion(source_file: Path, target_file: Path, hw_config: list, app_config: dict):
+def run_conversion(source_file: Path, target_file: Path, hw_config: list, app_config: dict) -> bool:
     """Executes the Java command for a single file pair."""
     command = ["java"]
     command.extend(hw_config)
@@ -37,8 +37,10 @@ def run_conversion(source_file: Path, target_file: Path, hw_config: list, app_co
     try:
         subprocess.run(command, check=True)
         print(f"Successfully converted {source_file.name}")
+        return True
     except subprocess.CalledProcessError as e:
         print(f"Failed to convert {source_file.name}. Exit code: {e.returncode}")
+        return False
 
 def get_target_file_path(source_file: Path) -> Path:
     """
@@ -79,13 +81,12 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-f", "--file", type=str, help="Path to a single .ifc file")
     group.add_argument("-d", "--dir", type=str, help="Path to the source IFC directory")
-    
     args = parser.parse_args()
 
     # Load configs    
     config = load_json('config.json')
     hw_config = config.get('hardware', [])
-    app_config = config.get('ifc2lbd', {})    
+    app_config = config.get('ifc2lbd', {})
 
     if args.file:
         # SINGLE FILE MODE
@@ -95,7 +96,9 @@ def main():
             sys.exit(1)
             
         target_path = get_target_file_path(source_path)
-        run_conversion(source_path, target_path, hw_config, app_config)
+        ok = run_conversion(source_path, target_path, hw_config, app_config)
+        if not ok:
+            sys.exit(1)
 
     elif args.dir:
         # DIRECTORY (BATCH) MODE
@@ -112,10 +115,17 @@ def main():
             sys.exit(0)
             
         print(f"Found {len(ifc_files)} file(s) to process.")
-        
+
+        success_count = 0
         for source_path in ifc_files:
             target_path = get_target_file_path(source_path)
-            run_conversion(source_path, target_path, hw_config, app_config)
+            ok = run_conversion(source_path, target_path, hw_config, app_config)
+            if ok:
+                success_count += 1
+
+        print(f"Completed {success_count}/{len(ifc_files)} file(s) successfully.")
+        if success_count != len(ifc_files):
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()

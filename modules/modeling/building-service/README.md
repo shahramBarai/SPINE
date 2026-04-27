@@ -20,6 +20,9 @@ Stable scripts currently used:
 - ttl_ifc_system_link.py: adds IFC system instances and links terminals/components to spaces
 - ttl_ifc_geom_link.py: computes adjacency links (space-space, space-wall, MEP component connectivity)
 - ttl_sensor_link.py: creates sensor instances from JSON and links sensors to BOT spaces
+- ifc_ttl_fuseki_pipeline.py: converts IFC, fixes TTL encoding, then uploads corrected TTL to Fuseki
+- ttl_fuseki_manager.py: loads, deletes, and updates TTL data in Apache Jena Fuseki
+- fuseki_sparql_client.py: queries Fuseki using SPARQL SELECT, CONSTRUCT, ASK with domain-specific helpers
 - graph_manager.py: RDF namespace setup and graph save helpers
 
 Temporary files not part of final repository:
@@ -43,6 +46,9 @@ modules/modeling/building-service/
 	├── ttl_ifc_system_link.py
 	├── ttl_ifc_geom_link.py
 	├── ttl_sensor_link.py
+	├── ifc_ttl_fuseki_pipeline.py
+	├── ttl_fuseki_manager.py
+	├── fuseki_sparql_client.py
 	└── WIP_*.ipynb (temporary)
 ```
 
@@ -85,6 +91,8 @@ Batch directory mode:
 ```powershell
 python ifc_lbd_converter.py -d "C:\path\to\IFC"
 ```
+
+Use dedicated pipeline script for database upload after encoding correction.
 
 Notes:
 
@@ -155,14 +163,129 @@ Example:
 python -c "from ttl_sensor_link import define_sensor_instances, link_sensors_to_bot, print_summary_report, save_graph_to_file; g=define_sensor_instances([r'C:\path\to\sensors1.json', r'C:\path\to\sensors2.json']); g,stats=link_sensors_to_bot(g, r'C:\path\to\ARC.ttl'); print_summary_report(stats); save_graph_to_file(g, r'C:\path\to\sensors_linked.ttl')"
 ```
 
+### 7) IFC -> Encoding Fix -> Fuseki pipeline
+
+This script guarantees upload happens after encoding checks/fixes:
+
+```powershell
+python ifc_ttl_fuseki_pipeline.py -d "C:\path\to\IFC" --fuseki-base-url "http://localhost:3030" --fuseki-dataset "dataset"
+```
+
+Named graph replacement with one graph per file stem:
+
+```powershell
+python ifc_ttl_fuseki_pipeline.py -d "C:\path\to\IFC" --fuseki-dataset "dataset" --fuseki-graph-template "http://example.org/graph/{stem}" --fuseki-replace
+```
+
+### 8) Direct Fuseki TTL management
+
+Load (append) TTL into Fuseki:
+
+```powershell
+python ttl_fuseki_manager.py load --ttl "C:\path\to\file.ttl" --dataset "dataset"
+```
+
+Update (replace) named graph with TTL:
+
+```powershell
+python ttl_fuseki_manager.py update --ttl "C:\path\to\file.ttl" --dataset "dataset" --graph "http://example.org/graph/building1"
+```
+
+Delete default or named graph data:
+
+```powershell
+python ttl_fuseki_manager.py delete --dataset "dataset"
+python ttl_fuseki_manager.py delete --dataset "dataset" --graph "http://example.org/graph/building1"
+```
+
+### 9) Query building data with SPARQL
+
+fuseki_sparql_client.py provides both raw SPARQL execution and domain-specific query helpers.
+
+Query all buildings:
+
+```powershell
+python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); print(c.get_buildings())"
+```
+
+Query all spaces in a building:
+
+```powershell
+python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); spaces=c.get_spaces(building_uri='http://example.org/building1'); print(spaces)"
+```
+
+Query adjacent spaces:
+
+```powershell
+python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); adj=c.get_space_adjacencies('http://example.org/space1'); print(adj)"
+```
+
+Query all systems in a building:
+
+```powershell
+python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); sys=c.get_systems(building_uri='http://example.org/building1'); print(sys)"
+```
+
+Query components within a system:
+
+```powershell
+python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); comp=c.get_system_components('http://example.org/system1'); print(comp)"
+```
+
+Query all sensors:
+
+```powershell
+python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); sensors=c.get_sensors(); print(sensors)"
+```
+
+Query sensors in a specific space:
+
+```powershell
+python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); sensors=c.get_sensors(space_uri='http://example.org/space1'); print(sensors)"
+```
+
+Query all points in a space:
+
+```powershell
+python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); pts=c.get_space_points('http://example.org/space1'); print(pts)"
+```
+
+Count entities of a type:
+
+```powershell
+python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); n=c.count_entities('https://w3id.org/bot#Space'); print(f'Total spaces: {n}')"
+```
+
+Get all properties of an entity:
+
+```powershell
+python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); props=c.get_entity_properties('http://example.org/space1'); print(props)"
+```
+
+Execute custom SPARQL SELECT:
+
+```powershell
+python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); results=c.select_query('SELECT ?s WHERE { ?s a <https://w3id.org/bot#Space> } LIMIT 10'); print(results)"
+```
+
+Execute custom SPARQL CONSTRUCT (returns RDF graph):
+
+```powershell
+python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); g=c.construct_query('CONSTRUCT { ?s ?p ?o } WHERE { ?s a <https://w3id.org/bot#Building> . ?s ?p ?o }'); g.serialize(destination='output.ttl', format='turtle')"
+```
+
+
 ## Recommended End-to-End Order
 
 1. Convert IFC to TTL with ifc_lbd_converter.py
 2. Fix TTL encoding with encoding_utils.py
-3. Build skeleton links with ttl_skeleton_link.py
-4. Build system/terminal links with ttl_ifc_system_link.py
-5. Build geometry links with ttl_ifc_geom_link.py
-6. Build sensor links with ttl_sensor_link.py
+3. Upload corrected TTL to Fuseki with ifc_ttl_fuseki_pipeline.py (or ttl_fuseki_manager.py for direct TTL operations)
+4. Build skeleton links with ttl_skeleton_link.py
+5. Build system/terminal links with ttl_ifc_system_link.py
+6. Build geometry links with ttl_ifc_geom_link.py
+7. Build sensor links with ttl_sensor_link.py
+8. Query linked data with fuseki_sparql_client.py
+
 
 ## Notes
 
