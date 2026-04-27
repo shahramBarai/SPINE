@@ -6,7 +6,7 @@ import {
     schemaManager,
     mqttService,
 } from "./deps";
-import { logger } from "./utils/logger";
+import { logger } from "@spine/shared";
 import { healthRoutes } from "./routes/health";
 
 async function setupServer() {

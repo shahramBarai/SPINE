@@ -9,7 +9,7 @@ import mqtt, {
 } from "mqtt";
 import { MQTTConfig } from "../utils/config";
 import type { KafkaProducer, ServiceSchemaManager } from "@spine/messaging";
-import { logger } from "../utils/logger";
+import { logger } from "@spine/shared";
 
 interface ConnectionState {
     isConnected: boolean;
