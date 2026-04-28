@@ -14,9 +14,9 @@
         }
     },
     "scripts": {
-        "type-check": "pnpm -r --if-present run type-check && pnpm -r --if-present run check"
+        "type-check": "pnpm -r --if-present run type-check"
     },
-    "dependencies": {
+    "devDependencies": {
         "typescript": "catalog:"
     }
 }

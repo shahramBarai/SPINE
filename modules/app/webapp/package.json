@@ -44,6 +44,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "typescript": "catalog:",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@testcontainers/kafka": "^11.2.1",
@@ -55,7 +56,6 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.3",
-    "tw-animate-css": "^1.2.8",
-    "typescript": "^5"
+    "tw-animate-css": "^1.2.8"
   }
 }

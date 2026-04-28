@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "watch": "tsx watch src/index.ts",
+    "type-check": "tsc --noEmit",
     "check": "tsc --noEmit",
     "build": "tsc",
     "start": "node dist/index.js",
@@ -28,12 +29,12 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "typescript": "catalog:",
     "@eslint/js": "^9.36.0",
     "eslint": "^9.36.0",
     "globals": "^16.4.0",
     "prettier": "3.6.2",
     "tsx": "^4.20.5",
-    "typescript": "^5.9.2",
     "typescript-eslint": "^8.44.1"
   }
 }

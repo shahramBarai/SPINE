@@ -10,7 +10,7 @@
  */
 
 import { logger } from "@spine/shared";
-import { getEmpathicBuildingConfig } from "../utils/config.js";
+import { getEmpathicBuildingConfig } from "../utils/config";
 import * as fs from "fs";
 import * as path from "path";
 

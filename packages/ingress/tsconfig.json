@@ -1,23 +1,12 @@
 {
+  "extends": "../../tsconfig.base.json",
     "compilerOptions": {
-      "target": "ES2022",
-      "module": "ES2022",
+      "types": ["node"],
       "declaration": true,
       "outDir": "./dist",
-      "rootDir": ".",
-      "strict": true,
-      "esModuleInterop": true,
-      "skipLibCheck": true,
-      "forceConsistentCasingInFileNames": true,
-      "moduleResolution": "node",
-      "resolveJsonModule": true,
-      "isolatedModules": true,
+      "rootDir": "./src",
       "noEmit": false,
-      "composite": true,
-      "baseUrl": ".",
-      "paths": {
-        "@spine/ingress": ["../ingress/src/index.ts"]
-      }
+      "composite": true
     },
     "include": ["src/**/*.ts"],
     "exclude": ["node_modules", "dist"],

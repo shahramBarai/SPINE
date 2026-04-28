@@ -11,4 +11,4 @@ catalog:
   # Environment variable management
   dotenv: ^17.4.2
   # Typescript for type safety and development
-  "typescript": ^5.9.2
+  "typescript": ^6.0.3

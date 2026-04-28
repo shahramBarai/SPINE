@@ -17,10 +17,10 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "typescript": "catalog:",
     "dotenv": "catalog:",
     "@types/pg": "^8.16.0",
     "eslint": "^9.17.0",
-    "tsx": "^3.14.0",
-    "typescript": "^5.9.3"
+    "tsx": "^3.14.0"
   }
 }
