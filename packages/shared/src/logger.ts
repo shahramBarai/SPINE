@@ -1,4 +1,5 @@
 import winston from "winston";
+import { env } from "./env";
 
 type LogLevels = "error" | "warn" | "info" | "http" | "verbose" | "debug" | "silly";
 type LoggerMethod = (message: string, ...meta: unknown[]) => void;
@@ -76,7 +77,7 @@ function createLogger({ level = "info", }:{ level?: LogLevels }): AppLogger {
  * logger.debug("This is a debug message");     # Not Printed
  * ...
  */
-const logger = createLogger({ level: process.env.NODE_ENV === "dev" ? "debug" : "error" });
+const logger = createLogger({ level: env.NODE_ENV === "dev" ? "debug" : "error" });
 
 export type { AppLogger, LogLevels };
 export { createLogger, logger };

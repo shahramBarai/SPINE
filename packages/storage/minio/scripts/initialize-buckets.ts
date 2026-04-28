@@ -1,6 +1,17 @@
-import { minioClient, BUCKET_NAME_LIST } from "../src/db/minio";
+import { env } from "@spine/shared";
+import { initFileStorage, getMinioClient, BUCKET_NAME_LIST } from "../src/db/minio";
+
+// DATABASE_URL_MINIO="username:password@host:port/databasename"
+const [credentials, db] = env.DATABASE_URL_MINIO.split("@");
+const [user, password] = credentials.split(":");
+const [host, port] = db.split("/")[0].split(":");
 
 async function main() {
+
+    // Initialize MinIO client
+    initFileStorage({ host, port: parseInt(port), user, password });
+    const minioClient = getMinioClient();
+
     // Get all existing buckets from MinIO
     const existingBuckets: { name: string, creationDate: Date }[] = await minioClient.listBuckets();
     // Filter out the buckets that already exist
