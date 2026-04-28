@@ -4,6 +4,7 @@ description: Convert IFC to TTL, fix encoding, then upload corrected TTL to Fuse
 """
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -58,6 +59,22 @@ def main() -> None:
         help="Fuseki dataset name.",
     )
     parser.add_argument(
+        "--fuseki-username",
+        default=os.getenv("FUSEKI_USERNAME"),
+        help="Fuseki username (or env FUSEKI_USERNAME).",
+    )
+    parser.add_argument(
+        "--fuseki-password",
+        default=os.getenv("FUSEKI_PASSWORD"),
+        help="Fuseki password (or env FUSEKI_PASSWORD).",
+    )
+    parser.add_argument(
+        "--fuseki-timeout",
+        type=float,
+        default=float(os.getenv("FUSEKI_TIMEOUT_SECONDS", "120")),
+        help="Fuseki HTTP timeout in seconds.",
+    )
+    parser.add_argument(
         "--fuseki-graph",
         default=None,
         help="Optional named graph URI. If omitted, default graph is used.",
@@ -86,7 +103,13 @@ def main() -> None:
     app_config = config.get("ifc2lbd", {})
 
     source_files = _collect_ifc_files(args.file, args.dir)
-    manager = FusekiTTLManager(base_url=args.fuseki_base_url, dataset=args.fuseki_dataset)
+    manager = FusekiTTLManager(
+        base_url=args.fuseki_base_url,
+        dataset=args.fuseki_dataset,
+        username=args.fuseki_username,
+        password=args.fuseki_password,
+        timeout_seconds=args.fuseki_timeout,
+    )
 
     print(f"Found {len(source_files)} file(s) to process.")
     print("Order per file: convert -> fix encoding -> upload to Fuseki")

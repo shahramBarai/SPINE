@@ -171,6 +171,12 @@ This script guarantees upload happens after encoding checks/fixes:
 python ifc_ttl_fuseki_pipeline.py -d "C:\path\to\IFC" --fuseki-base-url "http://localhost:3030" --fuseki-dataset "dataset"
 ```
 
+If Fuseki authentication is enabled, provide credentials (or set env vars FUSEKI_USERNAME/FUSEKI_PASSWORD):
+
+```powershell
+python ifc_ttl_fuseki_pipeline.py -d "C:\path\to\IFC" --fuseki-dataset "spine" --fuseki-username "admin" --fuseki-password "admin123" --fuseki-timeout 600
+```
+
 Named graph replacement with one graph per file stem:
 
 ```powershell
@@ -182,13 +188,13 @@ python ifc_ttl_fuseki_pipeline.py -d "C:\path\to\IFC" --fuseki-dataset "dataset"
 Load (append) TTL into Fuseki:
 
 ```powershell
-python ttl_fuseki_manager.py load --ttl "C:\path\to\file.ttl" --dataset "dataset"
+python ttl_fuseki_manager.py load --ttl "C:\path\to\file.ttl" --dataset "dataset" --username "admin" --password "admin123"
 ```
 
 Update (replace) named graph with TTL:
 
 ```powershell
-python ttl_fuseki_manager.py update --ttl "C:\path\to\file.ttl" --dataset "dataset" --graph "http://example.org/graph/building1"
+python ttl_fuseki_manager.py update --ttl "C:\path\to\file.ttl" --dataset "dataset" --graph "http://example.org/graph/building1" --username "admin" --password "admin123"
 ```
 
 Delete default or named graph data:

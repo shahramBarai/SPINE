@@ -1,0 +1,73 @@
+@prefix bot: <https://w3id.org/bot#> .
+@prefix brick: <https://brickschema.org/schema/Brick#> .
+@prefix inst: <https://lbd.example.com/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+
+inst:site_65e0e88e-5ebd-42b6-b2fa-1c43557cea67 a bot:Site ;
+    owl:sameAs inst:site_28cb49f1-9b69-4870-aca3-d3f3628a7f67 ;
+    bot:hasBuilding inst:building_49bf217b-6aa3-4d9b-99e5-48a43201bc8f .
+
+inst:system_2298f10c-c049-4ec0-8772-da635a87b768 a brick:System ;
+    brick:hasPart inst:flowfitting_1291e919-49de-4e87-87a2-7012b9aa1519,
+        inst:flowsegment_1e15134d-a5af-4e99-9399-9e782c08a834,
+        inst:flowsegment_6cbc8a35-2351-4e56-aedc-045180b0fe7c,
+        inst:flowsegment_785fed7f-c282-49dd-bbab-9eb394bdbf35,
+        inst:flowsegment_7f8bb2e8-2c55-4360-ae01-4e4bd271623a,
+        inst:flowsegment_aa8ad898-5f86-40d6-9140-b290e75157e9,
+        inst:flowsegment_b8f80d25-9597-4901-9502-1fd0d8143901 .
+
+inst:system_8f7fb4f6-e530-48c2-8249-8805d06339d8 a brick:System ;
+    brick:hasPart inst:flowmovingdevice_30270616-8314-4bda-ae64-68e2797c9d9c,
+        inst:flowmovingdevice_be8a2942-4fe3-4920-9c3f-98f58bd617c1 .
+
+inst:building_49bf217b-6aa3-4d9b-99e5-48a43201bc8f owl:sameAs inst:building_28cb49f1-9b69-4870-aca3-d3f3628a7f64 ;
+    bot:hasStorey inst:storey_162a2298-018c-4d27-83fa-cc9386803916,
+        inst:storey_5f31e4ea-7b66-4989-b16a-70b1526b1618,
+        inst:storey_683f9ef3-33b6-425e-9a8f-451471259855,
+        inst:storey_91d39eeb-4722-4091-8c7e-120a3bceed58,
+        inst:storey_b382697e-efe2-4887-96a6-936b0649d685,
+        inst:storey_b61cde28-3097-4dac-8e19-77ae19513008,
+        inst:storey_d5b561d5-caae-43d4-86cb-5cce2907ece2,
+        inst:storey_dc9b0abd-0a8c-4601-8110-83595ae3a380,
+        inst:storey_ed913231-4b6e-485b-a39c-657116fe1758 .
+
+inst:site_28cb49f1-9b69-4870-aca3-d3f3628a7f67 a bot:Site ;
+    bot:hasBuilding inst:building_28cb49f1-9b69-4870-aca3-d3f3628a7f64 .
+
+inst:storey_162a2298-018c-4d27-83fa-cc9386803916 owl:sameAs inst:storey_28cb49f1-9b69-4870-aca3-d3f39d758223 ;
+    bot:containsElement inst:flowsegment_1e15134d-a5af-4e99-9399-9e782c08a834 .
+
+inst:storey_5f31e4ea-7b66-4989-b16a-70b1526b1618 owl:sameAs inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d424 ;
+    bot:containsElement inst:flowmovingdevice_30270616-8314-4bda-ae64-68e2797c9d9c .
+
+inst:storey_683f9ef3-33b6-425e-9a8f-451471259855 owl:sameAs inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d4c0 ;
+    bot:containsElement inst:flowsegment_6cbc8a35-2351-4e56-aedc-045180b0fe7c .
+
+inst:storey_91d39eeb-4722-4091-8c7e-120a3bceed58 owl:sameAs inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d417 ;
+    bot:containsElement inst:flowsegment_7f8bb2e8-2c55-4360-ae01-4e4bd271623a .
+
+inst:storey_b382697e-efe2-4887-96a6-936b0649d685 owl:sameAs inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d449 ;
+    bot:containsElement inst:flowmovingdevice_be8a2942-4fe3-4920-9c3f-98f58bd617c1 .
+
+inst:storey_b61cde28-3097-4dac-8e19-77ae19513008 owl:sameAs inst:storey_28cb49f1-9b69-4870-aca3-d3f39d7581a2 ;
+    bot:containsElement inst:flowfitting_1291e919-49de-4e87-87a2-7012b9aa1519 .
+
+inst:storey_d5b561d5-caae-43d4-86cb-5cce2907ece2 owl:sameAs inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d36b ;
+    bot:containsElement inst:flowsegment_b8f80d25-9597-4901-9502-1fd0d8143901 .
+
+inst:storey_dc9b0abd-0a8c-4601-8110-83595ae3a380 owl:sameAs inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d37f ;
+    bot:containsElement inst:flowsegment_785fed7f-c282-49dd-bbab-9eb394bdbf35 .
+
+inst:storey_ed913231-4b6e-485b-a39c-657116fe1758 owl:sameAs inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d484 ;
+    bot:containsElement inst:flowsegment_aa8ad898-5f86-40d6-9140-b290e75157e9 .
+
+inst:building_28cb49f1-9b69-4870-aca3-d3f3628a7f64 bot:hasStorey inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d36b,
+        inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d37f,
+        inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d417,
+        inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d424,
+        inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d449,
+        inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d484,
+        inst:storey_28cb49f1-9b69-4870-aca3-d3f39d72d4c0,
+        inst:storey_28cb49f1-9b69-4870-aca3-d3f39d7581a2,
+        inst:storey_28cb49f1-9b69-4870-aca3-d3f39d758223 .
+
