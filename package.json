@@ -3,9 +3,20 @@
     "version": "1.0.0",
     "private": true,
     "packageManager": "pnpm@10.33.2",
+    "pnpm": {
+        "overrides": {
+            "@spine/shared": "workspace:*",
+            "@spine/messaging": "workspace:*",
+            "@spine/ingress": "workspace:*",
+            "@spine/storage-platform": "workspace:*",
+            "@spine/storage-minio": "workspace:*",
+            "@spine/storage-timescale": "workspace:*"
+        }
+    },
     "scripts": {
+        "type-check": "pnpm -r --if-present run type-check && pnpm -r --if-present run check"
     },
     "dependencies": {
-        "typescript": "^5.9.2"
+        "typescript": "catalog:"
     }
 }

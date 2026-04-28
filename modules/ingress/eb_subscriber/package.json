@@ -12,20 +12,17 @@
     "fetch-sensors": "tsx src/scripts/fetch-sensors.ts"
   },
   "dependencies": {
-    "@fastify/cors": "^11.0.1",
     "@spine/messaging": "workspace:*",
-    "@spine/shared": "workspace:*",
     "@spine/ingress": "workspace:*",
-    "dotenv": "^16.0.0",
+    "@spine/shared": "workspace:*",
+    "@fastify/cors": "catalog:",
+    "fastify": "catalog:",
+    "dotenv": "catalog:",
     "exceljs": "^4.4.0",
-    "fastify": "^5.4.0",
-    "pino": "^8.0.0",
-    "pino-pretty": "^13.0.0",
-    "pusher-js": "^8.4.0",
-    "zod": "^3.0.0"
+    "pusher-js": "^8.4.0"
   },
   "devDependencies": {
-    "@types/node": "^18.0.0",
+    "@types/node": "catalog:",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "eslint": "^9.17.0",

@@ -9,11 +9,10 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@spine/shared": "workspace:*",
-    "dotenv": "^17.2.2"
+    "@spine/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^18.0.0",
+    "@types/node": "catalog:",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "eslint": "^9.17.0",
