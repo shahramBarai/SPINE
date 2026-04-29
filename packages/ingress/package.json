@@ -12,6 +12,7 @@
     "@spine/shared": "workspace:*"
   },
   "scripts": {
+    "build": "tsc",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
