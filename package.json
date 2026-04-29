@@ -14,7 +14,8 @@
         }
     },
     "scripts": {
-        "type-check": "pnpm -r --if-present run type-check"
+        "pretype-check": "pnpm -r --filter ./packages run build",
+        "type-check": "npm run pretype-check && pnpm -r --if-present run type-check"
     },
     "devDependencies": {
         "typescript": "catalog:"

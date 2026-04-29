@@ -9,6 +9,10 @@
       "noImplicitReturns": true,
       "noEmit": false
     },
+    "references": [
+      { "path": "../../../packages/messaging", "composite": true },
+      { "path": "../../../packages/shared", "composite": true }
+    ],
     "include": [
       "src/**/*"
     ],
