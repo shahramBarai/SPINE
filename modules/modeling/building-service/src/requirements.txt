@@ -7,6 +7,8 @@ rtree
 trimesh
 plotly
 ftfy
+fastapi
+uvicorn
 
 # WIP:ML/embedding stack used in notebooks
 torch

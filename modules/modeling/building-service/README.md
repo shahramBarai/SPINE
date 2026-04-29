@@ -78,6 +78,33 @@ Conversion settings are read from src/config.json:
 
 Run commands from modules/modeling/building-service/src.
 
+## Frontend API Bridge (FastAPI)
+
+The src folder now includes a minimal HTTP adapter for frontend integration:
+
+- api_server.py exposes /api/tree, /api/sensors, /api/triples, /api/graph
+- pipeline actions: /api/pipeline/load-ifc, /api/pipeline/convert, /api/pipeline/sync
+
+Install requirements and run:
+
+```powershell
+cd modules/modeling/building-service/src
+pip install -r requirements.txt
+uvicorn api_server:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Optional environment variables:
+
+- FUSEKI_BASE_URL (default: http://localhost:3030)
+- FUSEKI_DATASET (default: dataset)
+- FRONTEND_ORIGIN (default: http://localhost:5173)
+
+Frontend should point to the API using VITE_BUILDING_API_BASE_URL, for example:
+
+```powershell
+$env:VITE_BUILDING_API_BASE_URL="http://localhost:8000/api"
+```
+
 ### 1) IFC to TTL conversion
 
 Single IFC file:
