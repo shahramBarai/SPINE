@@ -115,6 +115,17 @@ class FusekiTTLManager:
         payload = b"CLEAR ALL"
         return self._request("POST", self.update_endpoint, data=payload, content_type="application/sparql-update")
 
+    def ping(self) -> bool:
+        """Return True if the Fuseki dataset SPARQL endpoint is reachable, False otherwise."""
+        sparql_endpoint = f"{self.base_url}/{self.dataset}/sparql"
+        params = parse.urlencode({"query": "ASK {}"})
+        url = f"{sparql_endpoint}?{params}"
+        try:
+            self._request("GET", url)
+            return True
+        except FusekiError:
+            return False
+
 
 def _build_cli() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Manage Turtle files in Apache Jena Fuseki.")

@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Building API (Fuseki spine)",
+			"type": "shell",
+			"command": "cd modules/modeling/building-service/src; $env:FUSEKI_BASE_URL='http://localhost:3030'; $env:FUSEKI_DATASET='spine'; $env:FUSEKI_USERNAME='admin'; $env:FUSEKI_PASSWORD='admin123'; $env:FUSEKI_TIMEOUT_SECONDS='600'; python -m uvicorn api_server:app --host 0.0.0.0 --port 8000 --reload",
+			"isBackground": true,
+			"group": "build"
+		}
+	]
+}

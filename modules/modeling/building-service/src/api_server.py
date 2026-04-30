@@ -211,7 +211,7 @@ def _build_tree(nodes_raw: list[dict[str, str]], parents: dict[str, str]) -> lis
 def _client() -> FusekiSparqlClient:
 	return FusekiSparqlClient(
 		base_url=os.getenv("FUSEKI_BASE_URL", "http://localhost:3030"),
-		dataset=os.getenv("FUSEKI_DATASET", "dataset"),
+		dataset=os.getenv("FUSEKI_DATASET", "spine"),
 	)
 
 
@@ -267,19 +267,33 @@ def _graph_uri(template: str | None, target_file: Path) -> str | None:
 def _fuseki_manager() -> FusekiTTLManager:
 	return FusekiTTLManager(
 		base_url=os.getenv("FUSEKI_BASE_URL", "http://localhost:3030"),
-		dataset=os.getenv("FUSEKI_DATASET", "dataset"),
-		username=os.getenv("FUSEKI_USERNAME"),
-		password=os.getenv("FUSEKI_PASSWORD"),
-		timeout_seconds=float(os.getenv("FUSEKI_TIMEOUT_SECONDS", "120")),
+		dataset=os.getenv("FUSEKI_DATASET", "spine"),
+		username=os.getenv("FUSEKI_USERNAME", "admin"),
+		password=os.getenv("FUSEKI_PASSWORD", "admin123"),
+		timeout_seconds=float(os.getenv("FUSEKI_TIMEOUT_SECONDS", "600")),
 	)
 
 
 app = FastAPI(title="SPINE Building Service API", version="0.1.0")
 
-frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+frontend_origin_env = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+frontend_origins = [o.strip() for o in frontend_origin_env.split(",") if o.strip()]
+if not frontend_origins:
+	frontend_origins = ["http://localhost:5173"]
+
+default_dev_origins = [
+	"http://localhost:5173",
+	"http://127.0.0.1:5173",
+	"http://localhost:8080",
+	"http://127.0.0.1:8080",
+]
+
+allow_origins = list(dict.fromkeys([*frontend_origins, *default_dev_origins]))
+
 app.add_middleware(
 	CORSMiddleware,
-	allow_origins=[frontend_origin, "http://127.0.0.1:5173"],
+	allow_origins=allow_origins,
+	allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?$",
 	allow_credentials=True,
 	allow_methods=["*"],
 	allow_headers=["*"],
@@ -544,4 +558,30 @@ def get_graph(
 		node.y = y
 
 	return GraphDto(nodes=nodes, edges=edges_raw)
+
+class FusekiStatusDto(BaseModel):
+	connected: bool
+	url: str
+
+
+@app.get("/api/fuseki/status", response_model=FusekiStatusDto)
+def fuseki_status() -> FusekiStatusDto:
+	manager = _fuseki_manager()
+	return FusekiStatusDto(
+		connected=manager.ping(),
+		url=f"{manager.base_url}/{manager.dataset}",
+	)
+
+
+@app.post("/api/fuseki/connect", response_model=FusekiStatusDto)
+def fuseki_connect() -> FusekiStatusDto:
+	manager = _fuseki_manager()
+	connected = manager.ping()
+	if not connected:
+		raise HTTPException(
+			status_code=503,
+			detail=f"Cannot reach Fuseki dataset at {manager.base_url}/{manager.dataset}. "
+			       "Ensure Fuseki is running and the dataset exists.",
+		)
+	return FusekiStatusDto(connected=True, url=f"{manager.base_url}/{manager.dataset}")
 
