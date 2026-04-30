@@ -1,15 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
-    "compilerOptions": {
-      "declaration": true,
-      "outDir": "./dist",
-      "rootDir": "./src",
-      "noEmit": false,
-      "composite": true
-    },
-    "include": ["src/**/*.ts", "src/utils/config.ts"],
-    "exclude": ["node_modules", "dist"],
-    "references": [
-      { "path": "../shared", "composite": true }
-    ]
-  }
+  "compilerOptions": {
+    "outDir": "./dist",
+    "declaration": true,
+    "composite": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "paths": {
+      "@spine/shared": ["../shared/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/utils/config.ts"],
+  "exclude": ["node_modules", "dist"],
+}

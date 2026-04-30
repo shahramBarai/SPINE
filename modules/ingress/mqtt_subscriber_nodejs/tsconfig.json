@@ -1,23 +1,18 @@
 {
-    "extends": "../../../tsconfig.base.json",
-    "compilerOptions": {
-      "outDir": "./dist",
-      "rootDir": "./src",
-      "declaration": true,
-      "sourceMap": true,
-      "removeComments": true,
-      "noImplicitReturns": true,
-      "noEmit": false
-    },
-      "references": [
-        { "path": "../../../packages/shared" },
-        { "path": "../../../packages/messaging" }
-      ],
-    "include": [
-      "src/**/*"
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+    "references": [
+      { "path": "../../../packages/shared" },
+      { "path": "../../../packages/messaging" }
     ],
-    "exclude": [
-      "node_modules",
-      "dist"
-    ]
-  }
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

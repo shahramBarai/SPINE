@@ -1,23 +1,24 @@
 {
   "compilerOptions": {
-    "target": "ES2023",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
+    /* Basic Options */
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "target": "ES2023",
+    "verbatimModuleSyntax": true,
+    "allowJs": true,
     "resolveJsonModule": true,
-    "isolatedModules": true,
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
-    "paths": {
-      "@spine/shared": ["packages/shared/src/index.ts"],
-      "@spine/messaging": ["packages/messaging/src/index.ts"],
-      "@spine/ingress": ["packages/ingress/src/index.ts"],
-      "@spine/storage-platform": ["packages/storage/platform/src/index.ts"],
-      "@spine/storage-minio": ["packages/storage/minio/src/index.ts"],
-      "@spine/storage-timescale": ["packages/storage/timescale/src/index.ts"]
-    }
+    "moduleDetection": "force",
+
+    /* Strictness Options */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+
+    /* Module Resolution Options */
+    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "noEmit": true,
+
+    "noImplicitReturns": true,
+    "removeComments": true,
   }
 }
