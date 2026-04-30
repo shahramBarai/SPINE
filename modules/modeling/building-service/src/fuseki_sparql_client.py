@@ -93,6 +93,62 @@ class FusekiSparqlClient:
         data = json.loads(response)
         return data.get("boolean", False)
 
+    def semantic_search_triples(self, query: str, limit: int = 500) -> list[dict[str, str]]:
+        """
+        Execute a frontend-provided SPARQL SELECT query and normalize results as triples.
+
+        The query must return either (?s ?p ?o) or
+        (?subject ?predicate ?object) variables.
+        """
+        query_text = (query or "").strip()
+        if not query_text:
+            raise FusekiSparqlError("SPARQL query is required.")
+
+        if "select" not in query_text.lower():
+            raise FusekiSparqlError("Only SPARQL SELECT queries are supported.")
+
+        bindings = self.select_query(query_text)
+        triples: list[dict[str, str]] = []
+
+        for row in bindings:
+            subject = ""
+            predicate = ""
+            object_value = ""
+
+            if isinstance(row.get("s"), dict):
+                subject = str(row["s"].get("value", ""))
+            if isinstance(row.get("p"), dict):
+                predicate = str(row["p"].get("value", ""))
+            if isinstance(row.get("o"), dict):
+                object_value = str(row["o"].get("value", ""))
+
+            if not (subject and predicate and object_value):
+                if isinstance(row.get("subject"), dict):
+                    subject = str(row["subject"].get("value", ""))
+                if isinstance(row.get("predicate"), dict):
+                    predicate = str(row["predicate"].get("value", ""))
+                if isinstance(row.get("object"), dict):
+                    object_value = str(row["object"].get("value", ""))
+
+            if subject and predicate and object_value:
+                triples.append(
+                    {
+                        "subject": subject,
+                        "predicate": predicate,
+                        "object": object_value,
+                    }
+                )
+
+            if len(triples) >= max(1, int(limit)):
+                break
+
+        if not triples:
+            raise FusekiSparqlError(
+                "Query must return variables (?s ?p ?o) or (?subject ?predicate ?object)."
+            )
+
+        return triples
+
     # --- Domain-specific helpers for building models ---
 
     def get_buildings(self, graph_uri: Optional[str] = None) -> list[dict[str, str]]:

@@ -7,7 +7,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from encoding_utils import fix_encoding
 from fuseki_sparql_client import FusekiSparqlClient, FusekiSparqlError
@@ -92,11 +92,91 @@ class PipelineResultDto(BaseModel):
 	results: list[PipelineFileResultDto]
 
 
+class SemanticSearchRequestDto(BaseModel):
+	query: str
+	limit: int = Field(default=300, ge=1, le=3000)
+	focus_id: str | None = None
+
+
+class SemanticSearchResultDto(BaseModel):
+	triples: list[TripleDto]
+	graph: GraphDto
+
+
 def _v(binding: dict[str, Any], key: str, default: str = "") -> str:
 	value = binding.get(key)
 	if isinstance(value, dict):
 		return str(value.get("value", default))
 	return default
+
+
+def _binding_type(binding: dict[str, Any], key: str) -> str:
+	value = binding.get(key)
+	if isinstance(value, dict):
+		return str(value.get("type", ""))
+	return ""
+
+
+def _extract_triple(binding: dict[str, Any]) -> tuple[TripleDto | None, bool]:
+	for subject_key, predicate_key, object_key in (("s", "p", "o"), ("subject", "predicate", "object")):
+		subject = _v(binding, subject_key)
+		predicate = _v(binding, predicate_key)
+		obj = _v(binding, object_key)
+		if subject and predicate and obj:
+			object_type = _binding_type(binding, object_key)
+			object_is_node = object_type in {"uri", "bnode"}
+			return TripleDto(subject=subject, predicate=predicate, object=obj), object_is_node
+
+	return None, False
+
+
+def _build_graph_from_triples(triples: list[TripleDto], edge_enabled: list[bool], focus_id: str | None = None) -> GraphDto:
+	edges_raw: list[GraphEdgeDto] = []
+	nodes_by_id: dict[str, GraphNodeDto] = {}
+
+	for triple, include_edge in zip(triples, edge_enabled):
+		if not include_edge:
+			continue
+
+		from_id = _uri_to_id(triple.subject)
+		to_id = _uri_to_id(triple.object)
+		if not from_id or not to_id:
+			continue
+
+		edges_raw.append(
+			GraphEdgeDto(from_id=from_id, to_id=to_id, label=_edge_label(triple.predicate))
+		)
+
+		if from_id not in nodes_by_id:
+			nodes_by_id[from_id] = GraphNodeDto(
+				id=from_id,
+				label=_short_name(triple.subject),
+				type=_graph_node_type(triple.subject),
+				x=0,
+				y=0,
+			)
+		if to_id not in nodes_by_id:
+			nodes_by_id[to_id] = GraphNodeDto(
+				id=to_id,
+				label=_short_name(triple.object),
+				type=_graph_node_type(triple.object),
+				x=0,
+				y=0,
+			)
+
+	if focus_id:
+		edges_raw = [e for e in edges_raw if e.from_id == focus_id or e.to_id == focus_id]
+		used_ids = {e.from_id for e in edges_raw} | {e.to_id for e in edges_raw}
+		nodes_by_id = {node_id: node for node_id, node in nodes_by_id.items() if node_id in used_ids}
+
+	nodes = list(nodes_by_id.values())
+	total = len(nodes)
+	for idx, node in enumerate(nodes):
+		x, y = _layout(idx, total)
+		node.x = x
+		node.y = y
+
+	return GraphDto(nodes=nodes, edges=edges_raw)
 
 
 def _node_type(type_uri: str) -> str:
@@ -483,14 +563,13 @@ def get_triples(limit: int = Query(default=200, ge=1, le=2000)) -> list[TripleDt
 	except FusekiSparqlError as exc:
 		raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-	return [
-		TripleDto(
-			subject=_v(row, "s"),
-			predicate=_v(row, "p"),
-			object=_v(row, "o"),
-		)
-		for row in bindings
-	]
+	triples: list[TripleDto] = []
+	for row in bindings:
+		triple, _ = _extract_triple(row)
+		if triple:
+			triples.append(triple)
+
+	return triples
 
 
 @app.get("/api/graph", response_model=GraphDto)
@@ -512,52 +591,54 @@ def get_graph(
 	except FusekiSparqlError as exc:
 		raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-	edges_raw: list[GraphEdgeDto] = []
-	nodes_by_id: dict[str, GraphNodeDto] = {}
-
+	triples: list[TripleDto] = []
+	edge_enabled: list[bool] = []
 	for row in bindings:
-		s_uri = _v(row, "s")
-		p_uri = _v(row, "p")
-		o_uri = _v(row, "o")
+		triple, object_is_node = _extract_triple(row)
+		if triple:
+			triples.append(triple)
+			edge_enabled.append(object_is_node)
 
-		from_id = _uri_to_id(s_uri)
-		to_id = _uri_to_id(o_uri)
-		if not from_id or not to_id:
+	return _build_graph_from_triples(triples, edge_enabled, focus_id=focus_id)
+
+
+@app.post("/api/semantic-search", response_model=SemanticSearchResultDto)
+def semantic_search(request: SemanticSearchRequestDto) -> SemanticSearchResultDto:
+	query_text = request.query.strip()
+	if not query_text:
+		raise HTTPException(status_code=400, detail="SPARQL query is required.")
+
+	lower_query = query_text.lower()
+	if "select" not in lower_query:
+		raise HTTPException(
+			status_code=400,
+			detail="Only SPARQL SELECT queries are supported for semantic search.",
+		)
+
+	try:
+		bindings = _client().select_query(query_text)
+	except FusekiSparqlError as exc:
+		raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+	triples: list[TripleDto] = []
+	edge_enabled: list[bool] = []
+	for row in bindings:
+		triple, object_is_node = _extract_triple(row)
+		if not triple:
 			continue
+		triples.append(triple)
+		edge_enabled.append(object_is_node)
+		if len(triples) >= request.limit:
+			break
 
-		edge = GraphEdgeDto(from_id=from_id, to_id=to_id, label=_edge_label(p_uri))
-		edges_raw.append(edge)
+	if not triples:
+		raise HTTPException(
+			status_code=400,
+			detail="Query must return variables (?s ?p ?o) or (?subject ?predicate ?object).",
+		)
 
-		if from_id not in nodes_by_id:
-			nodes_by_id[from_id] = GraphNodeDto(
-				id=from_id,
-				label=_short_name(s_uri),
-				type=_graph_node_type(s_uri),
-				x=0,
-				y=0,
-			)
-		if to_id not in nodes_by_id:
-			nodes_by_id[to_id] = GraphNodeDto(
-				id=to_id,
-				label=_short_name(o_uri),
-				type=_graph_node_type(o_uri),
-				x=0,
-				y=0,
-			)
-
-	if focus_id:
-		edges_raw = [e for e in edges_raw if e.from_id == focus_id or e.to_id == focus_id]
-		used_ids = {e.from_id for e in edges_raw} | {e.to_id for e in edges_raw}
-		nodes_by_id = {node_id: node for node_id, node in nodes_by_id.items() if node_id in used_ids}
-
-	nodes = list(nodes_by_id.values())
-	total = len(nodes)
-	for idx, node in enumerate(nodes):
-		x, y = _layout(idx, total)
-		node.x = x
-		node.y = y
-
-	return GraphDto(nodes=nodes, edges=edges_raw)
+	graph = _build_graph_from_triples(triples, edge_enabled, focus_id=request.focus_id)
+	return SemanticSearchResultDto(triples=triples, graph=graph)
 
 class FusekiStatusDto(BaseModel):
 	connected: bool
