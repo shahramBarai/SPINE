@@ -7,6 +7,7 @@ We want `SPINE` to be a welcoming place for everyone. We're committed to providi
 ## 📜 Our Standards
 
 ### What we encourage:
+
 - Being respectful and inclusive in discussions
 - Welcoming newcomers and helping them get started
 - Giving and accepting constructive feedback gracefully
@@ -14,6 +15,7 @@ We want `SPINE` to be a welcoming place for everyone. We're committed to providi
 - Showing empathy towards other contributors
 
 ### What we don't tolerate:
+
 - Harassment, trolling, or discriminatory language
 - Personal attacks or inflammatory comments
 - Publishing others' private information without permission
@@ -22,6 +24,7 @@ We want `SPINE` to be a welcoming place for everyone. We're committed to providi
 ## 🔬 Scope
 
 This Code of Conduct applies to all project spaces, including:
+
 - GitHub repositories, issues, and pull requests
 - Project discussions and forums
 - Public events where the project is represented
@@ -30,6 +33,7 @@ This Code of Conduct applies to all project spaces, including:
 ## 📝 Reporting
 
 If you experience or witness behavior that violates this Code of Conduct, please report it by:
+
 - Opening a confidential issue in the repository
 - Contacting the project maintainers directly
 - Using GitHub's reporting tools
@@ -39,6 +43,7 @@ All reports will be handled confidentially and reviewed promptly.
 ## ⛓️ Consequences
 
 Contributors who violate this Code of Conduct may receive:
+
 - A private warning from maintainers
 - Temporary restrictions on project participation
 - Permanent removal from the project community
