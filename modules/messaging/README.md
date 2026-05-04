@@ -100,18 +100,17 @@ docker compose -f docker-compose.prod.yml down
 1. **Inter-broker Protocol**: The Docker Compose files have been updated to avoid conflicts between `KAFKA_INTER_BROKER_LISTENER_NAME` and `KAFKA_SECURITY_INTER_BROKER_PROTOCOL`. Only the listener name is now specified.
 
 2. **HAProxy Configuration**: The production HAProxy configuration has been updated to fix permission issues:
-
-   - Removed user/group settings that caused socket permission errors
-   - Commented out stats socket configuration
-   - Ensured configuration file ends with a newline
+    - Removed user/group settings that caused socket permission errors
+    - Commented out stats socket configuration
+    - Ensured configuration file ends with a newline
 
 3. **Container Naming**: Make sure to clean up any existing containers with conflicting names before deployment:
-   ```bash
-   # Remove any existing kafka containers
-   docker rm -f $(docker ps -a --filter name=kafka -q) 2>/dev/null || true
-   # Remove conflicting networks
-   docker network rm iot-platform-network 2>/dev/null || true
-   ```
+    ```bash
+    # Remove any existing kafka containers
+    docker rm -f $(docker ps -a --filter name=kafka -q) 2>/dev/null || true
+    # Remove conflicting networks
+    docker network rm iot-platform-network 2>/dev/null || true
+    ```
 
 ## 🔧 Configuration Differences
 
@@ -179,36 +178,40 @@ Create Avro schema files for your messages:
 ```json
 // sensor-data.avsc (actual schema in the project)
 {
-  "type": "record",
-  "name": "SensorData",
-  "namespace": "com.iotplatform.messaging",
-  "doc": "IoT sensor data schema for the messaging module",
-  "fields": [
-    {
-      "name": "sensor_id",
-      "type": "string",
-      "doc": "Unique identifier for the sensor"
-    },
-    {
-      "name": "timestamp",
-      "type": "long",
-      "doc": "Unix timestamp in milliseconds"
-    },
-    { "name": "value", "type": "double", "doc": "The sensor reading value" },
-    { "name": "unit", "type": "string", "doc": "Unit of measurement" },
-    {
-      "name": "location",
-      "type": ["null", "string"],
-      "default": null,
-      "doc": "Optional location identifier"
-    },
-    {
-      "name": "metadata",
-      "type": ["null", { "type": "map", "values": "string" }],
-      "default": null,
-      "doc": "Optional metadata"
-    }
-  ]
+    "type": "record",
+    "name": "SensorData",
+    "namespace": "com.iotplatform.messaging",
+    "doc": "IoT sensor data schema for the messaging module",
+    "fields": [
+        {
+            "name": "sensor_id",
+            "type": "string",
+            "doc": "Unique identifier for the sensor"
+        },
+        {
+            "name": "timestamp",
+            "type": "long",
+            "doc": "Unix timestamp in milliseconds"
+        },
+        {
+            "name": "value",
+            "type": "double",
+            "doc": "The sensor reading value"
+        },
+        { "name": "unit", "type": "string", "doc": "Unit of measurement" },
+        {
+            "name": "location",
+            "type": ["null", "string"],
+            "default": null,
+            "doc": "Optional location identifier"
+        },
+        {
+            "name": "metadata",
+            "type": ["null", { "type": "map", "values": "string" }],
+            "default": null,
+            "doc": "Optional metadata"
+        }
+    ]
 }
 ```
 
@@ -237,28 +240,28 @@ const { AvroSerializer } = require("@kafkajs/confluent-schema-registry");
 
 const registry = new SchemaRegistry({ host: "http://localhost:8081" });
 const serializer = new AvroSerializer(registry, {
-  subject: "sensor-data-value",
+    subject: "sensor-data-value",
 });
 
 const producer = kafka.producer({
-  maxInFlightRequests: 1,
-  idempotent: true,
+    maxInFlightRequests: 1,
+    idempotent: true,
 });
 
 // Produce message with schema validation
 await producer.send({
-  topic: "sensor-data",
-  messages: [
-    {
-      value: await serializer.serialize({
-        sensor_id: "temp-01",
-        timestamp: Date.now(),
-        value: 23.5,
-        unit: "celsius",
-        location: "room-101",
-      }),
-    },
-  ],
+    topic: "sensor-data",
+    messages: [
+        {
+            value: await serializer.serialize({
+                sensor_id: "temp-01",
+                timestamp: Date.now(),
+                value: 23.5,
+                unit: "celsius",
+                location: "room-101",
+            }),
+        },
+    ],
 });
 ```
 
@@ -270,16 +273,16 @@ Configure consumers for Avro deserialization:
 const { AvroDeserializer } = require("@kafkajs/confluent-schema-registry");
 
 const deserializer = new AvroDeserializer(registry, {
-  subject: "sensor-data-value",
+    subject: "sensor-data-value",
 });
 
 const consumer = kafka.consumer({ groupId: "sensor-processor" });
 
 await consumer.run({
-  eachMessage: async ({ message }) => {
-    const data = await deserializer.deserialize(message.value);
-    console.log("Received sensor data:", data);
-  },
+    eachMessage: async ({ message }) => {
+        const data = await deserializer.deserialize(message.value);
+        console.log("Received sensor data:", data);
+    },
 });
 ```
 
@@ -532,55 +535,55 @@ docker exec kafka-1 kafka-consumer-groups --bootstrap-server localhost:9092 --al
 ```javascript
 const kafka = require("kafkajs");
 const {
-  SchemaRegistry,
-  AvroSerializer,
-  AvroDeserializer,
+    SchemaRegistry,
+    AvroSerializer,
+    AvroDeserializer,
 } = require("@kafkajs/confluent-schema-registry");
 
 // Kafka client configuration
 const client = kafka({
-  clientId: "iot-platform-client",
-  brokers: ["localhost:9095"], // Load balancer
-  retry: {
-    initialRetryTime: 100,
-    retries: 8,
-  },
+    clientId: "iot-platform-client",
+    brokers: ["localhost:9095"], // Load balancer
+    retry: {
+        initialRetryTime: 100,
+        retries: 8,
+    },
 });
 
 // Schema Registry configuration
 const registry = new SchemaRegistry({
-  host: "http://localhost:8081",
-  retry: {
-    maxRetryTimeInSecs: 30,
-    initialRetryTimeInSecs: 1,
-    maxRetries: 5,
-  },
+    host: "http://localhost:8081",
+    retry: {
+        maxRetryTimeInSecs: 30,
+        initialRetryTimeInSecs: 1,
+        maxRetries: 5,
+    },
 });
 
 // Producer with Avro serialization
 const producer = client.producer({
-  maxInFlightRequests: 1,
-  idempotent: true,
-  transactionTimeout: 30000,
+    maxInFlightRequests: 1,
+    idempotent: true,
+    transactionTimeout: 30000,
 });
 
 const serializer = new AvroSerializer(registry, {
-  subject: "sensor-data-value",
+    subject: "sensor-data-value",
 });
 
 await producer.send({
-  topic: "sensor-data",
-  messages: [
-    {
-      key: "sensor-01",
-      value: await serializer.serialize({
-        sensor_id: "temp-sensor-01",
-        timestamp: Date.now(),
-        value: 25.3,
-        unit: "celsius",
-      }),
-    },
-  ],
+    topic: "sensor-data",
+    messages: [
+        {
+            key: "sensor-01",
+            value: await serializer.serialize({
+                sensor_id: "temp-sensor-01",
+                timestamp: Date.now(),
+                value: 25.3,
+                unit: "celsius",
+            }),
+        },
+    ],
 });
 ```
 
@@ -589,31 +592,31 @@ await producer.send({
 ```javascript
 import { ErrorHandlingService } from "./services/error-handling";
 import {
-  SchemaRegistry,
-  AvroDeserializer,
+    SchemaRegistry,
+    AvroDeserializer,
 } from "@kafkajs/confluent-schema-registry";
 
 const registry = new SchemaRegistry({ host: "http://localhost:8081" });
 const deserializer = new AvroDeserializer(registry);
 
 const errorHandler = new ErrorHandlingService(kafkaService, {
-  enableDLQ: true,
-  enableRetries: true,
-  enableCircuitBreaker: true,
+    enableDLQ: true,
+    enableRetries: true,
+    enableCircuitBreaker: true,
 });
 
 // Enhanced message processing with schema validation
 const processMessage = async (message) => {
-  try {
-    // Deserialize with schema validation
-    const data = await deserializer.deserialize(message.value);
+    try {
+        // Deserialize with schema validation
+        const data = await deserializer.deserialize(message.value);
 
-    // Process business logic
-    return await businessLogicProcessor(data);
-  } catch (schemaError) {
-    // Schema validation errors are non-retryable
-    throw new Error(`SCHEMA_VALIDATION: ${schemaError.message}`);
-  }
+        // Process business logic
+        return await businessLogicProcessor(data);
+    } catch (schemaError) {
+        // Schema validation errors are non-retryable
+        throw new Error(`SCHEMA_VALIDATION: ${schemaError.message}`);
+    }
 };
 ```
 
@@ -659,12 +662,12 @@ const processMessage = async (message) => {
 
 - **Cause**: Existing containers from previous sessions (e.g., devcontainer)
 - **Solution**:
-  ```bash
-  # Clean up existing containers
-  docker rm -f kafka kafka-ui kafka-dev kafka-1 kafka-2 kafka-3
-  # Clean up networks
-  docker network rm iot-platform-network iot-platform-dev iot-platform-prod
-  ```
+    ```bash
+    # Clean up existing containers
+    docker rm -f kafka kafka-ui kafka-dev kafka-1 kafka-2 kafka-3
+    # Clean up networks
+    docker network rm iot-platform-network iot-platform-dev iot-platform-prod
+    ```
 
 #### 5. Schema Registry Connection Issues
 
