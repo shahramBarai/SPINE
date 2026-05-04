@@ -1,48 +1,48 @@
 services:
-  # ------ Flink Job Manager ------ #
-  flink-jobmanager:
-    build:
-      context: ./pyFlink
-      dockerfile: Dockerfile
-    image: spine-pyflink:latest
-    pull_policy: never
-    ports:
-      - "7070:8081" # Flink Web UI
-    environment:
-      - |
-        FLINK_PROPERTIES=
-          jobmanager.rpc.address: flink-jobmanager
-    command: jobmanager
+    # ------ Flink Job Manager ------ #
+    flink-jobmanager:
+        build:
+            context: ./pyFlink
+            dockerfile: Dockerfile
+        image: spine-pyflink:latest
+        pull_policy: never
+        ports:
+            - "7070:8081" # Flink Web UI
+        environment:
+            - |
+                FLINK_PROPERTIES=
+                  jobmanager.rpc.address: flink-jobmanager
+        command: jobmanager
 
-  # ------ Flink Task Manager ------ #
-  flink-taskmanager:
-    image: spine-pyflink:latest
-    pull_policy: never
-    scale: 1
-    environment:
-      - |
-        FLINK_PROPERTIES=
-          jobmanager.rpc.address: flink-jobmanager
-          taskmanager.numberOfTaskSlots: 8
-          taskmanager.memory.process.size: 2048m
-          taskmanager.memory.task.off-heap.size: 512m
-    command: taskmanager
-    depends_on:
-      - flink-jobmanager
+    # ------ Flink Task Manager ------ #
+    flink-taskmanager:
+        image: spine-pyflink:latest
+        pull_policy: never
+        scale: 1
+        environment:
+            - |
+                FLINK_PROPERTIES=
+                  jobmanager.rpc.address: flink-jobmanager
+                  taskmanager.numberOfTaskSlots: 8
+                  taskmanager.memory.process.size: 2048m
+                  taskmanager.memory.task.off-heap.size: 512m
+        command: taskmanager
+        depends_on:
+            - flink-jobmanager
 
-  # ------ Flink Submission Service ------ #
-  flink-submission-service:
-    build:
-      context: ./flink-submission-service
-      dockerfile: Dockerfile
-    ports:
-      - "7000:8000"
-    environment:
-      - FLINK_JOBMANAGER=flink-jobmanager:8081
-      - FLINK_BIN=flink
-      - CHECK_TIMEOUT=30
-      - SUBMIT_TIMEOUT=120
-    volumes:
-      - ./flink-submission-service/app:/opt/pyFlink/app
-    depends_on:
-      - flink-jobmanager
+    # ------ Flink Submission Service ------ #
+    flink-submission-service:
+        build:
+            context: ./flink-submission-service
+            dockerfile: Dockerfile
+        ports:
+            - "7000:8000"
+        environment:
+            - FLINK_JOBMANAGER=flink-jobmanager:8081
+            - FLINK_BIN=flink
+            - CHECK_TIMEOUT=30
+            - SUBMIT_TIMEOUT=120
+        volumes:
+            - ./flink-submission-service/app:/opt/pyFlink/app
+        depends_on:
+            - flink-jobmanager
