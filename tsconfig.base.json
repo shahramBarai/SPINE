@@ -16,7 +16,6 @@
     /* Module Resolution Options */
     "moduleResolution": "bundler",
     "module": "ESNext",
-    "noEmit": true,
 
     "noImplicitReturns": true,
     "removeComments": true,

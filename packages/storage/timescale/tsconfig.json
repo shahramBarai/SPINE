@@ -6,10 +6,10 @@
     "composite": true,
     "declarationMap": true,
     "sourceMap": true,
-    "paths": {
-      "@spine/shared": ["../../shared/src/index.ts"]
-    }
   },
+  "references": [
+    { "path": "../../shared", "composite": true }
+  ],
   "include": [
     "./src/**/*.ts"
   ],
