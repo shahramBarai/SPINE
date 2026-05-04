@@ -59,20 +59,20 @@ External Client → API Gateway → DataService → Service Layer → Database
 
 1. **Start storage infrastructure:**
 
-   ```bash
-   docker-compose -f docker-compose.storage.yml up -d
-   ```
+    ```bash
+    docker-compose -f docker-compose.storage.yml up -d
+    ```
 
 2. **Verify services:**
 
-   ```bash
-   # Check Data Service health
-   curl http://localhost:3010/health
-   ```
+    ```bash
+    # Check Data Service health
+    curl http://localhost:3010/health
+    ```
 
 3. **Access APIs:**
-   - **Data Service**: http://localhost:3010/api
-   - **Health Check**: http://localhost:3010/health
+    - **Data Service**: http://localhost:3010/api
+    - **Health Check**: http://localhost:3010/health
 
 ## Integration with Platform
 
@@ -92,6 +92,7 @@ This modular approach enables independent scaling, technology optimization, and 
 If you encounter authentication errors like "password authentication failed for user postgres", this usually means the database volumes contain old data with different passwords.
 
 #### Solution 1: Reset Database Passwords (Recommended for existing data)
+
 ```bash
 # Reset passwords to match docker-compose configuration
 docker exec -it postgres psql -U postgres -c "ALTER USER postgres PASSWORD 'postgres';"
@@ -102,6 +103,7 @@ docker restart data-service
 ```
 
 #### Solution 2: Clean Volumes (WARNING: Deletes all data)
+
 ```bash
 # Stop all services
 docker compose down

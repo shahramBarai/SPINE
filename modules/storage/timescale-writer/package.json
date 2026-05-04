@@ -1,23 +1,23 @@
 {
-  "name": "timescale-writer",
-  "description": "A service to write sensor data from Kafka to TimescaleDB",
-  "version": "1.0.0",
-  "scripts": {
-    "dev": "nodemon src/index.js",
-    "start": "node src/index.js",
-    "type-check": "echo 'No TypeScript in this service'"
-  },
-  "dependencies": {
-    "dotenv": "catalog:",
-    "kafkajs": "^2.2.4",
-    "kafkajs-snappy": "^1.1.0",
-    "pg": "^8.14.1",
-    "pg-hstore": "^2.3.4",
-    "sequelize": "^6.37.5",
-    "sequelize-cli": "^6.6.2"
-  },
-  "keywords": [],
-  "author": "Shahram Barai",
-  "license": "MIT",
-  "type": "module"
+    "name": "timescale-writer",
+    "description": "A service to write sensor data from Kafka to TimescaleDB",
+    "version": "1.0.0",
+    "scripts": {
+        "dev": "nodemon src/index.js",
+        "start": "node src/index.js",
+        "type-check": "echo 'No TypeScript in this service'"
+    },
+    "dependencies": {
+        "dotenv": "catalog:",
+        "kafkajs": "^2.2.4",
+        "kafkajs-snappy": "^1.1.0",
+        "pg": "^8.14.1",
+        "pg-hstore": "^2.3.4",
+        "sequelize": "^6.37.5",
+        "sequelize-cli": "^6.6.2"
+    },
+    "keywords": [],
+    "author": "Shahram Barai",
+    "license": "MIT",
+    "type": "module"
 }
