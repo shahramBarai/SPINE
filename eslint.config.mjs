@@ -10,6 +10,7 @@ const ignorePatterns = [
   "**/coverage/**",
   "**/.next/**",
   "**/generated/**",
+  "**/.venv/**"
 ];
 
 const typeScriptFiles = [
