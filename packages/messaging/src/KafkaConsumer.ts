@@ -1,6 +1,6 @@
-import { Kafka, Consumer, EachMessagePayload } from "kafkajs";
+import { Kafka, type Consumer, type  EachMessagePayload } from "kafkajs";
 import { logger } from "@spine/shared";
-import { KafkaConfig } from "./utils/config";
+import type { KafkaConfig } from "./utils/config";
 
 type MessageHandler = (message: string, topic: string, partition: number, offset: string) => Promise<void>;
 

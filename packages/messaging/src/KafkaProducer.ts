@@ -1,4 +1,4 @@
-import { Kafka, Producer } from "kafkajs";
+import { Kafka, type Producer } from "kafkajs";
 import { logger } from "@spine/shared";
 import { type KafkaConfig } from "./utils/config";
 

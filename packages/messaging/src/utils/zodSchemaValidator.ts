@@ -6,7 +6,7 @@ import { logger } from "@spine/shared";
  * @param type - The type to check
  * @returns True if the field is optional, false otherwise
  */
-function isOptionalField(type: any): boolean {
+function isOptionalField(type: unknown): boolean {
     if (Array.isArray(type)) {
         return type.some(
             (t) => t === "null" || (typeof t === "object" && t.type === "null"),
