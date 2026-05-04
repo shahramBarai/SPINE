@@ -3,6 +3,6 @@ import { createContext } from "@/server/trpc";
 import { appRouter } from "@/server/routers";
 
 export default createNextApiHandler({
-  router: appRouter,
-  createContext,
+    router: appRouter,
+    createContext,
 });

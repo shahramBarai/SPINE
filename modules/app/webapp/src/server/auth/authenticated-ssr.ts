@@ -1,7 +1,7 @@
 import {
-  GetServerSidePropsContext,
-  GetServerSidePropsResult,
-  PreviewData,
+    GetServerSidePropsContext,
+    GetServerSidePropsResult,
+    PreviewData,
 } from "next";
 import { ParsedUrlQuery } from "querystring";
 import { getServerSession } from "./iron-session";
@@ -9,23 +9,23 @@ import { UserSession } from "./iron-session";
 
 // Enhanced context with authenticated user data
 export interface AuthenticatedContext<
-  Params extends ParsedUrlQuery = ParsedUrlQuery,
-  Preview extends PreviewData = PreviewData
+    Params extends ParsedUrlQuery = ParsedUrlQuery,
+    Preview extends PreviewData = PreviewData,
 > extends GetServerSidePropsContext<Params, Preview> {
-  req: GetServerSidePropsContext["req"] & {
-    session: {
-      data: { user: UserSession };
+    req: GetServerSidePropsContext["req"] & {
+        session: {
+            data: { user: UserSession };
+        };
     };
-  };
 }
 
 // Type for authenticated getServerSideProps functions
 export type AuthenticatedGetServerSideProps<
-  P extends Record<string, unknown> = Record<string, unknown>,
-  Params extends ParsedUrlQuery = ParsedUrlQuery,
-  Preview extends PreviewData = PreviewData
+    P extends Record<string, unknown> = Record<string, unknown>,
+    Params extends ParsedUrlQuery = ParsedUrlQuery,
+    Preview extends PreviewData = PreviewData,
 > = (
-  context: AuthenticatedContext<Params, Preview>
+    context: AuthenticatedContext<Params, Preview>
 ) => Promise<GetServerSidePropsResult<P>>;
 
 /**
@@ -38,40 +38,40 @@ export type AuthenticatedGetServerSideProps<
  * @returns A getServerSideProps function that checks authentication
  */
 export function withAuthSSR<Props>(opts: {
-  handler: AuthenticatedGetServerSideProps<
-    Props extends Record<string, unknown> ? Props : never
-  >;
-  redirectTo?: string;
+    handler: AuthenticatedGetServerSideProps<
+        Props extends Record<string, unknown> ? Props : never
+    >;
+    redirectTo?: string;
 }) {
-  return async function authenticatedHandler(
-    context: GetServerSidePropsContext
-  ): Promise<GetServerSidePropsResult<Props>> {
-    // Get the user session
-    const session = await getServerSession(context.req, context.res);
+    return async function authenticatedHandler(
+        context: GetServerSidePropsContext
+    ): Promise<GetServerSidePropsResult<Props>> {
+        // Get the user session
+        const session = await getServerSession(context.req, context.res);
 
-    const user = session.data.user;
-    if (!user) {
-      return {
-        redirect: {
-          destination: opts.redirectTo ?? "/auth",
-          permanent: false,
-        },
-      };
-    }
+        const user = session.data.user;
+        if (!user) {
+            return {
+                redirect: {
+                    destination: opts.redirectTo ?? "/auth",
+                    permanent: false,
+                },
+            };
+        }
 
-    // Add the user to the context and call the handler
-    const authenticatedContext = {
-      ...context,
-      req: {
-        ...context.req,
-        session: {
-          data: { user: user },
-        },
-      },
-    } as AuthenticatedContext;
+        // Add the user to the context and call the handler
+        const authenticatedContext = {
+            ...context,
+            req: {
+                ...context.req,
+                session: {
+                    data: { user: user },
+                },
+            },
+        } as AuthenticatedContext;
 
-    return opts.handler(authenticatedContext);
-  };
+        return opts.handler(authenticatedContext);
+    };
 }
 
 /**

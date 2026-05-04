@@ -6,11 +6,11 @@ import { schemaRegistryRouter } from "./schema-registry";
 import { entitiesRouter } from "./entities";
 
 export const appRouter = router({
-  user: userRouter,
-  auth: authRouter,
-  kafka: kafkaRouter,
-  schemaRegistry: schemaRegistryRouter,
-  entities: entitiesRouter,
+    user: userRouter,
+    auth: authRouter,
+    kafka: kafkaRouter,
+    schemaRegistry: schemaRegistryRouter,
+    entities: entitiesRouter,
 });
 
 export type AppRouter = typeof appRouter;

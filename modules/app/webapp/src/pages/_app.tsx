@@ -6,22 +6,22 @@ import { ReactElement, ReactNode } from "react";
 import { api } from "@/utils/trpc";
 
 export type NextPageWithLayout<P = Record<string, never>, IP = P> = NextPage<
-  P,
-  IP
+    P,
+    IP
 > & {
-  getLayout?: (page: ReactElement) => ReactNode;
+    getLayout?: (page: ReactElement) => ReactNode;
 };
 
 type AppPropsWithLayout = AppProps & {
-  Component: NextPageWithLayout;
+    Component: NextPageWithLayout;
 };
 
 function MyApp({ Component, pageProps }: AppPropsWithLayout) {
-  const getLayout = Component.getLayout || ((page) => page);
+    const getLayout = Component.getLayout || ((page) => page);
 
-  return (
-    <ThemeProvider>{getLayout(<Component {...pageProps} />)}</ThemeProvider>
-  );
+    return (
+        <ThemeProvider>{getLayout(<Component {...pageProps} />)}</ThemeProvider>
+    );
 }
 
 export default api.withTRPC(MyApp);
