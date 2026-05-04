@@ -24,19 +24,23 @@ const healthRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         };
 
         // Check Kafka connection
-        health.services.kafka = kafkaProducer ? await kafkaProducer.healthCheck() : {
-            status: "disabled",
-            timestamp: new Date().toISOString(),
-        };
+        health.services.kafka = kafkaProducer
+            ? await kafkaProducer.healthCheck()
+            : {
+                  status: "disabled",
+                  timestamp: new Date().toISOString(),
+              };
 
         // Check Schema connection
-        health.services.schema = schemaManager ? await schemaManager.healthCheck() : {
-            status: "disabled",
-            timestamp: new Date().toISOString(),
-        };
+        health.services.schema = schemaManager
+            ? await schemaManager.healthCheck()
+            : {
+                  status: "disabled",
+                  timestamp: new Date().toISOString(),
+              };
 
         // TODO: Add REST connection health check
-        
+
         const statusCode = health.status === "healthy" ? 200 : 503;
         reply.code(statusCode).send(health);
     });

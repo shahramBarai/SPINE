@@ -9,12 +9,7 @@ const NODE_ENV: "prod" | "dev" = (process.env.NODE_ENV || "prod") as
 const HOST = process.env.HOST || "0.0.0.0";
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
-export {
-    CLIENT_ID,
-    NODE_ENV,
-    HOST,
-    PORT
-};
+export { CLIENT_ID, NODE_ENV, HOST, PORT };
 
 export * from "./kafka_config";
 export * from "./mqtt_config";

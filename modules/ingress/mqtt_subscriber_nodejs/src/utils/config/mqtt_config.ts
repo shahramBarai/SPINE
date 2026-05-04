@@ -43,7 +43,7 @@ const getMQTTConfig = (clientId: string): MQTTConfig => {
         throw new Error(
             `MQTT configuration is not set: 
                 MQTT_BROKER_URL=${MQTT_BROKER_URL}, 
-                MQTT_TOPICS=${MQTT_TOPICS}`,
+                MQTT_TOPICS=${MQTT_TOPICS}`
         );
     }
 

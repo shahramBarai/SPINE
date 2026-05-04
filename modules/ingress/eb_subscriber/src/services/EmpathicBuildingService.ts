@@ -1,9 +1,14 @@
 import { EventEmitter } from "node:events";
-import Pusher, { Channel} from "pusher-js";
+import Pusher, { Channel } from "pusher-js";
 import { logger } from "@spine/shared";
 import { gunzipSync } from "node:zlib";
 import { Buffer } from "node:buffer";
-import type { EmpathicBuildingConfig, DecodedEvent, ChannelSubscription, TokenData } from "../utils/eb_types";
+import type {
+    EmpathicBuildingConfig,
+    DecodedEvent,
+    ChannelSubscription,
+    TokenData,
+} from "../utils/eb_types";
 
 class EmpathicBuildingService extends EventEmitter {
     private readonly config: EmpathicBuildingConfig;
@@ -22,11 +27,11 @@ class EmpathicBuildingService extends EventEmitter {
     constructor(config: EmpathicBuildingConfig) {
         super();
         this.config = config;
-        
+
         // Validate authentication configuration
         if (!config.bearerToken && (!config.username || !config.password)) {
             throw new Error(
-                "Either bearerToken or both username and password must be provided",
+                "Either bearerToken or both username and password must be provided"
             );
         }
     }
@@ -46,10 +51,15 @@ class EmpathicBuildingService extends EventEmitter {
         if (this.tokenData?.refreshToken) {
             try {
                 logger.info("Refreshing access token...");
-                const newToken = await this.refreshToken(this.tokenData.refreshToken);
+                const newToken = await this.refreshToken(
+                    this.tokenData.refreshToken
+                );
                 return newToken;
             } catch (error) {
-                logger.warn("Token refresh failed, attempting new login:", error);
+                logger.warn(
+                    "Token refresh failed, attempting new login:",
+                    error
+                );
                 // Fall through to login
             }
         }
@@ -61,7 +71,9 @@ class EmpathicBuildingService extends EventEmitter {
                 logger.debug("Using provided bearer token");
                 return this.config.bearerToken;
             }
-            throw new Error("Username and password required for authentication");
+            throw new Error(
+                "Username and password required for authentication"
+            );
         }
 
         const username = this.config.username as string;
@@ -83,13 +95,13 @@ class EmpathicBuildingService extends EventEmitter {
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(
-                `Authentication failed: ${response.status} - ${errorText}`,
+                `Authentication failed: ${response.status} - ${errorText}`
             );
         }
 
         const data = await response.json();
 
-        const expiresIn = (data.expires_in) * 1000; // Convert to milliseconds
+        const expiresIn = data.expires_in * 1000; // Convert to milliseconds
 
         this.tokenData = {
             accessToken: data.access_token,
@@ -99,7 +111,7 @@ class EmpathicBuildingService extends EventEmitter {
         };
 
         logger.info(
-            `Authentication successful. Token expires in ${data.expires_in} seconds`,
+            `Authentication successful. Token expires in ${data.expires_in} seconds`
         );
 
         // Schedule token refresh before expiration
@@ -126,7 +138,7 @@ class EmpathicBuildingService extends EventEmitter {
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(
-                `Token refresh failed: ${response.status} - ${errorText}`,
+                `Token refresh failed: ${response.status} - ${errorText}`
             );
         }
 
@@ -174,7 +186,9 @@ class EmpathicBuildingService extends EventEmitter {
                     await this.refreshToken(this.tokenData.refreshToken);
                     // Reconnect with new token since Pusher-js doesn't support dynamic auth updates
                     if (this.pusher && this.isConnected) {
-                        logger.info("Token refreshed. Reconnecting with new token...");
+                        logger.info(
+                            "Token refreshed. Reconnecting with new token..."
+                        );
                         await this.disconnect();
                         await this.connect();
                     }
@@ -184,12 +198,17 @@ class EmpathicBuildingService extends EventEmitter {
                 this.emit("tokenRefreshError", error);
                 // Try to reconnect with fresh login
                 if (this.isConnected) {
-                    logger.info("Attempting to reconnect after token refresh failure...");
+                    logger.info(
+                        "Attempting to reconnect after token refresh failure..."
+                    );
                     try {
                         await this.disconnect();
                         await this.connect();
                     } catch (reconnectError) {
-                        logger.error("Reconnection after token refresh failed:", reconnectError);
+                        logger.error(
+                            "Reconnection after token refresh failed:",
+                            reconnectError
+                        );
                     }
                 }
             }
@@ -250,14 +269,14 @@ class EmpathicBuildingService extends EventEmitter {
                 this.emit("error", error);
             });
 
-            this.pusher.connection.bind("state_change", (states: {
-                previous: string;
-                current: string;
-            }) => {
-                logger.debug(
-                    `Pusher state changed: ${states.previous} -> ${states.current}`,
-                );
-            });
+            this.pusher.connection.bind(
+                "state_change",
+                (states: { previous: string; current: string }) => {
+                    logger.debug(
+                        `Pusher state changed: ${states.previous} -> ${states.current}`
+                    );
+                }
+            );
 
             // Subscribe to channels
             await this.subscribeToChannels();
@@ -300,11 +319,13 @@ class EmpathicBuildingService extends EventEmitter {
 
         if (channels.length === 0) {
             throw new Error(
-                "No channels configured for subscription. Configure at least one of: organizationIds, locationIds, or subscribeToNotifications",
+                "No channels configured for subscription. Configure at least one of: organizationIds, locationIds, or subscribeToNotifications"
             );
         }
 
-        logger.info(`Subscribing to ${channels.length} channel(s): ${channels.join(", ")}`);
+        logger.info(
+            `Subscribing to ${channels.length} channel(s): ${channels.join(", ")}`
+        );
 
         for (const channelName of channels) {
             await this.subscribeToChannel(channelName);
@@ -316,7 +337,9 @@ class EmpathicBuildingService extends EventEmitter {
      */
     private async subscribeToChannel(channelName: string): Promise<void> {
         if (!this.pusher) {
-            throw new Error("Pusher client not initialized. Call connect() first.");
+            throw new Error(
+                "Pusher client not initialized. Call connect() first."
+            );
         }
 
         try {
@@ -327,12 +350,18 @@ class EmpathicBuildingService extends EventEmitter {
             // Wait for subscription to be confirmed
             await new Promise<void>((resolve, reject) => {
                 const timeout = setTimeout(() => {
-                    reject(new Error(`Timeout subscribing to channel: ${channelName}`));
+                    reject(
+                        new Error(
+                            `Timeout subscribing to channel: ${channelName}`
+                        )
+                    );
                 }, 10000);
 
                 channel.bind("pusher:subscription_succeeded", () => {
                     clearTimeout(timeout);
-                    logger.info(`Successfully subscribed to channel: ${channelName}`);
+                    logger.info(
+                        `Successfully subscribed to channel: ${channelName}`
+                    );
                     resolve();
                 });
 
@@ -340,7 +369,7 @@ class EmpathicBuildingService extends EventEmitter {
                     clearTimeout(timeout);
                     logger.error(
                         `Failed to subscribe to channel ${channelName}:`,
-                        error,
+                        error
                     );
                     // Check if it's an auth error and we have credentials to re-authenticate
                     if (
@@ -351,7 +380,7 @@ class EmpathicBuildingService extends EventEmitter {
                         this.hasCredentialAuth()
                     ) {
                         logger.warn(
-                            "Authentication error detected. Will attempt to re-authenticate and reconnect.",
+                            "Authentication error detected. Will attempt to re-authenticate and reconnect."
                         );
                         // Clear token data to force re-authentication
                         this.tokenData = undefined;
@@ -372,10 +401,7 @@ class EmpathicBuildingService extends EventEmitter {
 
             this.emit("subscribed", { channel: channelName });
         } catch (error) {
-            logger.error(
-                `Error subscribing to channel ${channelName}:`,
-                error,
-            );
+            logger.error(`Error subscribing to channel ${channelName}:`, error);
             throw error;
         }
     }
@@ -385,7 +411,7 @@ class EmpathicBuildingService extends EventEmitter {
      */
     private setupChannelEventHandlers(
         channel: Channel,
-        channelName: string,
+        channelName: string
     ): void {
         // Organization channel events
         if (channelName.startsWith("private-organization-")) {
@@ -450,7 +476,7 @@ class EmpathicBuildingService extends EventEmitter {
     private handleEvent(
         eventType: string,
         channel: string,
-        encodedData: string,
+        encodedData: string
     ): void {
         try {
             // Decode the event: base64 -> gzip decompress -> JSON parse
@@ -471,7 +497,7 @@ class EmpathicBuildingService extends EventEmitter {
         } catch (error) {
             logger.error(
                 `Error handling event ${eventType} from ${channel}:`,
-                error,
+                error
             );
             this.emit("error", error);
         }
@@ -505,7 +531,7 @@ class EmpathicBuildingService extends EventEmitter {
     private handleReconnect(): void {
         if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
             logger.error(
-                `Max reconnection attempts (${this.config.maxReconnectAttempts}) reached. Stopping reconnection.`,
+                `Max reconnection attempts (${this.config.maxReconnectAttempts}) reached. Stopping reconnection.`
             );
             this.emit("maxReconnectAttemptsReached");
             return;
@@ -515,7 +541,7 @@ class EmpathicBuildingService extends EventEmitter {
         const delay = this.config.reconnectDelayMs * this.reconnectAttempts;
 
         logger.info(
-            `Attempting to reconnect (${this.reconnectAttempts}/${this.config.maxReconnectAttempts}) in ${delay}ms...`,
+            `Attempting to reconnect (${this.reconnectAttempts}/${this.config.maxReconnectAttempts}) in ${delay}ms...`
         );
 
         this.reconnectTimer = setTimeout(() => {
@@ -549,10 +575,7 @@ class EmpathicBuildingService extends EventEmitter {
                 this.pusher?.unsubscribe(channelName);
                 logger.debug(`Unsubscribed from channel: ${channelName}`);
             } catch (error) {
-                logger.error(
-                    `Error unsubscribing from ${channelName}:`,
-                    error,
-                );
+                logger.error(`Error unsubscribing from ${channelName}:`, error);
             }
         }
 
@@ -609,7 +632,10 @@ class EmpathicBuildingService extends EventEmitter {
         }
 
         const now = Date.now();
-        const expiresIn = Math.max(0, Math.floor((this.tokenData.expiresAt - now) / 1000));
+        const expiresIn = Math.max(
+            0,
+            Math.floor((this.tokenData.expiresAt - now) / 1000)
+        );
 
         return {
             hasToken: true,

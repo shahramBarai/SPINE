@@ -83,26 +83,26 @@ Configuration is managed through environment variables, check the [.env.example]
 
 ```json
 {
-  "status": "healthy|degraded|unhealthy",
-  "timestamp": "2024-01-01T12:00:00.000Z",
-  "services": {
-    "mqtt": {
-      "isConnected": true,
-      "reconnectAttempts": 0,
-      "lastConnectedAt": "2024-01-01T11:55:00.000Z"
-    },
-    "kafka": {
-      "isConnected": true,
-      "topic": "mqtt-data",
-      "partitionCount": 3
-    },
-    "schema": {
-      "isConnected": true,
-      "schemaId": 123,
-      "version": 2,
-      "compatibility": "FULL"
+    "status": "healthy|degraded|unhealthy",
+    "timestamp": "2024-01-01T12:00:00.000Z",
+    "services": {
+        "mqtt": {
+            "isConnected": true,
+            "reconnectAttempts": 0,
+            "lastConnectedAt": "2024-01-01T11:55:00.000Z"
+        },
+        "kafka": {
+            "isConnected": true,
+            "topic": "mqtt-data",
+            "partitionCount": 3
+        },
+        "schema": {
+            "isConnected": true,
+            "schemaId": 123,
+            "version": 2,
+            "compatibility": "FULL"
+        }
     }
-  }
 }
 ```
 
@@ -110,28 +110,28 @@ Configuration is managed through environment variables, check the [.env.example]
 
 1. **Install dependencies:**
 
-   ```bash
-   pnpm install
-   ```
+    ```bash
+    pnpm install
+    ```
 
 2. **Configure environment:**
 
-   ```bash
-   cp .env.example .env
-   # Edit .env with your broker configurations
-   ```
+    ```bash
+    cp .env.example .env
+    # Edit .env with your broker configurations
+    ```
 
 3. **Start development server:**
 
-   ```bash
-   pnpm run dev
-   ```
+    ```bash
+    pnpm run dev
+    ```
 
 4. **Verify service health:**
 
-   ```bash
-   curl http://localhost:3000/health
-   ```
+    ```bash
+    curl http://localhost:3000/health
+    ```
 
 ## Future Enhancements
 

@@ -6,7 +6,12 @@
  */
 
 import { logger } from "@spine/shared";
-import { empathicBuildingService, kafkaProducer, excelService, configs } from "../deps";
+import {
+    empathicBuildingService,
+    kafkaProducer,
+    excelService,
+    configs,
+} from "../deps";
 import type { DecodedEvent } from "./eb_types";
 import {
     extractMeasurements,
@@ -33,7 +38,10 @@ async function handleEmpathicBuildingEvent(event: DecodedEvent): Promise<void> {
     };
 
     const locationIdFromCh = locationIdFromChannel(event.channel);
-    const campusId = resolveCampusId(locationIdFromCh, configs.getLocationToCampusMap());
+    const campusId = resolveCampusId(
+        locationIdFromCh,
+        configs.getLocationToCampusMap()
+    );
 
     let outputMessages;
     try {
@@ -49,9 +57,12 @@ async function handleEmpathicBuildingEvent(event: DecodedEvent): Promise<void> {
 
     for (const outMsg of outputMessages) {
         if (campusId === UNKNOWN_CAMPUS_ID) {
-            logger.debug("EB: missing location->campus mapping, using unknown", {
-                locationId: outMsg.campusId,
-            });
+            logger.debug(
+                "EB: missing location->campus mapping, using unknown",
+                {
+                    locationId: outMsg.campusId,
+                }
+            );
         }
 
         try {
@@ -91,13 +102,18 @@ function setupEmpathicBuildingHandlers(): void {
     });
 
     // Handle specific event types (optional - for additional logging/processing)
-    empathicBuildingService.on("sensor-modified", async (event: DecodedEvent) => {
-        await handleEmpathicBuildingEvent(event);
-    });
+    empathicBuildingService.on(
+        "sensor-modified",
+        async (event: DecodedEvent) => {
+            await handleEmpathicBuildingEvent(event);
+        }
+    );
 
     // Error handling
     empathicBuildingService.on("error", (error: unknown) => {
-        logger.debug("Empathic Building service error event observed", { error });
+        logger.debug("Empathic Building service error event observed", {
+            error,
+        });
     });
 
     empathicBuildingService.on("tokenRefreshError", (error: unknown) => {

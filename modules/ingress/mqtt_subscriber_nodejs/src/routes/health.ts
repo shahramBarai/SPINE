@@ -28,7 +28,7 @@ const healthRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
         // Check Schema connection
         health.services.schema = await schemaManager.healthCheck();
-        
+
         // Check MQTT connection
         const mqttHealthStatus = await mqttService.healthCheck();
         health.services.mqtt = mqttHealthStatus;

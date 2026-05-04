@@ -43,4 +43,4 @@ export type {
     DecodedEvent,
     ChannelSubscription,
     TokenData,
-}
+};
