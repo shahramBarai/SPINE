@@ -1,24 +1,24 @@
 {
-  "name": "@spine/storage-timescale",
-  "version": "1.0.0",
-  "description": "TimescaleDB database services for SPINE",
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "scripts": {
-    "db:init": "tsx scripts/create-schema.ts",
-    "type-check": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@spine/shared": "workspace:*",
-    "pg": "^8.19.0"
-  },
-  "devDependencies": {
-    "@types/node": "catalog:",
-    "typescript": "catalog:",
-    "dotenv": "catalog:",
-    "@types/pg": "^8.16.0",
-    "tsx": "^3.14.0"
-  }
+    "name": "@spine/storage-timescale",
+    "version": "1.0.0",
+    "description": "TimescaleDB database services for SPINE",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "db:init": "tsx scripts/create-schema.ts",
+        "type-check": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@spine/shared": "workspace:*",
+        "pg": "^8.19.0"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "dotenv": "catalog:",
+        "@types/pg": "^8.16.0",
+        "tsx": "^3.14.0"
+    }
 }

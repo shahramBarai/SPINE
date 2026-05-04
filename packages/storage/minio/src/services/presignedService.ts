@@ -88,8 +88,4 @@ async function generatePresignedUrl(
     );
 }
 
-export {
-    generatePresignedUrl,
-    generatePresignedUploadUrl
-}
-
+export { generatePresignedUrl, generatePresignedUploadUrl };

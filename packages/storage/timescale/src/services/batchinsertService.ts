@@ -9,7 +9,13 @@ class BatchInsertService {
     private timer: NodeJS.Timeout | null;
     private error: Error | null;
 
-    constructor({ batchSize = 1000, flushInterval = 5000 }: { batchSize?: number; flushInterval?: number }) {
+    constructor({
+        batchSize = 1000,
+        flushInterval = 5000,
+    }: {
+        batchSize?: number;
+        flushInterval?: number;
+    }) {
         this.batchSize = batchSize;
         this.flushInterval = flushInterval;
         this.batch = [];
@@ -45,13 +51,13 @@ class BatchInsertService {
             params.push(reading.time, reading.id, reading.data);
         });
 
-        const sql = `INSERT INTO sensor_readings (time, id, data) VALUES ${values.join(', ')}`;
+        const sql = `INSERT INTO sensor_readings (time, id, data) VALUES ${values.join(", ")}`;
         try {
             await query(sql, params);
-            logger.debug('Batch flushed successfully');
+            logger.debug("Batch flushed successfully");
             this.error = null;
         } catch (error) {
-            logger.error('Failed to flush batch', error);
+            logger.error("Failed to flush batch", error);
             // Re-add failed readings to buffer for retry
             this.batch = [...batchToInsert, ...this.batch];
             this.error = error as Error;

@@ -14,28 +14,33 @@ const prisma = getPrisma();
  * @throws {Error} If the user already exists
  * @returns The created user
  */
-async function createUser(data: { name?: string; email: string; password: string; role?: UserRole }) {
-  const existingUser = await getUserByEmail(data.email);
-  if (existingUser) {
-    throw new Error("User with this email already exists");
-  }
-  const user = await prisma.user.create({
-    data: {
-      name: data.name,
-      email: data.email,
-      password: data.password,
-      role: data.role || UserRole.USER,
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-  return user;
+async function createUser(data: {
+    name?: string;
+    email: string;
+    password: string;
+    role?: UserRole;
+}) {
+    const existingUser = await getUserByEmail(data.email);
+    if (existingUser) {
+        throw new Error("User with this email already exists");
+    }
+    const user = await prisma.user.create({
+        data: {
+            name: data.name,
+            email: data.email,
+            password: data.password,
+            role: data.role || UserRole.USER,
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    });
+    return user;
 }
 
 /* -------------------------------- READ -------------------------------- */
@@ -45,17 +50,17 @@ async function createUser(data: { name?: string; email: string; password: string
  * @returns An array of users
  */
 async function getAllUsers() {
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-  return users;
+    const users = await prisma.user.findMany({
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    });
+    return users;
 }
 
 /**
@@ -64,20 +69,19 @@ async function getAllUsers() {
  * @returns The user or null if not found
  */
 async function getUserById(id: string) {
-  const user = await prisma.user.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-  return user;
+    const user = await prisma.user.findUnique({
+        where: { id },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    });
+    return user;
 }
-
 
 /**
  * Get user by email
@@ -85,18 +89,18 @@ async function getUserById(id: string) {
  * @returns The user or `null` if not found
  */
 async function getUserByEmail(email: string) {
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-  return user;
+    const user = await prisma.user.findUnique({
+        where: { email },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    });
+    return user;
 }
 
 /**
@@ -105,19 +109,18 @@ async function getUserByEmail(email: string) {
  * @returns The user or `null` if not found
  */
 async function getUserByEmailWithPassword(email: string) {
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      password: true,
-      role: true,
-    },
-  });
-  return user;
+    const user = await prisma.user.findUnique({
+        where: { email },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            password: true,
+            role: true,
+        },
+    });
+    return user;
 }
-
 
 /* -------------------------------- UPDATE -------------------------------- */
 
@@ -133,36 +136,39 @@ async function getUserByEmailWithPassword(email: string) {
  * @throws {Error} If the email is already taken
  * @returns The updated user
  */
-async function updateUser(id: string, data: { name?: string; email?: string; password?: string; role?: UserRole }) {
-  // Check if user exists
-  const user = await getUserById(id);
-  if (!user) {
-    throw new Error("User not found");
-  }
-
-  // If email is being changed, check if new email is already taken
-  if (data.email) {
-    const existingUser = await getUserByEmail(data.email);
-    if (existingUser && existingUser.id !== id) {
-      throw new Error("Email already taken by another user");
+async function updateUser(
+    id: string,
+    data: { name?: string; email?: string; password?: string; role?: UserRole }
+) {
+    // Check if user exists
+    const user = await getUserById(id);
+    if (!user) {
+        throw new Error("User not found");
     }
-  }
 
-  return await prisma.user.update({
-    where: { id },
-    data: {
-      ...data,
-      updatedAt: new Date(),
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
+    // If email is being changed, check if new email is already taken
+    if (data.email) {
+        const existingUser = await getUserByEmail(data.email);
+        if (existingUser && existingUser.id !== id) {
+            throw new Error("Email already taken by another user");
+        }
+    }
+
+    return await prisma.user.update({
+        where: { id },
+        data: {
+            ...data,
+            updatedAt: new Date(),
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    });
 }
 
 /* -------------------------------- DELETE -------------------------------- */
@@ -174,24 +180,23 @@ async function updateUser(id: string, data: { name?: string; email?: string; pas
  * @returns The id of the deleted user
  */
 async function deleteUser(id: string) {
-  const user = await getUserById(id);
-  if (!user) {
-    return id;
-  }
-  const deletedUser = await prisma.user.delete({
-    where: { id }
-  });
-  return deletedUser.id;
+    const user = await getUserById(id);
+    if (!user) {
+        return id;
+    }
+    const deletedUser = await prisma.user.delete({
+        where: { id },
+    });
+    return deletedUser.id;
 }
-
 
 /* ------------------------------ EXPORTS -------------------------------- */
 export {
-  createUser,
-  getAllUsers,
-  getUserById,
-  getUserByEmail,
-  getUserByEmailWithPassword,
-  updateUser,
-  deleteUser,
-}
+    createUser,
+    getAllUsers,
+    getUserById,
+    getUserByEmail,
+    getUserByEmailWithPassword,
+    updateUser,
+    deleteUser,
+};

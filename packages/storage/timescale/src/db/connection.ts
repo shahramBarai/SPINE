@@ -20,18 +20,20 @@ function initTimescaleStorage(config: TimescaleConfig): void {
         connectionTimeoutMillis: 2000,
     });
 
-    pool.on('connect', () => {
-        logger.info('🛜  TimescaleDB: New connection acquired');
+    pool.on("connect", () => {
+        logger.info("🛜  TimescaleDB: New connection acquired");
     });
 
-    pool.on('error', (err) => {
-        logger.error('🛜  TimescaleDB: Unexpected error on idle client', err);
+    pool.on("error", (err) => {
+        logger.error("🛜  TimescaleDB: Unexpected error on idle client", err);
     });
 }
 
 function getPool(): Pool {
     if (!pool) {
-        throw new Error("TimescaleDB pool not initialised. Call initDb() first.");
+        throw new Error(
+            "TimescaleDB pool not initialised. Call initDb() first."
+        );
     }
     return pool;
 }
@@ -54,7 +56,9 @@ async function query(text: string, params?: any[]) {
     const duration = Date.now() - start;
 
     if (duration > 1000) {
-        logger.warn('🛜  TimescaleDB: Slow query: ' + text + ' ' + duration + 'ms');
+        logger.warn(
+            "🛜  TimescaleDB: Slow query: " + text + " " + duration + "ms"
+        );
     }
     return result;
 }
@@ -77,23 +81,20 @@ async function query(text: string, params?: any[]) {
  * }
  * ```
  */
-async function withTransaction(callback: (client: PoolClient) => Promise<void>) {
+async function withTransaction(
+    callback: (client: PoolClient) => Promise<void>
+) {
     const client = await getPool().connect();
     try {
-        await client.query('BEGIN');
+        await client.query("BEGIN");
         await callback(client);
-        await client.query('COMMIT');
+        await client.query("COMMIT");
     } catch (error) {
-        await client.query('ROLLBACK');
+        await client.query("ROLLBACK");
         throw error;
     } finally {
         client.release();
     }
 }
 
-export {
-    initTimescaleStorage,
-    getPool,
-    query,
-    withTransaction
-};
+export { initTimescaleStorage, getPool, query, withTransaction };

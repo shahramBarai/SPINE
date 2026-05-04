@@ -5,16 +5,9 @@
         "declaration": true,
         "composite": true,
         "declarationMap": true,
-        "sourceMap": true,
+        "sourceMap": true
     },
-      "references": [
-        { "path": "../../shared", "composite": true }
-    ],
-    "include": [
-        "./src/**/*.ts"
-    ],
-    "exclude": [
-        "node_modules",
-        "dist"
-    ]
+    "references": [{ "path": "../../shared", "composite": true }],
+    "include": ["./src/**/*.ts"],
+    "exclude": ["node_modules", "dist"]
 }

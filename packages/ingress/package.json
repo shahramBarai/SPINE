@@ -1,24 +1,24 @@
 {
-  "name": "@spine/ingress",
-  "version": "1.0.0",
-  "description": "Ingress package for SPINE",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "dependencies": {
-    "@spine/shared": "workspace:*"
-  },
-  "scripts": {
-    "build": "tsc",
-    "type-check": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "@types/node": "catalog:",
-    "typescript": "catalog:",
-    "tsup": "^8.5.1",
-    "tsx": "^3.0.0"
-  }
+    "name": "@spine/ingress",
+    "version": "1.0.0",
+    "description": "Ingress package for SPINE",
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "dependencies": {
+        "@spine/shared": "workspace:*"
+    },
+    "scripts": {
+        "build": "tsc",
+        "type-check": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "tsup": "^8.5.1",
+        "tsx": "^3.0.0"
+    }
 }

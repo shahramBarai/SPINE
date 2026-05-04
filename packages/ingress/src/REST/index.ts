@@ -55,7 +55,7 @@ class RESTService extends EventEmitter {
         void executePoll();
         this.pollingTimer = setInterval(
             () => void executePoll(),
-            this.config.poller.pollIntervalMs,
+            this.config.poller.pollIntervalMs
         );
     }
 
@@ -67,9 +67,7 @@ class RESTService extends EventEmitter {
         }
     }
 
-    async pollOnce(
-        handler?: (result: PollingResult) => Promise<void> | void,
-    ) {
+    async pollOnce(handler?: (result: PollingResult) => Promise<void> | void) {
         for (const endpoint of this.config.endpoints) {
             await this.pollEndpoint(endpoint, handler);
         }
@@ -77,7 +75,7 @@ class RESTService extends EventEmitter {
 
     private async pollEndpoint(
         endpoint: RestEndpointConfig,
-        handler?: (result: PollingResult) => Promise<void> | void,
+        handler?: (result: PollingResult) => Promise<void> | void
     ) {
         const pagination = this.config.pagination;
         let page = 1;
@@ -108,7 +106,7 @@ class RESTService extends EventEmitter {
 
                 ({ cursor, nextLink } = this.extractPaginationState(
                     result.payload,
-                    pagination,
+                    pagination
                 ));
 
                 if (
@@ -117,7 +115,7 @@ class RESTService extends EventEmitter {
                         pagination,
                         page,
                         cursor,
-                        nextLink,
+                        nextLink
                     )
                 ) {
                     break;
@@ -128,7 +126,7 @@ class RESTService extends EventEmitter {
                 this.emit("error", error);
                 logger.error(
                     `RESTService failed to poll endpoint ${endpoint.path}`,
-                    error,
+                    error
                 );
                 break;
             }
@@ -137,18 +135,18 @@ class RESTService extends EventEmitter {
 
     private async executeRequest(
         endpoint: RestEndpointConfig,
-        context: RequestContext,
+        context: RequestContext
     ) {
         const { url, headers, body } = await this.createRequestInit(
             endpoint,
-            context,
+            context
         );
 
         const response = await this.executeWithRetry(async () => {
             const controller = new AbortController();
             const timeout = setTimeout(
                 () => controller.abort(),
-                this.config.poller.timeoutMs,
+                this.config.poller.timeoutMs
             );
             try {
                 const res = await fetch(url, {
@@ -167,8 +165,8 @@ class RESTService extends EventEmitter {
             const payload = await this.safeParseBody(response);
             throw new Error(
                 `RESTService got ${response.status} from ${url}: ${JSON.stringify(
-                    payload,
-                )}`,
+                    payload
+                )}`
             );
         }
 
@@ -182,7 +180,7 @@ class RESTService extends EventEmitter {
 
     private async createRequestInit(
         endpoint: RestEndpointConfig,
-        context: RequestContext,
+        context: RequestContext
     ) {
         const url = this.buildUrl(endpoint.path, context.nextLink);
         const headers: Record<string, string> = {
@@ -219,12 +217,12 @@ class RESTService extends EventEmitter {
         if (pagination.mode === "page" && context.page) {
             url.searchParams.set(
                 pagination.pageParam ?? "page",
-                context.page.toString(),
+                context.page.toString()
             );
             if (pagination.pageSize && pagination.pageSizeParam) {
                 url.searchParams.set(
                     pagination.pageSizeParam,
-                    pagination.pageSize.toString(),
+                    pagination.pageSize.toString()
                 );
             }
         }
@@ -232,7 +230,7 @@ class RESTService extends EventEmitter {
         if (pagination.mode === "cursor" && context.cursor) {
             url.searchParams.set(
                 pagination.cursorParam ?? "cursor",
-                context.cursor,
+                context.cursor
             );
         }
     }
@@ -242,10 +240,12 @@ class RESTService extends EventEmitter {
         switch (auth.type) {
             case "basic": {
                 if (!auth.username || !auth.password) {
-                    throw new Error("Basic auth requires username and password");
+                    throw new Error(
+                        "Basic auth requires username and password"
+                    );
                 }
                 const encoded = Buffer.from(
-                    `${auth.username}:${auth.password}`,
+                    `${auth.username}:${auth.password}`
                 ).toString("base64");
                 headers.Authorization = `Basic ${encoded}`;
                 break;
@@ -264,7 +264,7 @@ class RESTService extends EventEmitter {
                 if (auth.apiKeyLocation === "query") {
                     url.searchParams.set(
                         auth.apiKeyQueryParam || "api_key",
-                        auth.apiKey,
+                        auth.apiKey
                     );
                 } else {
                     headers[auth.apiKeyHeader ?? "x-api-key"] = auth.apiKey;
@@ -313,9 +313,7 @@ class RESTService extends EventEmitter {
         });
 
         if (!response.ok) {
-            throw new Error(
-                `Failed to obtain OAuth token: ${response.status}`,
-            );
+            throw new Error(`Failed to obtain OAuth token: ${response.status}`);
         }
 
         const payload = (await response.json()) as {
@@ -338,9 +336,7 @@ class RESTService extends EventEmitter {
         return JSON.stringify(template);
     }
 
-    private async executeWithRetry<T>(
-        fn: () => Promise<T>,
-    ): Promise<T> {
+    private async executeWithRetry<T>(fn: () => Promise<T>): Promise<T> {
         let attempt = 0;
         const { retryAttempts, retryDelayMs } = this.config.poller;
         const maxAttempts = Math.max(1, retryAttempts);
@@ -356,7 +352,7 @@ class RESTService extends EventEmitter {
                 const delay = retryDelayMs * attempt;
                 logger.warn(
                     `RESTService request failed (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms`,
-                    error,
+                    error
                 );
                 await this.delay(delay);
             }
@@ -381,20 +377,20 @@ class RESTService extends EventEmitter {
 
     private extractPaginationState(
         payload: unknown,
-        pagination: RestPaginationConfig,
+        pagination: RestPaginationConfig
     ) {
         if (pagination.mode === "cursor") {
             const cursor = this.resolveField(
                 payload,
-                pagination.nextCursorField,
+                pagination.nextCursorField
             );
-            return { cursor: cursor as string | undefined, nextLink: undefined };
+            return {
+                cursor: cursor as string | undefined,
+                nextLink: undefined,
+            };
         }
         if (pagination.mode === "link") {
-            const link = this.resolveField(
-                payload,
-                pagination.nextLinkField,
-            );
+            const link = this.resolveField(payload, pagination.nextLinkField);
             return { cursor: undefined, nextLink: link as string | undefined };
         }
         return { cursor: undefined, nextLink: undefined };
@@ -405,11 +401,10 @@ class RESTService extends EventEmitter {
         pagination: RestPaginationConfig,
         page: number,
         cursor?: string,
-        link?: string,
+        link?: string
     ) {
         if (pagination.mode === "page") {
-            const hasMoreData =
-                Array.isArray(payload) && payload.length > 0;
+            const hasMoreData = Array.isArray(payload) && payload.length > 0;
             const underMaxPages =
                 !pagination.maxPages || page < pagination.maxPages;
             return hasMoreData && underMaxPages;

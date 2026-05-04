@@ -39,9 +39,4 @@ function getMinioClient(): Client {
     return minioClient;
 }
 
-export {
-    initFileStorage,
-    getMinioClient,
-    BUCKET_NAME_LIST,
-    type BUCKET_NAMES,
-};
+export { initFileStorage, getMinioClient, BUCKET_NAME_LIST, type BUCKET_NAMES };

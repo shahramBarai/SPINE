@@ -9,7 +9,7 @@ import { logger } from "@spine/shared";
 function isOptionalField(type: unknown): boolean {
     if (Array.isArray(type)) {
         return type.some(
-            (t) => t === "null" || (typeof t === "object" && t.type === "null"),
+            (t) => t === "null" || (typeof t === "object" && t.type === "null")
         );
     }
     return false;
@@ -48,7 +48,7 @@ function convertType(avroType: any): z.ZodSchema {
     if (Array.isArray(avroType)) {
         const zodTypes = avroType.map((type) => convertType(type));
         return z.union(
-            zodTypes as [z.ZodSchema, z.ZodSchema, ...z.ZodSchema[]],
+            zodTypes as [z.ZodSchema, z.ZodSchema, ...z.ZodSchema[]]
         );
     }
 
@@ -83,7 +83,7 @@ function convertType(avroType: any): z.ZodSchema {
                 return z.any(); // For now, we'll use any for references
             }
             throw new Error(
-                `Unsupported Avro type: ${avroType.type || avroType}`,
+                `Unsupported Avro type: ${avroType.type || avroType}`
             );
     }
 }
@@ -105,7 +105,7 @@ function convertAvroToZod(avroSchema: any): z.ZodSchema {
     } catch (error) {
         logger.error("Failed to convert Avro schema to Zod:", error);
         throw new Error(
-            `Invalid Avro schema: ${error instanceof Error ? error.message : "Unknown error"}`,
+            `Invalid Avro schema: ${error instanceof Error ? error.message : "Unknown error"}`
         );
     }
 }

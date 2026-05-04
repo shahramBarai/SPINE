@@ -1,5 +1,3 @@
 import { RESTService } from "./REST";
 
-export {
-    RESTService,
-};
+export { RESTService };

@@ -3,7 +3,10 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SHARED_ENV_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "../.env");
+const SHARED_ENV_FILE = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    "../.env"
+);
 
 interface WorkspaceEnv {
     NODE_ENV: string;
@@ -22,7 +25,9 @@ interface WorkspaceEnv {
 function requiredEnv(name: keyof WorkspaceEnv): string {
     const value = process.env[name]?.trim();
     if (!value) {
-        throw new Error(`Missing required environment variable: ${String(name)}`);
+        throw new Error(
+            `Missing required environment variable: ${String(name)}`
+        );
     }
 
     return value;
@@ -46,8 +51,10 @@ const env: WorkspaceEnv = {
     DATABASE_URL_MINIO: requiredEnv("DATABASE_URL_MINIO"),
     KAFKA_BROKERS: requiredEnv("KAFKA_BROKERS"),
     SCHEMA_REGISTRY_URL: requiredEnv("SCHEMA_REGISTRY_URL"),
-    SCHEMA_REGISTRY_USERNAME: process.env.SCHEMA_REGISTRY_USERNAME?.trim() || undefined,
-    SCHEMA_REGISTRY_PASSWORD: process.env.SCHEMA_REGISTRY_PASSWORD?.trim() || undefined,
+    SCHEMA_REGISTRY_USERNAME:
+        process.env.SCHEMA_REGISTRY_USERNAME?.trim() || undefined,
+    SCHEMA_REGISTRY_PASSWORD:
+        process.env.SCHEMA_REGISTRY_PASSWORD?.trim() || undefined,
 };
 
 export type { WorkspaceEnv };
