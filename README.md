@@ -39,7 +39,6 @@ Check [🏗️ Architecture Guide](./docs/architecture.md) for more details.
 - Docker & Docker Compose (v2.20+) ([link](https://docs.docker.com/compose/install/))
 - Git ([link](https://git-scm.com/downloads))
 
-
 To run the platform, you can use the following commands:
 
 ```bash
