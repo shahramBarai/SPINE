@@ -1,25 +1,25 @@
 {
-  "name": "mqtt-bridge",
-  "version": "1.0.0",
-  "description": "MQTT bridge service for bridging sensor data from Kafka to MQTT",
-  "type": "module",
-  "main": "src/server.ts",
-  "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsup src/server.ts --format cjs,esm --dts",
-    "start": "node dist/server.js",
-    "type-check": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@spine/messaging": "workspace:*",
-    "@spine/shared": "workspace:*",
-    "dotenv": "catalog:",
-    "mqtt": "^5.3.4"
-  },
-  "devDependencies": {
-    "@types/node": "catalog:",
-    "typescript": "catalog:",
-    "tsx": "^4.20.5",
-    "tsup": "^8.5.1"
-  }
+    "name": "mqtt-bridge",
+    "version": "1.0.0",
+    "description": "MQTT bridge service for bridging sensor data from Kafka to MQTT",
+    "type": "module",
+    "main": "src/server.ts",
+    "scripts": {
+        "dev": "tsx watch src/server.ts",
+        "build": "tsup src/server.ts --format cjs,esm --dts",
+        "start": "node dist/server.js",
+        "type-check": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@spine/messaging": "workspace:*",
+        "@spine/shared": "workspace:*",
+        "dotenv": "catalog:",
+        "mqtt": "^5.3.4"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "tsx": "^4.20.5",
+        "tsup": "^8.5.1"
+    }
 }

@@ -20,7 +20,7 @@ let mqttConfig: MQTTConfig | undefined = undefined;
 
 /**
  * Reads MQTT configuration from environment variables and returns an MQTTConfig object.
- * 
+ *
  * Environment variables:
  * - MQTT_BROKER_URL: The URL of the MQTT broker (required)
  * - MQTT_QOS: The Quality of Service level (0, 1, or 2) (default: 0)
@@ -30,10 +30,10 @@ let mqttConfig: MQTTConfig | undefined = undefined;
  * - MQTT_CONNECT_TIMEOUT: Connection timeout in milliseconds (default: 30000)
  * - MQTT_USERNAME: Username for MQTT authentication (optional)
  * - MQTT_PASSWORD: Password for MQTT authentication (optional)
- * 
+ *
  * If MQTT_BROKER_URL is not set, an error is thrown.
  * The function caches the configuration after the first read to avoid redundant processing.
- * 
+ *
  * @returns {MQTTConfig} The MQTT configuration object
  * @throws {Error} If MQTT_BROKER_URL is not set
  */
@@ -82,7 +82,4 @@ const getMQTTConfig = (): MQTTConfig => {
 };
 
 export type { MQTTConfig };
-export {
-    getMQTTConfig
-};
-
+export { getMQTTConfig };

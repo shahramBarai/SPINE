@@ -27,7 +27,10 @@ class MQTTService {
      * Connect to MQTT broker
      */
     async connect(): Promise<boolean> {
-        if (this.connectionState.isConnected || this.connectionState.isConnecting) {
+        if (
+            this.connectionState.isConnected ||
+            this.connectionState.isConnecting
+        ) {
             logger.warn("MQTT gateway: Already connected or connecting");
             return this.connectionState.isConnected;
         }
@@ -79,7 +82,7 @@ class MQTTService {
                 this.client.on("reconnect", () => {
                     this.connectionState.reconnectAttempts++;
                     logger.info(
-                        `MQTT gateway: Reconnecting (attempt ${this.connectionState.reconnectAttempts})`,
+                        `MQTT gateway: Reconnecting (attempt ${this.connectionState.reconnectAttempts})`
                     );
                 });
 
@@ -103,7 +106,7 @@ class MQTTService {
     async publish(topic: string, message: string): Promise<void> {
         if (!this.client || !this.connectionState.isConnected) {
             logger.warn(
-                "MQTT gateway: Cannot publish, not connected to MQTT broker",
+                "MQTT gateway: Cannot publish, not connected to MQTT broker"
             );
             return;
         }
@@ -126,22 +129,22 @@ class MQTTService {
                         if (error) {
                             logger.error(
                                 `MQTT gateway: Failed to publish to topic ${topic}`,
-                                error,
+                                error
                             );
                             reject(error);
                         } else {
                             logger.debug(
-                                `MQTT gateway: Published message to topic ${topic}`,
+                                `MQTT gateway: Published message to topic ${topic}`
                             );
                             resolve();
                         }
-                    },
+                    }
                 );
             });
         } catch (error) {
             logger.error(
                 `MQTT gateway: Error publishing message for topic ${topic} message: ${message}`,
-                error,
+                error
             );
         }
     }
@@ -184,7 +187,9 @@ class MQTTService {
         error?: string;
     }> {
         return {
-            status: this.connectionState.isConnected ? "connected" : "disconnected",
+            status: this.connectionState.isConnected
+                ? "connected"
+                : "disconnected",
             timestamp: new Date().toISOString(),
             connectionState: { ...this.connectionState },
             error: this.connectionState.isConnected
