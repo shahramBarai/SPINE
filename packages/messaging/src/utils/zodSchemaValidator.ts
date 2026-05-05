@@ -102,7 +102,7 @@ function convertType(avroType: unknown): z.ZodTypeAny {
                 return z.any(); // For now, we'll use any for references
             }
             throw new Error(
-                `Unsupported Avro type: ${avroType.type || avroType}`
+                `Unsupported Avro type: ${structuredType.type || avroType}`
             );
     }
 }
