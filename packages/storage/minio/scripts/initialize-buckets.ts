@@ -42,7 +42,7 @@ async function main() {
             const policy = await minioClient.getBucketPolicy(bucketName);
             console.log(policy);
             allBucketsWithPolicy.push({ bucketName, policy });
-        } catch (error) {
+        } catch (_error) {
             console.log("No policy found for bucket:", bucketName);
         }
     }

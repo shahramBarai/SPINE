@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import { Pool, type PoolClient } from "pg";
 import { logger } from "@spine/shared";
 import { type TimescaleConfig } from "../config";
 
@@ -50,7 +50,7 @@ function getPool(): Pool {
  * const result = await query('SELECT * FROM sensor_readings WHERE id = $1', [id]);
  * ```
  */
-async function query(text: string, params?: any[]) {
+async function query(text: string, params?: unknown[]) {
     const start = Date.now();
     const result = await getPool().query(text, params);
     const duration = Date.now() - start;

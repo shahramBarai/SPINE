@@ -1,8 +1,10 @@
-import { BucketItem } from "minio";
+import { type BucketItem, CopyConditions } from "minio";
 import { getMinioClient, type BUCKET_NAMES } from "../db/minio";
 import { Readable } from "stream";
 
 const minioClient = getMinioClient();
+
+type CopyObjectResult = Awaited<ReturnType<typeof minioClient.copyObject>>;
 
 /* -------------------------------- INTERFACES -------------------------------- */
 
@@ -51,7 +53,7 @@ async function uploadFile(options: UploadFileOptions): Promise<string | null> {
             metaData
         );
         return result.etag;
-    } catch (error) {
+    } catch (_error) {
         return null;
     }
 }
@@ -81,7 +83,7 @@ async function uploadBuffer(
         );
 
         return result.etag;
-    } catch (error) {
+    } catch (_error) {
         return null;
     }
 }
@@ -101,8 +103,8 @@ async function copyFile(
     sourceObject: string,
     destBucket: BUCKET_NAMES,
     destObject: string,
-    conditions?: any
-): Promise<any> {
+    conditions?: CopyConditions
+): Promise<CopyObjectResult> {
     const result = await minioClient.copyObject(
         destBucket,
         destObject,
@@ -155,7 +157,7 @@ async function readFile(
 ): Promise<Readable | null> {
     try {
         return await minioClient.getObject(bucketName, objectName);
-    } catch (error) {
+    } catch (_error) {
         return null;
     }
 }

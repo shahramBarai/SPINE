@@ -81,8 +81,9 @@ class RESTService extends EventEmitter {
         let page = 1;
         let cursor: string | undefined;
         let nextLink: string | undefined;
+        let hasNextPage = true;
 
-        do {
+        while (hasNextPage) {
             try {
                 const result = await this.executeRequest(endpoint, {
                     page,
@@ -109,15 +110,15 @@ class RESTService extends EventEmitter {
                     pagination
                 ));
 
-                if (
-                    !this.hasNextPage(
-                        result.payload,
-                        pagination,
-                        page,
-                        cursor,
-                        nextLink
-                    )
-                ) {
+                hasNextPage = this.hasNextPage(
+                    result.payload,
+                    pagination,
+                    page,
+                    cursor,
+                    nextLink
+                );
+
+                if (!hasNextPage) {
                     break;
                 }
 
@@ -130,7 +131,7 @@ class RESTService extends EventEmitter {
                 );
                 break;
             }
-        } while (true);
+        }
     }
 
     private async executeRequest(

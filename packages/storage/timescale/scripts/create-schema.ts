@@ -1,7 +1,5 @@
 import { env } from "@spine/shared";
 
-console.log("DATABASE_URL_TIMESCALE:", env.DATABASE_URL_TIMESCALE);
-
 import { initTimescaleStorage } from "../src/db/connection";
 import { createSchema } from "../src/db/schema";
 

@@ -212,9 +212,10 @@ class SchemaRegistry {
             }
 
             return { inputSchema, outputSchema };
-        } catch (error) {
+        } catch (error: unknown) {
             throw new Error(
-                `Failed to initialize service schemas: ${error instanceof Error ? error.message : "Unknown error"}`
+                `Failed to initialize service schemas: ${error instanceof Error ? error.message : "Unknown error"}`,
+                { cause: error }
             );
         }
     }
@@ -355,14 +356,14 @@ class ServiceSchemaManager {
                 return { success: true, data: result.data };
             } else {
                 const errorMessages = result.error.issues
-                    .map((err: any) => `${err.path.join(".")}: ${err.message}`)
+                    .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
                     .join(", ");
                 return {
                     success: false,
                     error: `Validation failed: ${errorMessages}`,
                 };
             }
-        } catch (error) {
+        } catch (error: unknown) {
             return {
                 success: false,
                 error: `Parse error: ${error instanceof Error ? error.message : "Unknown error"}`,
