@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import math
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -101,6 +102,18 @@ class SemanticSearchRequestDto(BaseModel):
 class SemanticSearchResultDto(BaseModel):
 	triples: list[TripleDto]
 	graph: GraphDto
+
+
+class ServiceHealthDto(BaseModel):
+	connected: bool
+	container_status: str | None = None
+	health_status: str | None = None
+	error: str | None = None
+
+
+class HealthDto(BaseModel):
+	status: str
+	timescaledb: ServiceHealthDto
 
 
 def _v(binding: dict[str, Any], key: str, default: str = "") -> str:
@@ -354,6 +367,42 @@ def _fuseki_manager() -> FusekiTTLManager:
 	)
 
 
+def _timescaledb_health() -> ServiceHealthDto:
+	container_name = os.getenv("TIMESCALEDB_CONTAINER_NAME", "timescaledb")
+	command = [
+		"docker",
+		"inspect",
+		"--format",
+		"{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}}",
+		container_name,
+	]
+
+	try:
+		result = subprocess.run(command, capture_output=True, text=True, timeout=3, check=False)
+	except FileNotFoundError:
+		return ServiceHealthDto(connected=False, error="docker cli not available")
+	except subprocess.TimeoutExpired:
+		return ServiceHealthDto(connected=False, error="docker inspect timed out")
+	except OSError as exc:
+		return ServiceHealthDto(connected=False, error=str(exc))
+
+	if result.returncode != 0:
+		stderr = result.stderr.strip() or result.stdout.strip() or "docker inspect failed"
+		return ServiceHealthDto(connected=False, error=stderr)
+
+	raw_status = result.stdout.strip()
+	container_status, _, health_status = raw_status.partition("|")
+	container_status = container_status or None
+	health_status = health_status or None
+	connected = container_status == "running" and (health_status in (None, "", "healthy"))
+
+	return ServiceHealthDto(
+		connected=connected,
+		container_status=container_status,
+		health_status=health_status,
+	)
+
+
 app = FastAPI(title="SPINE Building Service API", version="0.1.0")
 
 frontend_origin_env = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
@@ -380,9 +429,11 @@ app.add_middleware(
 )
 
 
-@app.get("/api/health")
-def health() -> dict[str, str]:
-	return {"status": "ok"}
+@app.get("/api/health", response_model=HealthDto)
+def health() -> HealthDto:
+	timescaledb = _timescaledb_health()
+	status = "ok" if timescaledb.connected else "degraded"
+	return HealthDto(status=status, timescaledb=timescaledb)
 
 
 @app.post("/api/pipeline/load-ifc", response_model=IfcScanResultDto)
