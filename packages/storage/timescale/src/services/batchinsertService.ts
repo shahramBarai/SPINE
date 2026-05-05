@@ -1,5 +1,5 @@
 import { query } from "../db/connection";
-import { SensorReading } from "../db/schema";
+import { type SensorReading } from "../db/schema";
 import { logger } from "@spine/shared";
 
 class BatchInsertService {

@@ -5,12 +5,31 @@ import {
     BUCKET_NAME_LIST,
 } from "../src/db/minio";
 
+const ErrorMessages = {
+    INVALID_DB_URL:
+        "Invalid DATABASE_URL_MINIO format. Expected format: username:password@host:port/databasename",
+};
+
 // DATABASE_URL_MINIO="username:password@host:port/databasename"
 const [credentials, db] = env.DATABASE_URL_MINIO.split("@");
+
+if (!credentials || !db) {
+    throw new Error(ErrorMessages.INVALID_DB_URL);
+}
+const [hostPort, dbName] = db.split("/");
+if (!hostPort || !dbName) {
+    throw new Error(ErrorMessages.INVALID_DB_URL);
+}
 const [user, password] = credentials.split(":");
-const [host, port] = db.split("/")[0].split(":");
+const [host, port] = hostPort.split(":");
 
 async function main() {
+
+    // Validate the parsed values
+    if (!user || !password || !host || !port) {
+        throw new Error(ErrorMessages.INVALID_DB_URL);
+    }
+
     // Initialize MinIO client
     initFileStorage({ host, port: parseInt(port), user, password });
     const minioClient = getMinioClient();
