@@ -6,7 +6,7 @@ import {
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
+    SelectValue
 } from "@/client/components/basics/select";
 import type { SchemaFilters as SchemaFiltersType } from "@/server/schemas/schema-registry";
 
@@ -15,7 +15,7 @@ interface SchemaFiltersProps {
 }
 
 export const SchemaFilters: React.FC<SchemaFiltersProps> = ({
-    onFiltersChange,
+    onFiltersChange
 }) => {
     const [search, setSearch] = useState("");
     const [schemaType, setSchemaType] = useState<string>("all");
@@ -32,7 +32,7 @@ export const SchemaFilters: React.FC<SchemaFiltersProps> = ({
             schemaType:
                 value === "all"
                     ? undefined
-                    : (value as "AVRO" | "JSON" | "PROTOBUF"),
+                    : (value as "AVRO" | "JSON" | "PROTOBUF")
         });
     };
 
@@ -49,7 +49,7 @@ export const SchemaFilters: React.FC<SchemaFiltersProps> = ({
                     ? undefined
                     : (schemaType as "AVRO" | "JSON" | "PROTOBUF"),
             topic: topic || undefined,
-            ...newFilter,
+            ...newFilter
         };
 
         // Remove undefined values

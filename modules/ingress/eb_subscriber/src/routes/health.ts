@@ -19,8 +19,8 @@ const healthRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
             services: {
                 mqtt: null,
                 kafka: null,
-                schema: null,
-            },
+                schema: null
+            }
         };
 
         // Check Kafka connection
@@ -28,7 +28,7 @@ const healthRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
             ? await kafkaProducer.healthCheck()
             : {
                   status: "disabled",
-                  timestamp: new Date().toISOString(),
+                  timestamp: new Date().toISOString()
               };
 
         // Check Schema connection
@@ -36,7 +36,7 @@ const healthRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
             ? await schemaManager.healthCheck()
             : {
                   status: "disabled",
-                  timestamp: new Date().toISOString(),
+                  timestamp: new Date().toISOString()
               };
 
         // TODO: Add REST connection health check

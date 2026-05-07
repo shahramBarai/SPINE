@@ -1,6 +1,6 @@
 import {
     AccordionContent,
-    AccordionTrigger,
+    AccordionTrigger
 } from "@/client/components/basics/accordion";
 import { AccordionItem } from "@/client/components/basics/accordion";
 import { useNodesData } from "@xyflow/react";

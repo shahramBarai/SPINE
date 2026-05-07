@@ -26,20 +26,20 @@ type EntityCardProps = LinkProps | ButtonProps;
 const EntityTypesMap: Record<EntityType, { style: string; text: string }> = {
     DISTRICT: {
         style: "bg-red-100/50 text-red-500 border border-red-300",
-        text: "District",
+        text: "District"
     },
     CAMPUS: {
         style: "bg-blue-100/50 text-blue-500 border border-blue-300",
-        text: "Campus",
+        text: "Campus"
     },
     BUILDING: {
         style: "bg-green-100/50 text-green-500 border border-green-300",
-        text: "Building",
+        text: "Building"
     },
     LAB: {
         style: "bg-purple-100/50 text-purple-500 border border-purple-300",
-        text: "Lab",
-    },
+        text: "Lab"
+    }
 };
 
 const Badge = ({ type }: { type: EntityType }) => {
@@ -58,7 +58,7 @@ function EntityCard({
     type,
     className,
     onClick,
-    href,
+    href
 }: EntityCardProps) {
     return (
         <div

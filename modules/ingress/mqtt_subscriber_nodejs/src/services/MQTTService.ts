@@ -5,7 +5,7 @@ import type {
     OnMessageCallback,
     OnErrorCallback,
     IConnackPacket,
-    IPublishPacket,
+    IPublishPacket
 } from "mqtt";
 import type { MQTTConfig } from "../utils/config";
 import type { KafkaProducer, ServiceSchemaManager } from "@spine/messaging";
@@ -29,7 +29,7 @@ class MQTTService {
     private connectionState: ConnectionState = {
         isConnected: false,
         isConnecting: false,
-        reconnectAttempts: 0,
+        reconnectAttempts: 0
     };
     private schemaManager: ServiceSchemaManager;
     private kafkaProducer: KafkaProducer;
@@ -70,7 +70,7 @@ class MQTTService {
             reconnectPeriod: this.config.reconnectPeriod,
             username: this.config.username,
             password: this.config.password,
-            will: this.config.will,
+            will: this.config.will
         };
 
         this.client = mqtt.connect(this.config.brokerUrl, options);
@@ -257,7 +257,7 @@ class MQTTService {
             const processedMessage = {
                 sensor_id: topic,
                 message: messageString,
-                received_at: receivedTime,
+                received_at: receivedTime
             };
 
             // Validate against output schema
@@ -273,7 +273,7 @@ class MQTTService {
             // Send to Kafka
             await this.kafkaProducer.sendMessage({
                 key: processedMessage.sensor_id,
-                value: JSON.stringify(processedMessage),
+                value: JSON.stringify(processedMessage)
             });
             logger.debug(
                 `MQTT service: Successfully processed and sent message from topic ${topic} to Kafka`
@@ -345,14 +345,14 @@ class MQTTService {
                 status: isConnected ? "connected" : "disconnected",
                 timestamp: new Date().toISOString(),
                 connectionState: this.getConnectionState(),
-                error: isConnected ? undefined : "Not connected to MQTT broker",
+                error: isConnected ? undefined : "Not connected to MQTT broker"
             };
         } catch (error) {
             return {
                 status: "error",
                 timestamp: new Date().toISOString(),
                 connectionState: this.getConnectionState(),
-                error: error instanceof Error ? error.message : "Unknown error",
+                error: error instanceof Error ? error.message : "Unknown error"
             };
         }
     }
@@ -382,7 +382,7 @@ class MQTTService {
             reconnectPeriod: this.config.reconnectPeriod,
             connectTimeout: this.config.connectTimeout,
             hasAuth: !!(this.config.username && this.config.password),
-            hasWill: !!this.config.will,
+            hasWill: !!this.config.will
         };
     }
 }

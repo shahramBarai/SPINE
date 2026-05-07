@@ -10,7 +10,7 @@ export const appRouter = router({
     auth: authRouter,
     kafka: kafkaRouter,
     schemaRegistry: schemaRegistryRouter,
-    entities: entitiesRouter,
+    entities: entitiesRouter
 });
 
 export type AppRouter = typeof appRouter;

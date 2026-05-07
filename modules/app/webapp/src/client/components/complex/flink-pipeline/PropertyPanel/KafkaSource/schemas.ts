@@ -7,7 +7,7 @@ export enum fieldTypes {
     BOOLEAN = "boolean",
     TIMESTAMP = "timestamp",
     ARRAY = "array",
-    OBJECT = "object",
+    OBJECT = "object"
 }
 
 export const kafkaSourceSchema = z.object({
@@ -20,7 +20,7 @@ export const kafkaSourceSchema = z.object({
             .min(1, { message: "Bootstrap servers are required" }),
         groupId: z.string().min(1, { message: "Group ID is required" }),
         properties: z.string().optional(),
-        startupMode: z.enum(["earliest", "latest"]),
+        startupMode: z.enum(["earliest", "latest"])
     }),
 
     // Offset specific properties
@@ -31,12 +31,12 @@ export const kafkaSourceSchema = z.object({
             .number()
             .min(1, { message: "Sample size is required" })
             .max(1000, { message: "Sample size must be less than 1000" }),
-        partitions: z.string().optional(),
+        partitions: z.string().optional()
     }),
 
     // Deserialization specific properties
     deserialization: z.object({
-        format: z.enum(["none", "protobuf", "json"]),
+        format: z.enum(["none", "protobuf", "json"])
     }),
 
     // Field specific properties
@@ -45,18 +45,18 @@ export const kafkaSourceSchema = z.object({
             .array(
                 z.object({
                     key: z.string(),
-                    type: z.nativeEnum(fieldTypes),
+                    type: z.nativeEnum(fieldTypes)
                 })
             )
-            .optional(),
+            .optional()
     }),
 
     // Event-time specific properties
     eventTime: z.object({
         eventTimeField: z.string().optional(),
         watermarkStrategy: z.string().optional(),
-        delayMs: z.number().optional(),
-    }),
+        delayMs: z.number().optional()
+    })
 });
 
 export type KafkaSourceFormValues = z.infer<typeof kafkaSourceSchema>;

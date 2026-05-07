@@ -12,7 +12,7 @@ import {
     type ReactFlowInstance,
     useNodesState,
     useEdgesState,
-    addEdge,
+    addEdge
 } from "@xyflow/react";
 import Sidebar from "./Sidebar";
 import { cn } from "@/client/utils";
@@ -22,7 +22,7 @@ import { useTheme } from "@/client/hooks/useTheme";
 
 // Define node types mapping for React Flow
 const nodeTypes = {
-    CustomNode: CustomNode,
+    CustomNode: CustomNode
 };
 
 // Initial nodes and edges using our custom node types
@@ -31,7 +31,7 @@ const initialEdges: Edge[] = [];
 
 export default function FlowView({
     className,
-    selectNode,
+    selectNode
 }: {
     className?: string;
     selectNode: (node: Node | null) => void;
@@ -66,19 +66,19 @@ export default function FlowView({
             // Calculate position from mouse event
             const position = reactFlowInstance.screenToFlowPosition({
                 x: event.clientX,
-                y: event.clientY,
+                y: event.clientY
             });
 
             // Initialize data as a non-undefined object
             const data: Record<string, unknown> = {
-                label,
+                label
             };
 
             const newNode: Node = {
                 id: `node-${Date.now()}`,
                 type,
                 position,
-                data: data as Record<string, unknown>,
+                data: data as Record<string, unknown>
             };
 
             setNodes((nds) => nds.concat(newNode));
@@ -98,7 +98,7 @@ export default function FlowView({
             setNodes((nds) =>
                 nds.map((n) => ({
                     ...n,
-                    selected: n.id === node.id,
+                    selected: n.id === node.id
                 }))
             );
         },
@@ -112,7 +112,7 @@ export default function FlowView({
         setNodes((nds) =>
             nds.map((n) => ({
                 ...n,
-                selected: false,
+                selected: false
             }))
         );
     }, [selectNode, setNodes]);
@@ -126,8 +126,8 @@ export default function FlowView({
                         animated: true,
                         style: {
                             stroke: "var(--surface-foreground)",
-                            strokeWidth: 1.5,
-                        },
+                            strokeWidth: 1.5
+                        }
                     },
                     eds
                 )
@@ -142,8 +142,8 @@ export default function FlowView({
         style: {
             stroke: "var(--primary)",
             strokeWidth: 1.5,
-            transition: "stroke 0.3s, stroke-width 0.3s",
-        },
+            transition: "stroke 0.3s, stroke-width 0.3s"
+        }
     };
 
     return (

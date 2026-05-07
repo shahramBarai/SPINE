@@ -31,7 +31,7 @@ function recordsFromSensor(
     if (!sensorId || !sensor.last_measurement) {
         logger.warn("EB: extractMeasurements failed, skipping message", {
             campusId,
-            sensor,
+            sensor
         });
         return [];
     }
@@ -41,8 +41,8 @@ function recordsFromSensor(
             campusId,
             sensorId,
             timestamp: Date.now(),
-            measurement: sensor.last_measurement as Record<string, unknown>,
-        },
+            measurement: sensor.last_measurement as Record<string, unknown>
+        }
     ];
 }
 
@@ -70,7 +70,7 @@ function extractMeasurements(data: unknown, campusId: string): OutputMessage[] {
                     "EB: extractMeasurements failed, item is not an object -> skipping item",
                     {
                         campusId,
-                        item,
+                        item
                     }
                 );
             }
@@ -88,5 +88,5 @@ export {
     type OutputMessage,
     UNKNOWN_CAMPUS_ID,
     extractMeasurements,
-    resolveCampusId,
+    resolveCampusId
 };

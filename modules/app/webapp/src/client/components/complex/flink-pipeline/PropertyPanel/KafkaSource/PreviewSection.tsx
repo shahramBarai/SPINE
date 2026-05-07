@@ -9,15 +9,15 @@ import {
     FormControl,
     FormField,
     FormItem,
-    FormLabel,
+    FormLabel
 } from "@/client/components/basics/form";
 import {
     AccordionContent,
-    AccordionItem,
+    AccordionItem
 } from "@/client/components/basics/accordion";
 import {
     type KafkaSourceFormValuesPreview,
-    kafkaSourceSchema,
+    kafkaSourceSchema
 } from "./schemas";
 import { SectionHeader } from "../SectionHeader";
 import { useFormState } from "@/client/hooks/useFormState";
@@ -26,19 +26,19 @@ import {
     SelectTrigger,
     SelectContent,
     SelectItem,
-    SelectValue,
+    SelectValue
 } from "@/client/components/basics/select";
 
 export const PreviewSection = ({
     data,
-    onApply,
+    onApply
 }: {
     data: KafkaSourceFormValuesPreview;
     onApply: (data: KafkaSourceFormValuesPreview) => Promise<boolean>;
 }) => {
     const form = useForm<KafkaSourceFormValuesPreview>({
         resolver: zodResolver(kafkaSourceSchema.shape.preview),
-        defaultValues: data,
+        defaultValues: data
     });
 
     const { status, handleSubmit } = useFormState(form);

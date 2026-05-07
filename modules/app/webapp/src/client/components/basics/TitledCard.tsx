@@ -13,7 +13,7 @@ function TitledCard({
     title,
     isLoading = false,
     className,
-    children,
+    children
 }: TitledCardProps) {
     const cardClasses = cn(
         "bg-background rounded-lg shadow-sm min-w-[220px]",

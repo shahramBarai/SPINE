@@ -38,7 +38,7 @@ async function generatePresignedUploadUrl(
         objectName,
         expiry = 3600,
         reqParams,
-        requestDate,
+        requestDate
     } = options;
 
     return minioClient.presignedUrl(
@@ -75,7 +75,7 @@ async function generatePresignedUrl(
         objectName,
         expiry = 3600,
         reqParams,
-        requestDate,
+        requestDate
     } = options;
 
     return minioClient.presignedUrl(

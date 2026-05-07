@@ -1,7 +1,7 @@
 import {
     AdjustmentsHorizontalIcon,
     TableCellsIcon,
-    WindowIcon,
+    WindowIcon
 } from "@heroicons/react/24/solid";
 import KafkaLogo from "./KafkaLogo";
 import { cn } from "@/client/utils";
@@ -9,7 +9,7 @@ import { cn } from "@/client/utils";
 export enum NodeType {
     SOURCE = "source",
     PROCESS = "process",
-    SINK = "sink",
+    SINK = "sink"
 }
 
 export const nodeItems: {
@@ -20,28 +20,28 @@ export const nodeItems: {
     {
         label: "Kafka Source",
         Icon: KafkaLogo,
-        type: NodeType.SOURCE,
+        type: NodeType.SOURCE
     },
     {
         label: "Filter",
         Icon: AdjustmentsHorizontalIcon,
-        type: NodeType.PROCESS,
+        type: NodeType.PROCESS
     },
     {
         label: "Select",
         Icon: TableCellsIcon,
-        type: NodeType.PROCESS,
+        type: NodeType.PROCESS
     },
     {
         label: "Window",
         Icon: WindowIcon,
-        type: NodeType.PROCESS,
+        type: NodeType.PROCESS
     },
     {
         label: "Kafka Sink",
         Icon: KafkaLogo,
-        type: NodeType.SINK,
-    },
+        type: NodeType.SINK
+    }
 ];
 
 export const getNodeIcon = (label: string, size: "sm" | "md" | "lg" = "md") => {

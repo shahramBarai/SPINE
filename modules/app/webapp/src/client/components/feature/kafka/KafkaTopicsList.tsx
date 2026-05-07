@@ -14,7 +14,7 @@ export function KafkaTopicsList() {
     const deleteTopicMutation = api.kafka.deleteTopic.useMutation({
         onSuccess: () => {
             topicsQuery.refetch();
-        },
+        }
     });
 
     const handleDeleteTopic = async (topicName: string) => {

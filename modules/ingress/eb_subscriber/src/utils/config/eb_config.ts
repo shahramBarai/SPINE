@@ -156,7 +156,7 @@ const getEmpathicBuildingConfig = (): EmpathicBuildingConfig => {
             : undefined,
         subscribeToNotifications: EB_SUBSCRIBE_NOTIFICATIONS,
         reconnectDelayMs: parseNumber(EB_RECONNECT_DELAY_MS, 5000),
-        maxReconnectAttempts: parseNumber(EB_MAX_RECONNECT_ATTEMPTS, 10),
+        maxReconnectAttempts: parseNumber(EB_MAX_RECONNECT_ATTEMPTS, 10)
     };
 
     return empathicBuildingConfig;
@@ -202,5 +202,5 @@ export {
     type RestEndpointConfig,
     type RestPaginationConfig,
     type RestPollingConfig,
-    type RestAuthConfig,
+    type RestAuthConfig
 };

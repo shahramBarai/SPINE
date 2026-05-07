@@ -5,7 +5,7 @@ import {
     EyeIcon,
     ExclamationTriangleIcon,
     LockClosedIcon,
-    UserGroupIcon,
+    UserGroupIcon
 } from "@heroicons/react/24/outline";
 
 export default function SecurityPage() {

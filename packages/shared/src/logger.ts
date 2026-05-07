@@ -65,9 +65,9 @@ function createLogger({ level = "info" }: { level?: LogLevels }): AppLogger {
                             }`;
                         }
                     )
-                ),
-            }),
-        ],
+                )
+            })
+        ]
     });
 
     return logger as AppLogger;
@@ -89,7 +89,7 @@ function createLogger({ level = "info" }: { level?: LogLevels }): AppLogger {
  * ...
  */
 const logger = createLogger({
-    level: env.NODE_ENV === "dev" ? "debug" : "error",
+    level: env.NODE_ENV === "dev" ? "debug" : "error"
 });
 
 export type { AppLogger, LogLevels };

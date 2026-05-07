@@ -240,12 +240,12 @@ const { AvroSerializer } = require("@kafkajs/confluent-schema-registry");
 
 const registry = new SchemaRegistry({ host: "http://localhost:8081" });
 const serializer = new AvroSerializer(registry, {
-    subject: "sensor-data-value",
+    subject: "sensor-data-value"
 });
 
 const producer = kafka.producer({
     maxInFlightRequests: 1,
-    idempotent: true,
+    idempotent: true
 });
 
 // Produce message with schema validation
@@ -258,10 +258,10 @@ await producer.send({
                 timestamp: Date.now(),
                 value: 23.5,
                 unit: "celsius",
-                location: "room-101",
-            }),
-        },
-    ],
+                location: "room-101"
+            })
+        }
+    ]
 });
 ```
 
@@ -273,7 +273,7 @@ Configure consumers for Avro deserialization:
 const { AvroDeserializer } = require("@kafkajs/confluent-schema-registry");
 
 const deserializer = new AvroDeserializer(registry, {
-    subject: "sensor-data-value",
+    subject: "sensor-data-value"
 });
 
 const consumer = kafka.consumer({ groupId: "sensor-processor" });
@@ -282,7 +282,7 @@ await consumer.run({
     eachMessage: async ({ message }) => {
         const data = await deserializer.deserialize(message.value);
         console.log("Received sensor data:", data);
-    },
+    }
 });
 ```
 
@@ -537,7 +537,7 @@ const kafka = require("kafkajs");
 const {
     SchemaRegistry,
     AvroSerializer,
-    AvroDeserializer,
+    AvroDeserializer
 } = require("@kafkajs/confluent-schema-registry");
 
 // Kafka client configuration
@@ -546,8 +546,8 @@ const client = kafka({
     brokers: ["localhost:9095"], // Load balancer
     retry: {
         initialRetryTime: 100,
-        retries: 8,
-    },
+        retries: 8
+    }
 });
 
 // Schema Registry configuration
@@ -556,19 +556,19 @@ const registry = new SchemaRegistry({
     retry: {
         maxRetryTimeInSecs: 30,
         initialRetryTimeInSecs: 1,
-        maxRetries: 5,
-    },
+        maxRetries: 5
+    }
 });
 
 // Producer with Avro serialization
 const producer = client.producer({
     maxInFlightRequests: 1,
     idempotent: true,
-    transactionTimeout: 30000,
+    transactionTimeout: 30000
 });
 
 const serializer = new AvroSerializer(registry, {
-    subject: "sensor-data-value",
+    subject: "sensor-data-value"
 });
 
 await producer.send({
@@ -580,10 +580,10 @@ await producer.send({
                 sensor_id: "temp-sensor-01",
                 timestamp: Date.now(),
                 value: 25.3,
-                unit: "celsius",
-            }),
-        },
-    ],
+                unit: "celsius"
+            })
+        }
+    ]
 });
 ```
 
@@ -593,7 +593,7 @@ await producer.send({
 import { ErrorHandlingService } from "./services/error-handling";
 import {
     SchemaRegistry,
-    AvroDeserializer,
+    AvroDeserializer
 } from "@kafkajs/confluent-schema-registry";
 
 const registry = new SchemaRegistry({ host: "http://localhost:8081" });
@@ -602,7 +602,7 @@ const deserializer = new AvroDeserializer(registry);
 const errorHandler = new ErrorHandlingService(kafkaService, {
     enableDLQ: true,
     enableRetries: true,
-    enableCircuitBreaker: true,
+    enableCircuitBreaker: true
 });
 
 // Enhanced message processing with schema validation

@@ -43,7 +43,7 @@ class SchemaRegistry {
         const url = `${this.config.url}${endpoint}`;
         const headers: Record<string, string> = {
             "Content-Type": "application/vnd.schemaregistry.v1+json",
-            ...((options.headers as Record<string, string>) || {}),
+            ...((options.headers as Record<string, string>) || {})
         };
 
         if (this.config.auth) {
@@ -55,7 +55,7 @@ class SchemaRegistry {
 
         const response = await fetch(url, {
             ...options,
-            headers,
+            headers
         });
 
         if (!response.ok) {
@@ -129,7 +129,7 @@ class SchemaRegistry {
             `/compatibility/subjects/${encodeURIComponent(subject)}/versions/${version}`,
             {
                 method: "POST",
-                body: JSON.stringify({ schema }),
+                body: JSON.stringify({ schema })
             }
         );
     }
@@ -235,13 +235,13 @@ class SchemaRegistry {
             await this.listSubjects();
             return {
                 status: "connected",
-                timestamp: new Date().toISOString(),
+                timestamp: new Date().toISOString()
             };
         } catch (error) {
             return {
                 status: "disconnected",
                 error: error instanceof Error ? error.message : "Unknown error",
-                timestamp: new Date().toISOString(),
+                timestamp: new Date().toISOString()
             };
         }
     }
@@ -360,13 +360,13 @@ class ServiceSchemaManager {
                     .join(", ");
                 return {
                     success: false,
-                    error: `Validation failed: ${errorMessages}`,
+                    error: `Validation failed: ${errorMessages}`
                 };
             }
         } catch (error: unknown) {
             return {
                 success: false,
-                error: `Parse error: ${error instanceof Error ? error.message : "Unknown error"}`,
+                error: `Parse error: ${error instanceof Error ? error.message : "Unknown error"}`
             };
         }
     }
@@ -382,7 +382,7 @@ class ServiceSchemaManager {
         if (!this.isInitialized || !this.inputZodSchema) {
             return {
                 success: false,
-                error: "Service schemas not initialized. Call initialize() first.",
+                error: "Service schemas not initialized. Call initialize() first."
             };
         }
 
@@ -412,7 +412,7 @@ class ServiceSchemaManager {
         if (!this.isInitialized || !this.outputZodSchema) {
             return {
                 success: false,
-                error: "Service schemas not initialized. Call initialize() first.",
+                error: "Service schemas not initialized. Call initialize() first."
             };
         }
 
@@ -452,14 +452,14 @@ class ServiceSchemaManager {
             input: {
                 id: this.inputSchema.id,
                 version: this.inputSchema.version,
-                subject: this.inputSchema.subject,
+                subject: this.inputSchema.subject
             },
             output: {
                 id: this.outputSchema.id,
                 version: this.outputSchema.version,
-                subject: this.outputSchema.subject,
+                subject: this.outputSchema.subject
             },
-            isInitialized: this.isInitialized,
+            isInitialized: this.isInitialized
         };
     }
 
@@ -507,7 +507,7 @@ class ServiceSchemaManager {
         return {
             inputUpdated,
             outputUpdated,
-            errors: errors.length > 0 ? errors : undefined,
+            errors: errors.length > 0 ? errors : undefined
         };
     }
 
@@ -621,7 +621,7 @@ class ServiceSchemaManager {
         return {
             isMonitoring: this.isMonitoring,
             checkInterval: this.checkInterval,
-            lastCheckTime: this.lastCheckTime,
+            lastCheckTime: this.lastCheckTime
         };
     }
 

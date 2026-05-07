@@ -6,7 +6,7 @@ import {
     ClipboardDocumentIcon,
     ArrowDownTrayIcon,
     CheckIcon,
-    DocumentTextIcon,
+    DocumentTextIcon
 } from "@heroicons/react/24/outline";
 
 interface SchemaViewerProps {
@@ -16,7 +16,7 @@ interface SchemaViewerProps {
 
 export const SchemaViewer: React.FC<SchemaViewerProps> = ({
     schema,
-    isLoading,
+    isLoading
 }) => {
     const [copied, setCopied] = useState(false);
 

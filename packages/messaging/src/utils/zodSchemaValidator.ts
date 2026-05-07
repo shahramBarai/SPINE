@@ -125,7 +125,9 @@ function convertAvroToZod(avroSchema: unknown): z.ZodTypeAny {
         logger.error("Failed to convert Avro schema to Zod:", error);
         throw new Error(
             `Invalid Avro schema: ${error instanceof Error ? error.message : "Unknown error"}`,
-            { cause: error }
+            {
+                cause: error
+            }
         );
     }
 }

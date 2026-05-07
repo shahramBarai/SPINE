@@ -5,7 +5,7 @@ import { Bars3Icon, XMarkIcon } from "@heroicons/react/16/solid";
 import {
     Disclosure,
     DisclosureButton,
-    DisclosurePanel,
+    DisclosurePanel
 } from "@headlessui/react";
 import { cn } from "@/client/utils";
 import Link from "next/link";

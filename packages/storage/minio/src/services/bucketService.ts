@@ -132,7 +132,7 @@ async function getStorageStats(
     const stats: StorageStats = {
         totalFiles: files.length,
         totalSize: files.reduce((sum, file) => sum + file.size, 0),
-        filesByType: {},
+        filesByType: {}
     };
 
     files.forEach((file) => {
@@ -174,7 +174,7 @@ async function listFiles({
     bucketName,
     prefix = "",
     recursive = false,
-    maxKeys,
+    maxKeys
 }: ListFilesOptions): Promise<BucketItem[]> {
     const files: BucketItem[] = [];
     const stream = minioClient.listObjectsV2(bucketName, prefix, recursive);
@@ -269,5 +269,5 @@ export {
     listFiles,
     deleteFile,
     deleteFiles,
-    cleanupOldFiles,
+    cleanupOldFiles
 };

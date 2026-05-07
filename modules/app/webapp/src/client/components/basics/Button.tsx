@@ -21,19 +21,19 @@ const buttonVariants = cva(
                     "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/90",
                 danger: "bg-danger text-danger-foreground shadow-sm hover:bg-danger/90",
                 "danger-light":
-                    "bg-danger-light text-danger-light-foreground shadow-sm hover:bg-danger-light/80",
+                    "bg-danger-light text-danger-light-foreground shadow-sm hover:bg-danger-light/80"
             },
             size: {
                 default: "h-9 px-4 py-2 has-[>svg]:px-3",
                 sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
                 lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-                icon: "size-9",
-            },
+                icon: "size-9"
+            }
         },
         defaultVariants: {
             variant: "primary",
-            size: "default",
-        },
+            size: "default"
+        }
     }
 );
 

@@ -1,6 +1,6 @@
 import {
     ServerStackIcon,
-    Square3Stack3DIcon,
+    Square3Stack3DIcon
 } from "@heroicons/react/24/outline";
 import type { ForwardRefExoticComponent, SVGProps } from "react";
 import { TitledCard } from "@/client/components/basics/TitledCard";
@@ -13,7 +13,7 @@ const StatCard = ({
     icon: Icon,
     color,
     trend,
-    isLoading,
+    isLoading
 }: {
     title: string;
     value: number | string;
@@ -39,7 +39,7 @@ function KafkaHealthStatus() {
     const { data, isLoading, isError } = api.kafka.healthCheck.useQuery(
         undefined,
         {
-            refetchInterval: 5000,
+            refetchInterval: 5000
         }
     );
 
@@ -73,9 +73,7 @@ function KafkaHealthStatus() {
             <div className="flex items-center gap-2 justify-between">
                 <div className="flex flex-col">
                     <span
-                        className={`text-lg font-semibold ${
-                            isConnected ? "text-gray-900" : "text-red-600"
-                        }`}
+                        className={`text-lg font-semibold ${isConnected ? "text-gray-900" : "text-red-600"}`}
                     >
                         {isConnected ? "Connected" : "Disconnected"}
                     </span>

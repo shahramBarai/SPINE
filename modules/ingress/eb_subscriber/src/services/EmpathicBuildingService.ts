@@ -7,7 +7,7 @@ import type {
     EmpathicBuildingConfig,
     DecodedEvent,
     ChannelSubscription,
-    TokenData,
+    TokenData
 } from "../utils/eb_types";
 
 class EmpathicBuildingService extends EventEmitter {
@@ -87,9 +87,9 @@ class EmpathicBuildingService extends EventEmitter {
         const response = await fetch(`${this.config.baseUrl}/v1/login`, {
             method: "POST",
             headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Type": "application/x-www-form-urlencoded"
             },
-            body: formData.toString(),
+            body: formData.toString()
         });
 
         if (!response.ok) {
@@ -107,7 +107,7 @@ class EmpathicBuildingService extends EventEmitter {
             accessToken: data.access_token,
             refreshToken: data.refresh_token,
             expiresAt: Date.now() + expiresIn,
-            tokenType: data.token_type,
+            tokenType: data.token_type
         };
 
         logger.info(
@@ -130,9 +130,9 @@ class EmpathicBuildingService extends EventEmitter {
         const response = await fetch(`${this.config.baseUrl}/v1/token`, {
             method: "POST",
             headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Type": "application/x-www-form-urlencoded"
             },
-            body: formData.toString(),
+            body: formData.toString()
         });
 
         if (!response.ok) {
@@ -149,7 +149,7 @@ class EmpathicBuildingService extends EventEmitter {
             accessToken: data.access_token,
             refreshToken: data.refresh_token,
             expiresAt: Date.now() + expiresIn,
-            tokenType: data.token_type || "Bearer",
+            tokenType: data.token_type || "Bearer"
         };
 
         logger.info("Token refreshed successfully");
@@ -243,10 +243,10 @@ class EmpathicBuildingService extends EventEmitter {
                 authEndpoint: `${this.config.baseUrl}/v1/pusher/auth`,
                 auth: {
                     headers: {
-                        authorization: `Bearer ${bearerToken}`,
-                    },
+                        authorization: `Bearer ${bearerToken}`
+                    }
                 },
-                enabledTransports: ["ws", "wss"],
+                enabledTransports: ["ws", "wss"]
             });
 
             // Set up connection event handlers
@@ -396,7 +396,7 @@ class EmpathicBuildingService extends EventEmitter {
             this.subscriptions.set(channelName, {
                 channel,
                 channelName,
-                subscribed: true,
+                subscribed: true
             });
 
             this.emit("subscribed", { channel: channelName });
@@ -423,7 +423,7 @@ class EmpathicBuildingService extends EventEmitter {
                 "location-deleted",
                 "user-created",
                 "user-modified",
-                "user-deleted",
+                "user-deleted"
             ];
 
             for (const eventName of orgEvents) {
@@ -444,7 +444,7 @@ class EmpathicBuildingService extends EventEmitter {
                 "gateway-deleted",
                 "sensor-created",
                 "sensor-modified",
-                "sensor-deleted",
+                "sensor-deleted"
             ];
 
             for (const eventName of locationEvents) {
@@ -459,7 +459,7 @@ class EmpathicBuildingService extends EventEmitter {
             const notificationEvents = [
                 "notification-created",
                 "notification-modified",
-                "notification-deleted",
+                "notification-deleted"
             ];
 
             for (const eventName of notificationEvents) {
@@ -486,7 +486,7 @@ class EmpathicBuildingService extends EventEmitter {
                 eventType,
                 channel,
                 data: decoded,
-                timestamp: Date.now(),
+                timestamp: Date.now()
             };
 
             logger.debug(`Received event: ${eventType} on ${channel}`);
@@ -604,7 +604,7 @@ class EmpathicBuildingService extends EventEmitter {
         return {
             connected: this.isConnected,
             subscriptions: this.subscriptions.size,
-            reconnectAttempts: this.reconnectAttempts,
+            reconnectAttempts: this.reconnectAttempts
         };
     }
 
@@ -627,7 +627,7 @@ class EmpathicBuildingService extends EventEmitter {
         if (!this.tokenData) {
             return {
                 hasToken: false,
-                isExpired: true,
+                isExpired: true
             };
         }
 
@@ -641,7 +641,7 @@ class EmpathicBuildingService extends EventEmitter {
             hasToken: true,
             expiresAt: this.tokenData.expiresAt,
             expiresIn,
-            isExpired: expiresIn === 0,
+            isExpired: expiresIn === 0
         };
     }
 }

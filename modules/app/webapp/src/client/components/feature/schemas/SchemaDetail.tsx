@@ -2,7 +2,7 @@ import type { SchemaVersion } from "@/server/schemas/schema-registry";
 import {
     CalendarIcon,
     TagIcon,
-    ShieldCheckIcon,
+    ShieldCheckIcon
 } from "@heroicons/react/24/outline";
 
 interface SchemaDetailProps {
@@ -12,7 +12,7 @@ interface SchemaDetailProps {
 
 export const SchemaDetail: React.FC<SchemaDetailProps> = ({
     schema,
-    versions,
+    versions
 }) => {
     const latestVersion = versions.find(
         (v) => v.version === Math.max(...versions.map((v) => v.version))

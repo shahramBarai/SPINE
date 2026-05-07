@@ -10,7 +10,7 @@ import {
     updateCompatibilitySchema,
     deleteSubjectSchema,
     validateSchemaSchema,
-    compareVersionsSchema,
+    compareVersionsSchema
 } from "../schemas/schema-registry";
 
 export const schemaRegistryRouter = router({
@@ -25,7 +25,7 @@ export const schemaRegistryRouter = router({
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
                     message: "Failed to list schema subjects",
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -41,7 +41,7 @@ export const schemaRegistryRouter = router({
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
                     message: `Failed to get versions for subject: ${input.subject}`,
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -60,7 +60,7 @@ export const schemaRegistryRouter = router({
                 throw new TRPCError({
                     code: "NOT_FOUND",
                     message: `Schema not found: ${input.subject} version ${input.version}`,
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -84,20 +84,20 @@ export const schemaRegistryRouter = router({
                     {
                         schema: input.schema,
                         schemaType: input.schemaType,
-                        references: input.references,
+                        references: input.references
                     }
                 );
 
                 return {
                     ...result,
                     subject: input.subject,
-                    schemaType: input.schemaType,
+                    schemaType: input.schemaType
                 };
             } catch (error) {
                 throw new TRPCError({
                     code: "BAD_REQUEST",
                     message: `Failed to register schema for subject: ${input.subject}`,
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -117,7 +117,7 @@ export const schemaRegistryRouter = router({
                 throw new TRPCError({
                     code: "BAD_REQUEST",
                     message: "Failed to check schema compatibility",
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -136,7 +136,7 @@ export const schemaRegistryRouter = router({
                 throw new TRPCError({
                     code: "BAD_REQUEST",
                     message: `Failed to update compatibility for subject: ${input.subject}`,
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -156,13 +156,13 @@ export const schemaRegistryRouter = router({
                     success: true,
                     subject: input.subject,
                     deletedVersions,
-                    permanent: input.permanent,
+                    permanent: input.permanent
                 };
             } catch (error) {
                 throw new TRPCError({
                     code: "BAD_REQUEST",
                     message: `Failed to delete subject: ${input.subject}`,
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -183,7 +183,7 @@ export const schemaRegistryRouter = router({
                 throw new TRPCError({
                     code: "BAD_REQUEST",
                     message: "Schema validation failed",
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -203,7 +203,7 @@ export const schemaRegistryRouter = router({
                     schemaRegistry.getSchemaVersion(
                         input.subject,
                         input.versionB
-                    ),
+                    )
                 ]);
 
                 return {
@@ -211,19 +211,19 @@ export const schemaRegistryRouter = router({
                     versionA: {
                         version: versionA.version,
                         schema: versionA.schema,
-                        schemaType: versionA.schemaType,
+                        schemaType: versionA.schemaType
                     },
                     versionB: {
                         version: versionB.version,
                         schema: versionB.schema,
-                        schemaType: versionB.schemaType,
-                    },
+                        schemaType: versionB.schemaType
+                    }
                 };
             } catch (error) {
                 throw new TRPCError({
                     code: "NOT_FOUND",
                     message: `Failed to compare versions for subject: ${input.subject}`,
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -237,14 +237,14 @@ export const schemaRegistryRouter = router({
 
             return {
                 status: "connected",
-                timestamp: new Date().toISOString(),
+                timestamp: new Date().toISOString()
             };
         } catch (error) {
             return {
                 status: "disconnected",
                 error: error instanceof Error ? error.message : "Unknown error",
-                timestamp: new Date().toISOString(),
+                timestamp: new Date().toISOString()
             };
         }
-    }),
+    })
 });

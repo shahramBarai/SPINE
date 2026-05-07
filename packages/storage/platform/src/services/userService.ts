@@ -29,7 +29,7 @@ async function createUser(data: {
             name: data.name,
             email: data.email,
             password: data.password,
-            role: data.role || UserRole.USER,
+            role: data.role || UserRole.USER
         },
         select: {
             id: true,
@@ -37,8 +37,8 @@ async function createUser(data: {
             email: true,
             role: true,
             createdAt: true,
-            updatedAt: true,
-        },
+            updatedAt: true
+        }
     });
     return user;
 }
@@ -57,8 +57,8 @@ async function getAllUsers() {
             email: true,
             role: true,
             createdAt: true,
-            updatedAt: true,
-        },
+            updatedAt: true
+        }
     });
     return users;
 }
@@ -77,8 +77,8 @@ async function getUserById(id: string) {
             email: true,
             role: true,
             createdAt: true,
-            updatedAt: true,
-        },
+            updatedAt: true
+        }
     });
     return user;
 }
@@ -97,8 +97,8 @@ async function getUserByEmail(email: string) {
             email: true,
             role: true,
             createdAt: true,
-            updatedAt: true,
-        },
+            updatedAt: true
+        }
     });
     return user;
 }
@@ -116,8 +116,8 @@ async function getUserByEmailWithPassword(email: string) {
             name: true,
             email: true,
             password: true,
-            role: true,
-        },
+            role: true
+        }
     });
     return user;
 }
@@ -158,7 +158,7 @@ async function updateUser(
         where: { id },
         data: {
             ...data,
-            updatedAt: new Date(),
+            updatedAt: new Date()
         },
         select: {
             id: true,
@@ -166,8 +166,8 @@ async function updateUser(
             email: true,
             role: true,
             createdAt: true,
-            updatedAt: true,
-        },
+            updatedAt: true
+        }
     });
 }
 
@@ -185,7 +185,7 @@ async function deleteUser(id: string) {
         return id;
     }
     const deletedUser = await prisma.user.delete({
-        where: { id },
+        where: { id }
     });
     return deletedUser.id;
 }
@@ -198,5 +198,5 @@ export {
     getUserByEmail,
     getUserByEmailWithPassword,
     updateUser,
-    deleteUser,
+    deleteUser
 };

@@ -12,7 +12,7 @@ import {
     FormField,
     FormItem,
     FormLabel,
-    FormMessage,
+    FormMessage
 } from "@/client/components/basics/form";
 import { OAuthButtons } from "./OAuthButtons";
 import { Divider } from "@/client/components/basics/Divider";
@@ -23,7 +23,7 @@ const signInSchema = z.object({
     email: z.string().email({ message: "Please enter a valid email address" }),
     password: z
         .string()
-        .min(6, { message: "Password must be at least 6 characters" }),
+        .min(6, { message: "Password must be at least 6 characters" })
 });
 
 type SignInValues = z.infer<typeof signInSchema>;
@@ -36,8 +36,8 @@ export function SignInForm() {
         resolver: zodResolver(signInSchema),
         defaultValues: {
             email: "",
-            password: "",
-        },
+            password: ""
+        }
     });
 
     // Use the signIn mutation from tRPC
@@ -47,12 +47,12 @@ export function SignInForm() {
         },
         onError: (error) => {
             form.setError("root", {
-                message: error.message || "Invalid email or password",
+                message: error.message || "Invalid email or password"
             });
         },
         onSettled: () => {
             setIsLoading(false);
-        },
+        }
     });
 
     async function onSubmit(values: SignInValues) {

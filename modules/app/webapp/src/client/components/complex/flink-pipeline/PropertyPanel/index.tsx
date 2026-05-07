@@ -74,9 +74,7 @@ const PropertyPanel = memo(
         return (
             <div className={cn("flex flex-col", className)}>
                 <div className="bg-surface flex justify-between items-center py-2 px-4">
-                    <span className="text-base font-medium text-foreground">
-                        {`${node.data.label} (${node.id})`}
-                    </span>
+                    <span className="text-base font-medium text-foreground">{`${node.data.label} (${node.id})`}</span>
                     <Button variant="primary">
                         <BookmarkIcon className="size-4 mr-1" />
                         Save

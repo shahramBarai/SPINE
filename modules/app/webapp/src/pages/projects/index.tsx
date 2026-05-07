@@ -3,7 +3,7 @@ import { withAuthSSR } from "@/server/auth/authenticated-ssr";
 import {
     EntityCard,
     EntityCardLoading,
-    CreateEntityModal,
+    CreateEntityModal
 } from "@/client/components/feature/entities";
 import type { InferGetServerSidePropsType } from "next";
 import { PlusIcon } from "@heroicons/react/24/outline";
@@ -75,8 +75,8 @@ export const getServerSideProps = withAuthSSR({
         const user = req.session.data.user;
         return {
             props: {
-                user: user,
-            },
+                user: user
+            }
         };
-    },
+    }
 });

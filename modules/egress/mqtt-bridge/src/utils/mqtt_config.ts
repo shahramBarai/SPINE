@@ -75,7 +75,7 @@ const getMQTTConfig = (): MQTTConfig => {
         reconnectPeriod,
         connectTimeout,
         username: MQTT_USERNAME,
-        password: MQTT_PASSWORD,
+        password: MQTT_PASSWORD
     };
 
     return mqttConfig;

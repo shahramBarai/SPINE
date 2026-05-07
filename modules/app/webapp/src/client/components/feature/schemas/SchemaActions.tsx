@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api } from "@/utils/trpc";
 import type {
     SchemaVersion,
-    CompatibilityLevel,
+    CompatibilityLevel
 } from "@/server/schemas/schema-registry";
 import { Button } from "@/client/components/basics/Button";
 import {
@@ -10,12 +10,12 @@ import {
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
+    SelectValue
 } from "@/client/components/basics/select";
 import {
     ShieldCheckIcon,
     TrashIcon,
-    ExclamationTriangleIcon,
+    ExclamationTriangleIcon
 } from "@heroicons/react/24/outline";
 
 interface SchemaActionsProps {
@@ -26,7 +26,7 @@ interface SchemaActionsProps {
 
 export const SchemaActions: React.FC<SchemaActionsProps> = ({
     subject,
-    onDeleteSuccess,
+    onDeleteSuccess
 }) => {
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [selectedCompatibility, setSelectedCompatibility] =
@@ -38,21 +38,21 @@ export const SchemaActions: React.FC<SchemaActionsProps> = ({
         api.schemaRegistry.updateCompatibility.useMutation({
             onSuccess: () => {
                 void utils.schemaRegistry.invalidate();
-            },
+            }
         });
 
     const deleteSubjectMutation = api.schemaRegistry.deleteSubject.useMutation({
         onSuccess: () => {
             void utils.schemaRegistry.invalidate();
             onDeleteSuccess?.();
-        },
+        }
     });
 
     const handleUpdateCompatibility = async () => {
         try {
             await updateCompatibilityMutation.mutateAsync({
                 subject,
-                compatibility: selectedCompatibility,
+                compatibility: selectedCompatibility
             });
         } catch (error) {
             console.error("Failed to update compatibility:", error);
@@ -63,7 +63,7 @@ export const SchemaActions: React.FC<SchemaActionsProps> = ({
         try {
             await deleteSubjectMutation.mutateAsync({
                 subject,
-                permanent,
+                permanent
             });
             setIsDeleteConfirmOpen(false);
         } catch (error) {
@@ -175,9 +175,9 @@ export const SchemaActions: React.FC<SchemaActionsProps> = ({
                                     </h5>
                                     <p className="text-sm text-red-700 mt-1">
                                         Are you sure you want to delete the
-                                        subject &quot;{subject}&quot;? This
-                                        action will remove all versions of this
-                                        schema.
+                                        subject &quot;{subject}
+                                        &quot;? This action will remove all
+                                        versions of this schema.
                                     </p>
 
                                     <div className="mt-4 flex space-x-3">

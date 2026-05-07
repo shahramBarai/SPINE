@@ -17,26 +17,26 @@ const devUsers: DevUser[] = [
         email: "admin@iot-platform.dev",
         name: "Admin User",
         role: "ADMIN",
-        description: "Full access to all platform features",
+        description: "Full access to all platform features"
     },
     {
         email: "user@iot-platform.dev",
         name: "Regular User",
         role: "USER",
-        description: "Standard user with limited permissions",
+        description: "Standard user with limited permissions"
     },
     {
         email: "john.doe@iot-platform.dev",
         name: "John Doe",
         role: "USER",
-        description: "Sample user for testing",
+        description: "Sample user for testing"
     },
     {
         email: "jane.admin@iot-platform.dev",
         name: "Jane Admin",
         role: "ADMIN",
-        description: "Another admin for testing",
-    },
+        description: "Another admin for testing"
+    }
 ];
 
 export function DevSignInForm() {
@@ -54,7 +54,7 @@ export function DevSignInForm() {
         },
         onSettled: () => {
             setIsLoading(null);
-        },
+        }
     });
 
     const handleDevSignIn = (user: DevUser) => {

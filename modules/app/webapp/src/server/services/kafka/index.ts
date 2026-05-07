@@ -1,13 +1,13 @@
 import type {
     ConsumerGroupsResponse,
-    KafkaClusterInfo,
+    KafkaClusterInfo
 } from "@/server/schemas/kafka";
 import {
     Kafka,
     type Admin,
     type ITopicConfig,
     ConfigResourceTypes,
-    type GroupDescription,
+    type GroupDescription
 } from "kafkajs";
 
 interface KafkaConfig {
@@ -34,8 +34,8 @@ export class KafkaAdminService {
             connectionTimeout: config?.connectionTimeout || 10000,
             requestTimeout: config?.requestTimeout || 30000,
             retry: {
-                retries: config?.retry?.retries || 5,
-            },
+                retries: config?.retry?.retries || 5
+            }
         };
 
         this.kafka = new Kafka({
@@ -44,8 +44,8 @@ export class KafkaAdminService {
             connectionTimeout: this.config.connectionTimeout,
             requestTimeout: this.config.requestTimeout,
             retry: {
-                retries: this.config.retry.retries,
-            },
+                retries: this.config.retry.retries
+            }
         });
         this.admin = this.kafka.admin();
     }
@@ -83,7 +83,7 @@ export class KafkaAdminService {
     async getTopicMetadata(topics?: string[]): Promise<unknown> {
         try {
             const metadata = await this.admin.fetchTopicMetadata({
-                topics: topics || [],
+                topics: topics || []
             });
             return metadata;
         } catch (error) {
@@ -96,7 +96,7 @@ export class KafkaAdminService {
         try {
             const result = await this.admin.createTopics({
                 topics: [topicConfig],
-                waitForLeaders: true,
+                waitForLeaders: true
             });
             return result;
         } catch (error) {
@@ -108,7 +108,7 @@ export class KafkaAdminService {
     async deleteTopic(topicName: string): Promise<void> {
         try {
             await this.admin.deleteTopics({
-                topics: [topicName],
+                topics: [topicName]
             });
             console.info(`Topic ${topicName} deleted successfully`);
         } catch (error) {
@@ -124,9 +124,9 @@ export class KafkaAdminService {
                 resources: [
                     {
                         type: ConfigResourceTypes.TOPIC,
-                        name: topicName,
-                    },
-                ],
+                        name: topicName
+                    }
+                ]
             });
             return configs.resources[0]?.configEntries || [];
         } catch (error) {

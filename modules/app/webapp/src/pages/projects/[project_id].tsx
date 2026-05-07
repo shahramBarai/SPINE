@@ -15,7 +15,7 @@ function Project() {
                     homeHref="/"
                     pages={[
                         { name: "Projects", href: "/projects", current: true },
-                        { name: "Project Name", href: `/projects/1` },
+                        { name: "Project Name", href: `/projects/1` }
                     ]}
                 />
                 <div className="grid grid-cols-[2fr_1fr] gap-2 min-h-[700px]">

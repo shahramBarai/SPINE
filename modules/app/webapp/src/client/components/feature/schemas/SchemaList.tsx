@@ -12,7 +12,7 @@ interface SchemaListProps {
 export const SchemaList: React.FC<SchemaListProps> = ({
     schemas,
     isLoading,
-    error,
+    error
 }) => {
     const router = useRouter();
 

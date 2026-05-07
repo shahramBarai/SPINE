@@ -2,7 +2,7 @@ import {
     Description,
     Dialog,
     DialogPanel,
-    DialogTitle,
+    DialogTitle
 } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/16/solid";
 
@@ -13,7 +13,7 @@ function Modal({
     description,
     children,
     open,
-    setOpen,
+    setOpen
 }: {
     title: string;
     description?: string;

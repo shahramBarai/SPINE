@@ -11,7 +11,7 @@ interface SectionHeaderProps {
 
 export const SectionHeader: React.FC<SectionHeaderProps> = ({
     title,
-    status,
+    status
 }) => {
     const getStateIcon = () => {
         switch (status) {

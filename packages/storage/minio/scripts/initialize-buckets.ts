@@ -2,12 +2,12 @@ import { env } from "@spine/shared";
 import {
     initFileStorage,
     getMinioClient,
-    BUCKET_NAME_LIST,
+    BUCKET_NAME_LIST
 } from "../src/db/minio";
 
 const ErrorMessages = {
     INVALID_DB_URL:
-        "Invalid DATABASE_URL_MINIO format. Expected format: username:password@host:port/databasename",
+        "Invalid DATABASE_URL_MINIO format. Expected format: username:password@host:port/databasename"
 };
 
 // DATABASE_URL_MINIO="username:password@host:port/databasename"

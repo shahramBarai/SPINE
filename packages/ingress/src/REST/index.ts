@@ -3,7 +3,7 @@ import { logger } from "@spine/shared";
 import type {
     RestApiConfig,
     RestEndpointConfig,
-    RestPaginationConfig,
+    RestPaginationConfig
 } from "./types";
 
 interface PollingResult {
@@ -88,7 +88,7 @@ class RESTService extends EventEmitter {
                 const result = await this.executeRequest(endpoint, {
                     page,
                     cursor,
-                    nextLink,
+                    nextLink
                 });
 
                 const pollingResult: PollingResult = {
@@ -97,7 +97,7 @@ class RESTService extends EventEmitter {
                     payload: result.payload,
                     status: result.status,
                     headers: result.headers,
-                    url: result.url,
+                    url: result.url
                 };
 
                 this.emit("data", pollingResult);
@@ -154,7 +154,7 @@ class RESTService extends EventEmitter {
                     method: endpoint.method,
                     headers,
                     body,
-                    signal: controller.signal,
+                    signal: controller.signal
                 });
                 return res;
             } finally {
@@ -165,9 +165,7 @@ class RESTService extends EventEmitter {
         if (!response.ok) {
             const payload = await this.safeParseBody(response);
             throw new Error(
-                `RESTService got ${response.status} from ${url}: ${JSON.stringify(
-                    payload
-                )}`
+                `RESTService got ${response.status} from ${url}: ${JSON.stringify(payload)}`
             );
         }
 
@@ -175,7 +173,7 @@ class RESTService extends EventEmitter {
             payload: await this.safeParseBody(response),
             status: response.status,
             headers: this.headersToRecord(response.headers),
-            url: response.url,
+            url: response.url
         };
     }
 
@@ -187,7 +185,7 @@ class RESTService extends EventEmitter {
         const headers: Record<string, string> = {
             accept: "application/json",
             ...this.config.customHeaders,
-            ...(this.config.auth.customHeaders ?? {}),
+            ...(this.config.auth.customHeaders ?? {})
         };
 
         if (endpoint.method === "POST" && !headers["content-type"]) {
@@ -296,7 +294,7 @@ class RESTService extends EventEmitter {
         const body = new URLSearchParams({
             grant_type: oauth.grantType,
             client_id: oauth.clientId,
-            client_secret: oauth.clientSecret,
+            client_secret: oauth.clientSecret
         });
         if (oauth.scope) {
             body.append("scope", oauth.scope);
@@ -308,9 +306,9 @@ class RESTService extends EventEmitter {
         const response = await fetch(oauth.tokenUrl, {
             method: "POST",
             headers: {
-                "content-type": "application/x-www-form-urlencoded",
+                "content-type": "application/x-www-form-urlencoded"
             },
-            body,
+            body
         });
 
         if (!response.ok) {
@@ -325,7 +323,7 @@ class RESTService extends EventEmitter {
         const refreshMargin = oauth.refreshMarginSeconds ?? 60;
         this.oauthToken = {
             value: payload.access_token,
-            expiresAt: Date.now() + (expiresInSeconds - refreshMargin) * 1000,
+            expiresAt: Date.now() + (expiresInSeconds - refreshMargin) * 1000
         };
         return this.oauthToken.value;
     }
@@ -387,7 +385,7 @@ class RESTService extends EventEmitter {
             );
             return {
                 cursor: cursor as string | undefined,
-                nextLink: undefined,
+                nextLink: undefined
             };
         }
         if (pagination.mode === "link") {

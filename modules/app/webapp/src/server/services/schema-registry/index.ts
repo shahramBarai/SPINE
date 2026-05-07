@@ -67,7 +67,7 @@ export class SchemaRegistryService {
         const url = `${this.config.url}${endpoint}`;
         const headers: Record<string, string> = {
             "Content-Type": "application/vnd.schemaregistry.v1+json",
-            ...((options.headers as Record<string, string>) || {}),
+            ...((options.headers as Record<string, string>) || {})
         };
 
         if (this.config.auth) {
@@ -79,7 +79,7 @@ export class SchemaRegistryService {
 
         const response = await fetch(url, {
             ...options,
-            headers,
+            headers
         });
 
         if (!response.ok) {
@@ -94,7 +94,7 @@ export class SchemaRegistryService {
                 message:
                     errorData.message ||
                     `Schema Registry error: ${response.status}`,
-                cause: errorData,
+                cause: errorData
             });
         }
 
@@ -166,7 +166,7 @@ export class SchemaRegistryService {
                             schemaType: schemaType,
                             compatibility:
                                 compatibility as SchemaSubject["compatibility"],
-                            versions,
+                            versions
                         };
                     } catch (error) {
                         console.warn(
@@ -211,7 +211,7 @@ export class SchemaRegistryService {
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
                 message: "Failed to list schema subjects",
-                cause: error,
+                cause: error
             });
         }
     }
@@ -236,7 +236,7 @@ export class SchemaRegistryService {
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
                 message: `Failed to get versions for subject: ${subject}`,
-                cause: error,
+                cause: error
             });
         }
     }
@@ -253,7 +253,7 @@ export class SchemaRegistryService {
             throw new TRPCError({
                 code: "NOT_FOUND",
                 message: `Schema not found: ${subject} version ${version}`,
-                cause: error,
+                cause: error
             });
         }
     }
@@ -267,14 +267,14 @@ export class SchemaRegistryService {
                 `/subjects/${encodeURIComponent(subject)}/versions`,
                 {
                     method: "POST",
-                    body: JSON.stringify(schemaData),
+                    body: JSON.stringify(schemaData)
                 }
             );
         } catch (error) {
             throw new TRPCError({
                 code: "BAD_REQUEST",
                 message: `Failed to register schema for subject: ${subject}`,
-                cause: error,
+                cause: error
             });
         }
     }
@@ -286,19 +286,17 @@ export class SchemaRegistryService {
     ): Promise<CompatibilityCheckResponse> {
         try {
             return await this.makeRequest(
-                `/compatibility/subjects/${encodeURIComponent(
-                    subject
-                )}/versions/${version}`,
+                `/compatibility/subjects/${encodeURIComponent(subject)}/versions/${version}`,
                 {
                     method: "POST",
-                    body: JSON.stringify({ schema }),
+                    body: JSON.stringify({ schema })
                 }
             );
         } catch (error) {
             throw new TRPCError({
                 code: "BAD_REQUEST",
                 message: "Failed to check schema compatibility",
-                cause: error,
+                cause: error
             });
         }
     }
@@ -312,14 +310,14 @@ export class SchemaRegistryService {
                 `/config/${encodeURIComponent(subject)}`,
                 {
                     method: "PUT",
-                    body: JSON.stringify({ compatibility }),
+                    body: JSON.stringify({ compatibility })
                 }
             );
         } catch (error) {
             throw new TRPCError({
                 code: "BAD_REQUEST",
                 message: `Failed to update compatibility for subject: ${subject}`,
-                cause: error,
+                cause: error
             });
         }
     }
@@ -334,13 +332,13 @@ export class SchemaRegistryService {
                 : `/subjects/${encodeURIComponent(subject)}`;
 
             return await this.makeRequest(endpoint, {
-                method: "DELETE",
+                method: "DELETE"
             });
         } catch (error) {
             throw new TRPCError({
                 code: "BAD_REQUEST",
                 message: `Failed to delete subject: ${subject}`,
-                cause: error,
+                cause: error
             });
         }
     }
@@ -361,7 +359,7 @@ export class SchemaRegistryService {
             throw new TRPCError({
                 code: "BAD_REQUEST",
                 message: "Invalid schema format",
-                cause: error,
+                cause: error
             });
         }
     }
@@ -374,8 +372,7 @@ export function getSchemaRegistryService(): SchemaRegistryService {
     if (!schemaRegistryService) {
         const config: SchemaRegistryConfig = {
             url:
-                process.env.SCHEMA_REGISTRY_URL ||
-                "http://schema-registry:8081",
+                process.env.SCHEMA_REGISTRY_URL || "http://schema-registry:8081"
         };
 
         // Add authentication if configured
@@ -385,7 +382,7 @@ export function getSchemaRegistryService(): SchemaRegistryService {
         ) {
             config.auth = {
                 username: process.env.SCHEMA_REGISTRY_USERNAME,
-                password: process.env.SCHEMA_REGISTRY_PASSWORD,
+                password: process.env.SCHEMA_REGISTRY_PASSWORD
             };
         }
 

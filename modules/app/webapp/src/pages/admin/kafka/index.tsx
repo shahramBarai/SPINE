@@ -6,7 +6,7 @@ import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import {
     KafkaTopicsList,
     KafkaConsumerGroups,
-    KafkaStatsCards,
+    KafkaStatsCards
 } from "@/client/components/feature/kafka";
 
 const KafkaManagementPage = () => {
@@ -58,15 +58,15 @@ export const getServerSideProps = withAuthSSR({
             return {
                 redirect: {
                     destination: "/dashboard",
-                    permanent: false,
-                },
+                    permanent: false
+                }
             };
         }
 
         return {
             props: {
-                user,
-            },
+                user
+            }
         };
-    },
+    }
 });

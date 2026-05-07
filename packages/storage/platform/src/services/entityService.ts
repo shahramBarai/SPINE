@@ -26,7 +26,7 @@ async function createEntity(data: {
     if (data.members && data.members.length > 0) {
         for (const member of data.members) {
             const user = await prisma.user.findUnique({
-                where: { id: member.userId },
+                where: { id: member.userId }
             });
             if (!user) {
                 throw new Error(`User with ID ${member.userId} not found`);
@@ -41,9 +41,9 @@ async function createEntity(data: {
             type: data.type,
             members: data.members
                 ? {
-                      create: data.members,
+                      create: data.members
                   }
-                : undefined,
+                : undefined
         },
         select: {
             id: true,
@@ -51,8 +51,8 @@ async function createEntity(data: {
             description: true,
             type: true,
             createdAt: true,
-            updatedAt: true,
-        },
+            updatedAt: true
+        }
     });
     return entity;
 }
@@ -96,8 +96,8 @@ async function addMembers(
         data: newMembersToAdd.map((member) => ({
             entityId,
             userId: member.userId,
-            role: member.role,
-        })),
+            role: member.role
+        }))
     });
 
     // Returning new members
@@ -118,8 +118,8 @@ async function getAllEntities() {
             description: true,
             type: true,
             createdAt: true,
-            updatedAt: true,
-        },
+            updatedAt: true
+        }
     });
     return entities;
 }
@@ -138,8 +138,8 @@ async function getEntityById(id: string) {
             description: true,
             type: true,
             createdAt: true,
-            updatedAt: true,
-        },
+            updatedAt: true
+        }
     });
     return entity;
 }
@@ -154,9 +154,9 @@ async function getEntitiesByUserId(userId: string) {
         where: {
             members: {
                 some: {
-                    userId,
-                },
-            },
+                    userId
+                }
+            }
         },
         select: {
             id: true,
@@ -164,8 +164,8 @@ async function getEntitiesByUserId(userId: string) {
             description: true,
             type: true,
             createdAt: true,
-            updatedAt: true,
-        },
+            updatedAt: true
+        }
     });
     return entities;
 }
@@ -183,7 +183,7 @@ async function getMembers(entityId: string) {
         throw new Error(`Entity with ID ${entityId} not found`);
     }
     const members = await prisma.entityMember.findMany({
-        where: { entityId },
+        where: { entityId }
     });
     return members;
 }
@@ -196,7 +196,7 @@ async function getMembers(entityId: string) {
  */
 async function getMember(entityId: string, userId: string) {
     const member = await prisma.entityMember.findUnique({
-        where: { entityId_userId: { entityId, userId } },
+        where: { entityId_userId: { entityId, userId } }
     });
     return member;
 }
@@ -228,8 +228,8 @@ async function updateEntity(
         where: { id },
         data: {
             ...data,
-            updatedAt: new Date(),
-        },
+            updatedAt: new Date()
+        }
     });
 }
 
@@ -258,13 +258,13 @@ async function updateMemberRole(
         where: {
             entityId_userId: {
                 entityId,
-                userId,
-            },
+                userId
+            }
         },
         data: {
             role,
-            updatedAt: new Date(),
-        },
+            updatedAt: new Date()
+        }
     });
 }
 
@@ -282,7 +282,7 @@ async function deleteEntity(id: string) {
         return id;
     }
     const deletedEntity = await prisma.entity.delete({
-        where: { id },
+        where: { id }
     });
     return deletedEntity.id;
 }
@@ -310,9 +310,9 @@ async function removeMember(entityId: string, userId: string) {
         where: {
             entityId_userId: {
                 entityId,
-                userId,
-            },
-        },
+                userId
+            }
+        }
     });
 }
 
@@ -328,5 +328,5 @@ export {
     updateEntity,
     updateMemberRole,
     deleteEntity,
-    removeMember,
+    removeMember
 };

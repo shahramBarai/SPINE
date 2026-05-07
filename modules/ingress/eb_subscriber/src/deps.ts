@@ -1,6 +1,6 @@
 import Fastify, {
     type FastifyPluginAsync,
-    type FastifyInstance,
+    type FastifyInstance
 } from "fastify";
 import cors from "@fastify/cors";
 import * as configs from "./utils/config";
@@ -34,7 +34,7 @@ export {
     excelService,
     kafkaProducer,
     schemaManager,
-    empathicBuildingService,
+    empathicBuildingService
 };
 
 export type { FastifyPluginAsync, FastifyInstance };

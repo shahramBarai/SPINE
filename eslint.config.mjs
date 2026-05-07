@@ -10,7 +10,7 @@ const ignorePatterns = [
     "**/coverage/**",
     "**/.next/**",
     "**/generated/**",
-    "**/.venv/**",
+    "**/.venv/**"
 ];
 
 const typeScriptFiles = [
@@ -23,7 +23,7 @@ const typeScriptFiles = [
     "modules/ingress/eb_subscriber/tsconfig.json",
     "modules/egress/mqtt-bridge/tsconfig.json",
     "modules/ingress/mqtt_subscriber_nodejs/tsconfig.json",
-    "modules/app/webapp/tsconfig.json",
+    "modules/app/webapp/tsconfig.json"
 ];
 
 export default defineConfig([
@@ -32,9 +32,9 @@ export default defineConfig([
         files: ["**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts}"],
         languageOptions: {
             globals: {
-                ...globals.node,
-            },
-        },
+                ...globals.node
+            }
+        }
     },
     js.configs.recommended,
     ...tseslint.configs.recommended,
@@ -42,8 +42,8 @@ export default defineConfig([
         files: ["**/*.{ts,tsx,mts,cts}"],
         languageOptions: {
             parserOptions: {
-                project: typeScriptFiles,
-            },
+                project: typeScriptFiles
+            }
         },
         rules: {
             "@typescript-eslint/no-unused-vars": [
@@ -51,9 +51,9 @@ export default defineConfig([
                 {
                     argsIgnorePattern: "^_",
                     varsIgnorePattern: "^_",
-                    caughtErrorsIgnorePattern: "^_",
-                },
-            ],
-        },
-    },
+                    caughtErrorsIgnorePattern: "^_"
+                }
+            ]
+        }
+    }
 ]);

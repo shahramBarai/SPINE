@@ -10,8 +10,8 @@ export const sessionOptions: SessionOptions = {
     cookieOptions: {
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        httpOnly: true,
-    },
+        httpOnly: true
+    }
 };
 
 // Type for user session

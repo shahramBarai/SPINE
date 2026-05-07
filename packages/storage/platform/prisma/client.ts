@@ -24,14 +24,14 @@ function initPlatformStorage(config: PlatformConfig): void {
         if (!globalWithPrisma.prisma) {
             globalWithPrisma.prisma = new PrismaClient({
                 adapter,
-                log: ["query", "info", "warn", "error"],
+                log: ["query", "info", "warn", "error"]
             });
         }
         prisma = globalWithPrisma.prisma;
     } else {
         prisma = new PrismaClient({
             adapter,
-            log: ["error"],
+            log: ["error"]
         });
     }
 }

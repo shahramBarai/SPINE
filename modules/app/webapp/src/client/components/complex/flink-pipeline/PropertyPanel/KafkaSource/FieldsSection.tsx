@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
     ArrowPathIcon,
-    DocumentArrowDownIcon,
+    DocumentArrowDownIcon
 } from "@heroicons/react/16/solid";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/16/solid";
 import { ActionButton, Button } from "@/client/components/basics/Button";
@@ -12,17 +12,17 @@ import {
     FormControl,
     FormField,
     FormItem,
-    Form,
+    Form
 } from "@/client/components/basics/form";
 import {
     AccordionContent,
-    AccordionItem,
+    AccordionItem
 } from "@/client/components/basics/accordion";
 import { SectionHeader } from "../SectionHeader";
 import {
     fieldTypes,
     type KafkaSourceFormValuesTargetSchema,
-    kafkaSourceSchema,
+    kafkaSourceSchema
 } from "./schemas";
 import { useFormState } from "@/client/hooks/useFormState";
 import {
@@ -30,12 +30,12 @@ import {
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
+    SelectValue
 } from "@/client/components/basics/select";
 
 export const FieldsSection = ({
     data,
-    onApply,
+    onApply
 }: {
     data: KafkaSourceFormValuesTargetSchema;
     onApply: (data: KafkaSourceFormValuesTargetSchema) => Promise<boolean>;
@@ -43,7 +43,7 @@ export const FieldsSection = ({
     // Initialize form with properly typed data
     const form = useForm<KafkaSourceFormValuesTargetSchema>({
         resolver: zodResolver(kafkaSourceSchema.shape.targetSchema),
-        defaultValues: data,
+        defaultValues: data
     });
 
     const { status, handleSubmit, setStatus } = useFormState(form);
@@ -57,7 +57,7 @@ export const FieldsSection = ({
         const currentFields = form.getValues().fields || [];
         form.setValue("fields", [
             ...currentFields,
-            { key: "", type: fieldTypes.STRING },
+            { key: "", type: fieldTypes.STRING }
         ]);
     };
 

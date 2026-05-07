@@ -1,6 +1,6 @@
 import type {
     ConsumerGroupsResponse,
-    GroupOverview,
+    GroupOverview
 } from "@/server/schemas/kafka";
 
 interface KafkaConsumerGroupsProps {

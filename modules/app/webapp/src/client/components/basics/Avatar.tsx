@@ -51,7 +51,7 @@ export function Avatar({
             sm: "h-8 w-8 text-sm",
             md: "h-10 w-10 text-base",
             lg: "h-12 w-12 text-lg",
-            xl: "h-16 w-16 text-xl",
+            xl: "h-16 w-16 text-xl"
         };
 
         return sizeMap[size];

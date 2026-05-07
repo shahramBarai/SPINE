@@ -9,12 +9,12 @@ import {
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
+    SelectValue
 } from "@/client/components/basics/select";
 import {
     DocumentArrowUpIcon,
     CheckCircleIcon,
-    ExclamationTriangleIcon,
+    ExclamationTriangleIcon
 } from "@heroicons/react/24/outline";
 import { Modal } from "../../complex/Modal";
 
@@ -44,13 +44,13 @@ export const SchemaRegistrationModal: React.FC<
         watch,
         setValue,
         reset,
-        formState: { errors },
+        formState: { errors }
     } = useForm<SchemaRegistrationForm>({
         defaultValues: {
             schemaType: "AVRO",
             schema: "",
-            subject: "",
-        },
+            subject: ""
+        }
     });
 
     const watchedSchema = watch("schema");
@@ -62,16 +62,16 @@ export const SchemaRegistrationModal: React.FC<
                 reset();
                 setValidationResult(null);
                 onSuccess();
-            },
+            }
         });
 
     const validateSchemaMutation = api.schemaRegistry.validateSchema.useQuery(
         {
             schema: watchedSchema || "",
-            schemaType: watchedSchemaType,
+            schemaType: watchedSchemaType
         },
         {
-            enabled: false,
+            enabled: false
         }
     );
 
@@ -115,7 +115,7 @@ export const SchemaRegistrationModal: React.FC<
                     error:
                         error instanceof Error
                             ? error.message
-                            : "Validation failed",
+                            : "Validation failed"
                 });
             }
         }
@@ -157,8 +157,8 @@ export const SchemaRegistrationModal: React.FC<
                                 pattern: {
                                     value: /^[a-zA-Z0-9._-]+$/,
                                     message:
-                                        "Subject name can only contain letters, numbers, dots, underscores, and hyphens",
-                                },
+                                        "Subject name can only contain letters, numbers, dots, underscores, and hyphens"
+                                }
                             })}
                             placeholder="e.g., sensor-data-value"
                             className={errors.subject ? "border-red-500" : ""}
@@ -256,7 +256,7 @@ export const SchemaRegistrationModal: React.FC<
 
                     <textarea
                         {...register("schema", {
-                            required: "Schema definition is required",
+                            required: "Schema definition is required"
                         })}
                         className={`w-full h-64 p-3 border rounded-md font-mono text-sm resize-none ${
                             errors.schema ? "border-red-500" : "border-gray-300"
@@ -286,11 +286,7 @@ export const SchemaRegistrationModal: React.FC<
                             )}
                             <div className="flex-1">
                                 <p
-                                    className={`text-sm font-medium ${
-                                        validationResult.isValid
-                                            ? "text-green-800"
-                                            : "text-red-800"
-                                    }`}
+                                    className={`text-sm font-medium ${validationResult.isValid ? "text-green-800" : "text-red-800"}`}
                                 >
                                     {validationResult.isValid
                                         ? "Schema is valid!"

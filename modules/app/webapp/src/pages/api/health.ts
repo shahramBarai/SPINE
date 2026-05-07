@@ -7,6 +7,6 @@ export default async function handler(
     res.status(200).json({
         status: "ok",
         database: "connected",
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
     });
 }

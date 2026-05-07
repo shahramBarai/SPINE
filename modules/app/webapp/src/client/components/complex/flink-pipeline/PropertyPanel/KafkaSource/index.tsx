@@ -5,7 +5,7 @@ import type {
     KafkaSourceFormValuesPreview,
     KafkaSourceFormValuesDeserialization,
     KafkaSourceFormValuesEventTime,
-    KafkaSourceFormValuesTargetSchema,
+    KafkaSourceFormValuesTargetSchema
 } from "./schemas";
 import { ConsumerSection } from "./ConsumerSection";
 import { PreviewSection } from "./PreviewSection";
@@ -32,7 +32,7 @@ export const KafkaSource: React.FC<KafkaSourceProps> = ({ data, setData }) => {
     ) => {
         setData({
             ...data,
-            [section]: sectionData,
+            [section]: sectionData
         });
 
         // For demo purposes

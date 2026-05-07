@@ -43,6 +43,6 @@ export function useFormState<T extends Record<string, unknown>>(
     return {
         status,
         setStatus,
-        handleSubmit,
+        handleSubmit
     };
 }

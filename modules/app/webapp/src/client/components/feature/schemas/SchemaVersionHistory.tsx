@@ -14,7 +14,7 @@ export const SchemaVersionHistory: React.FC<SchemaVersionHistoryProps> = ({
     versions,
     selectedVersion,
     onVersionSelect,
-    isLoading,
+    isLoading
 }) => {
     const handleVersionClick = (version: number) => {
         onVersionSelect(version);

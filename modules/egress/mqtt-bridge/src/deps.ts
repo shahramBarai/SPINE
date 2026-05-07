@@ -16,7 +16,7 @@ try {
 
 const KafkaConsumer = new KafkaConsumerService({
     config: kafkaConfig,
-    topic: kafkaTopic,
+    topic: kafkaTopic
 });
 const MQTTClient = new MQTTService(mqttConfig);
 

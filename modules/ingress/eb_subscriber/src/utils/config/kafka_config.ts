@@ -46,7 +46,7 @@ const getKafkaConfig = (): KafkaConfig => {
         brokers: KAFKA_BROKERS.split(","),
         connectionTimeout: KAFKA_CONNECTION_TIMEOUT,
         requestTimeout: KAFKA_REQUEST_TIMEOUT,
-        retry: { retries: KAFKA_RETRY_RETRIES },
+        retry: { retries: KAFKA_RETRY_RETRIES }
     };
 
     return kafkaConfig;
@@ -100,14 +100,14 @@ const getSchemaRegistryConfig = (): SchemaRegistryConfig => {
             SCHEMA_REGISTRY_USERNAME && SCHEMA_REGISTRY_PASSWORD
                 ? {
                       username: SCHEMA_REGISTRY_USERNAME,
-                      password: SCHEMA_REGISTRY_PASSWORD,
+                      password: SCHEMA_REGISTRY_PASSWORD
                   }
                 : undefined,
         inputSubject: SERVICE_INPUT_SUBJECT,
         outputSubject: SERVICE_OUTPUT_SUBJECT,
         inputSchemaId: SERVICE_INPUT_SCHEMA_ID,
         outputSchemaId: SERVICE_OUTPUT_SCHEMA_ID,
-        validateEnabled: SCHEMA_VALIDATION_ENABLED === "true",
+        validateEnabled: SCHEMA_VALIDATION_ENABLED === "true"
     };
     return schemaRegistryConfig;
 };

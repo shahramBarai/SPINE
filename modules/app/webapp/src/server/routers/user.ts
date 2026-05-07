@@ -14,8 +14,8 @@ export const userRouter = router({
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
                 message: "Failed to get user by id",
-                cause: error,
+                cause: error
             });
         }
-    }),
+    })
 });

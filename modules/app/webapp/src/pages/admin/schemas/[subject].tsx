@@ -9,7 +9,7 @@ import {
     SchemaDetail,
     SchemaVersionHistory,
     SchemaViewer,
-    SchemaActions,
+    SchemaActions
 } from "@/client/components/feature/schemas";
 
 const SchemaDetailPage = () => {
@@ -138,15 +138,15 @@ export const getServerSideProps = withAuthSSR({
             return {
                 redirect: {
                     destination: "/dashboard",
-                    permanent: false,
-                },
+                    permanent: false
+                }
             };
         }
 
         return {
             props: {
-                user,
-            },
+                user
+            }
         };
-    },
+    }
 });

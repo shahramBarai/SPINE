@@ -7,7 +7,7 @@ const BUCKET_NAME_LIST = [
     "historical-files",
     "user-uploads",
     "generated-reports",
-    "pipeline-artifacts",
+    "pipeline-artifacts"
 ] as const;
 
 /** Union type of all valid bucket name strings. */
@@ -28,7 +28,7 @@ function initFileStorage(config: MinioConfig): void {
         port: config.port,
         useSSL: false,
         accessKey: config.user,
-        secretKey: config.password,
+        secretKey: config.password
     });
 }
 

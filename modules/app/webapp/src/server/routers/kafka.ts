@@ -8,7 +8,7 @@ import {
     getConsumerGroupDetailsSchema,
     getTopicConfigurationSchema,
     type KafkaHealthResponse,
-    type KafkaClusterInfo,
+    type KafkaClusterInfo
 } from "../schemas/kafka";
 
 export const kafkaRouter = router({
@@ -25,15 +25,13 @@ export const kafkaRouter = router({
                     status: "connected",
                     brokersCount: cluster.brokers?.length || 0,
                     controllerId: cluster.controller || undefined,
-                    clusterId: cluster.clusterId,
+                    clusterId: cluster.clusterId
                 };
             } catch (error) {
                 return {
                     status: "disconnected",
                     error:
-                        error instanceof Error
-                            ? error.message
-                            : "Unknown error",
+                        error instanceof Error ? error.message : "Unknown error"
                 };
             }
         }
@@ -51,7 +49,7 @@ export const kafkaRouter = router({
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
                 message: "Failed to list topics",
-                cause: error,
+                cause: error
             });
         }
     }),
@@ -72,7 +70,7 @@ export const kafkaRouter = router({
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
                     message: "Failed to fetch topic metadata",
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -89,7 +87,7 @@ export const kafkaRouter = router({
                     topic: input.topic,
                     numPartitions: input.numPartitions,
                     replicationFactor: input.replicationFactor,
-                    configEntries: input.configEntries,
+                    configEntries: input.configEntries
                 };
 
                 const result = await kafkaAdmin.createTopic(topicConfig);
@@ -100,7 +98,7 @@ export const kafkaRouter = router({
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
                     message: `Failed to create topic: ${input.topic}`,
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -120,7 +118,7 @@ export const kafkaRouter = router({
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
                     message: `Failed to delete topic: ${input.topic}`,
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -141,7 +139,7 @@ export const kafkaRouter = router({
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
                     message: `Failed to get configuration for topic: ${input.topicName}`,
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -158,7 +156,7 @@ export const kafkaRouter = router({
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
                 message: "Failed to get cluster info",
-                cause: error,
+                cause: error
             });
         }
     }),
@@ -175,7 +173,7 @@ export const kafkaRouter = router({
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
                 message: "Failed to list consumer groups",
-                cause: error,
+                cause: error
             });
         }
     }),
@@ -196,8 +194,8 @@ export const kafkaRouter = router({
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
                     message: `Failed to get consumer group details for: ${input.groupId}`,
-                    cause: error,
+                    cause: error
                 });
             }
-        }),
+        })
 });

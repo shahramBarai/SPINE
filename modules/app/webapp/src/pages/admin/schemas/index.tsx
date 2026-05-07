@@ -7,7 +7,7 @@ import { useState } from "react";
 import {
     SchemaList,
     SchemaRegistrationModal,
-    SchemaFilters,
+    SchemaFilters
 } from "@/client/components/feature/schemas";
 import type { SchemaFilters as SchemaFiltersType } from "@/server/schemas/schema-registry";
 
@@ -136,15 +136,15 @@ export const getServerSideProps = withAuthSSR({
             return {
                 redirect: {
                     destination: "/dashboard",
-                    permanent: false,
-                },
+                    permanent: false
+                }
             };
         }
 
         return {
             props: {
-                user,
-            },
+                user
+            }
         };
-    },
+    }
 });

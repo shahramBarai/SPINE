@@ -353,7 +353,7 @@ describe("UserService", () => {
             // Arrange
             const userData = {
                 email: "test@example.com",
-                name: "Test User",
+                name: "Test User"
             };
 
             // Act
@@ -364,7 +364,7 @@ describe("UserService", () => {
                 id: expect.any(String),
                 email: userData.email,
                 name: userData.name,
-                createdAt: expect.any(Date),
+                createdAt: expect.any(Date)
             });
         });
 
@@ -372,7 +372,7 @@ describe("UserService", () => {
             // Arrange
             const invalidData = {
                 email: "invalid-email",
-                name: "Test User",
+                name: "Test User"
             };
 
             // Act & Assert
@@ -419,15 +419,15 @@ describe("POST /api/users", () => {
             url: "/api/users",
             payload: {
                 email: "test@example.com",
-                name: "Test User",
-            },
+                name: "Test User"
+            }
         });
 
         expect(response.statusCode).toBe(201);
         expect(JSON.parse(response.body)).toMatchObject({
             id: expect.any(String),
             email: "test@example.com",
-            name: "Test User",
+            name: "Test User"
         });
     });
 });
@@ -481,7 +481,7 @@ export const createUser = async (
 
         return reply.code(201).send({
             success: true,
-            data: user,
+            data: user
         });
     } catch (error) {
         if (error instanceof ValidationError) {
@@ -489,8 +489,8 @@ export const createUser = async (
                 success: false,
                 error: {
                     message: error.message,
-                    code: "VALIDATION_ERROR",
-                },
+                    code: "VALIDATION_ERROR"
+                }
             });
         }
 
@@ -500,8 +500,8 @@ export const createUser = async (
         return reply.code(500).send({
             success: false,
             error: {
-                message: "Internal server error",
-            },
+                message: "Internal server error"
+            }
         });
     }
 };
@@ -513,14 +513,14 @@ export const createUser = async (
 // Define input/output schemas
 const createUserSchema = z.object({
     email: z.string().email(),
-    name: z.string().min(1).max(100),
+    name: z.string().min(1).max(100)
 });
 
 const userOutputSchema = z.object({
     id: z.string(),
     email: z.string(),
     name: z.string(),
-    createdAt: z.date(),
+    createdAt: z.date()
 });
 
 // Create procedures
@@ -534,7 +534,7 @@ export const userRouter = router({
 
     list: publicProcedure.query(async () => {
         return await userService.findAll();
-    }),
+    })
 });
 ```
 
@@ -600,15 +600,15 @@ const users = await prisma.user.findMany({
     select: {
         id: true,
         email: true,
-        name: true,
-    },
+        name: true
+    }
 });
 
 // Use pagination for large datasets
 const users = await prisma.user.findMany({
     skip: page * limit,
     take: limit,
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: "desc" }
 });
 
 // Use database transactions for consistency
@@ -618,8 +618,8 @@ await prisma.$transaction(async (tx) => {
         data: {
             userId: user.id,
             projectId: project.id,
-            role: "OWNER",
-        },
+            role: "OWNER"
+        }
     });
 });
 ```
@@ -634,7 +634,7 @@ import { LRUCache } from "lru-cache";
 
 const userCache = new LRUCache<string, User>({
     max: 1000,
-    ttl: 5 * 60 * 1000, // 5 minutes
+    ttl: 5 * 60 * 1000 // 5 minutes
 });
 
 export const getUserById = async (id: string): Promise<User | null> => {
@@ -655,9 +655,9 @@ export const getUserById = async (id: string): Promise<User | null> => {
 const prisma = new PrismaClient({
     datasources: {
         db: {
-            url: process.env.DATABASE_URL,
-        },
-    },
+            url: process.env.DATABASE_URL
+        }
+    }
 });
 ```
 
@@ -696,7 +696,7 @@ import { z } from "zod";
 const createUserSchema = z.object({
     email: z.string().email().max(255),
     name: z.string().min(1).max(100),
-    password: z.string().min(8).max(72),
+    password: z.string().min(8).max(72)
 });
 
 // Sanitize user input
@@ -738,14 +738,14 @@ export const requireRole = (requiredRole: Role) => {
 const sensitiveConfig = {
     databaseUrl: process.env.DATABASE_URL,
     jwtSecret: process.env.JWT_SECRET,
-    apiKey: process.env.API_KEY,
+    apiKey: process.env.API_KEY
 };
 
 // Use validation for environment variables
 const envSchema = z.object({
     DATABASE_URL: z.string().url(),
     JWT_SECRET: z.string().min(32),
-    NODE_ENV: z.enum(["development", "production", "test"]),
+    NODE_ENV: z.enum(["development", "production", "test"])
 });
 
 export const env = envSchema.parse(process.env);

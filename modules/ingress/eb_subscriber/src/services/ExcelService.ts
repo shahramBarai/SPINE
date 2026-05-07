@@ -63,7 +63,7 @@ export class ExcelService {
                     "Channel",
                     "Data",
                     "Timestamp",
-                    "Source",
+                    "Source"
                 ]);
 
                 // Style the header row
@@ -72,7 +72,7 @@ export class ExcelService {
                 headerRow.fill = {
                     type: "pattern",
                     pattern: "solid",
-                    fgColor: { argb: "FFE0E0E0" },
+                    fgColor: { argb: "FFE0E0E0" }
                 };
             }
 
@@ -86,7 +86,7 @@ export class ExcelService {
                 typeof eventData.timestamp === "string"
                     ? eventData.timestamp
                     : new Date(eventData.timestamp).toISOString(),
-                eventData.source,
+                eventData.source
             ]);
 
             // Auto-size columns

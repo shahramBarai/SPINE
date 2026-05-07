@@ -5,7 +5,7 @@ import {
     excelService,
     kafkaProducer,
     schemaManager,
-    empathicBuildingService,
+    empathicBuildingService
 } from "./deps";
 import { logger } from "@spine/shared";
 import { healthRoutes } from "./routes/health";
@@ -22,11 +22,11 @@ async function setupServer() {
                           options: {
                               colorize: true,
                               ignore: "pid,hostname",
-                              translateTime: "HH:MM:ss.l",
-                          },
-                      },
+                              translateTime: "HH:MM:ss.l"
+                          }
+                      }
                   }
-                : false,
+                : false
     });
 
     // Register error handler
@@ -34,7 +34,7 @@ async function setupServer() {
 
     // Register CORS for cross-origin requests
     server.register(cors, {
-        origin: true,
+        origin: true
     });
 
     // Register health routes
@@ -44,7 +44,7 @@ async function setupServer() {
     server.get("/", async () => {
         return {
             message: "REST Subscriber Service is running",
-            health: "/health",
+            health: "/health"
         };
     });
 

@@ -32,9 +32,9 @@ async function fetchSensors(organizationId: string, locationId: string) {
         const loginResponse = await fetch(`${config.baseUrl}/v1/login`, {
             method: "POST",
             headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Type": "application/x-www-form-urlencoded"
             },
-            body: formData.toString(),
+            body: formData.toString()
         });
 
         if (!loginResponse.ok) {
@@ -55,8 +55,8 @@ async function fetchSensors(organizationId: string, locationId: string) {
             method: "GET",
             headers: {
                 Authorization: `Bearer ${bearerToken}`,
-                "Content-Type": "application/json",
-            },
+                "Content-Type": "application/json"
+            }
         });
 
         if (!response.ok) {
@@ -128,7 +128,7 @@ async function fetchSensors(organizationId: string, locationId: string) {
                 fetchedAt,
                 sensorType,
                 totalSensors: sensorsOfType.length,
-                sensors: sensorsOfType,
+                sensors: sensorsOfType
             };
 
             fs.writeFileSync(

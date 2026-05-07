@@ -10,13 +10,13 @@ import {
     empathicBuildingService,
     kafkaProducer,
     excelService,
-    configs,
+    configs
 } from "../deps";
 import type { DecodedEvent } from "./eb_types";
 import {
     extractMeasurements,
     resolveCampusId,
-    UNKNOWN_CAMPUS_ID,
+    UNKNOWN_CAMPUS_ID
 } from "./extractor";
 
 /** Extract external locationId from Pusher channel name, e.g. "private-location-7" -> "7" */
@@ -34,7 +34,7 @@ async function handleEmpathicBuildingEvent(event: DecodedEvent): Promise<void> {
         channel: event.channel,
         data: event.data,
         timestamp: event.timestamp,
-        source: "empathic-building",
+        source: "empathic-building"
     };
 
     const locationIdFromCh = locationIdFromChannel(event.channel);
@@ -50,7 +50,7 @@ async function handleEmpathicBuildingEvent(event: DecodedEvent): Promise<void> {
         logger.warn("EB: extractMeasurements failed, skipping message", {
             err,
             eventType: event.eventType,
-            channel: event.channel,
+            channel: event.channel
         });
         return;
     }
@@ -60,7 +60,7 @@ async function handleEmpathicBuildingEvent(event: DecodedEvent): Promise<void> {
             logger.debug(
                 "EB: missing location->campus mapping, using unknown",
                 {
-                    locationId: outMsg.campusId,
+                    locationId: outMsg.campusId
                 }
             );
         }
@@ -69,7 +69,7 @@ async function handleEmpathicBuildingEvent(event: DecodedEvent): Promise<void> {
             if (kafkaProducer) {
                 await kafkaProducer.sendMessage({
                     key: outMsg.sensorId,
-                    value: JSON.stringify(outMsg),
+                    value: JSON.stringify(outMsg)
                 });
                 logger.debug("EB: sensor event sent to Kafka", outMsg);
             } else if (excelService) {
@@ -81,7 +81,7 @@ async function handleEmpathicBuildingEvent(event: DecodedEvent): Promise<void> {
         } catch (err) {
             logger.error("EB: Kafka produce failed", {
                 err,
-                outMsg,
+                outMsg
             });
             throw err;
         }
@@ -112,7 +112,7 @@ function setupEmpathicBuildingHandlers(): void {
     // Error handling
     empathicBuildingService.on("error", (error: unknown) => {
         logger.debug("Empathic Building service error event observed", {
-            error,
+            error
         });
     });
 

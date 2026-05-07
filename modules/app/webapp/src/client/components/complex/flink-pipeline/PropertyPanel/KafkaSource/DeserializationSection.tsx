@@ -8,36 +8,36 @@ import {
     FormControl,
     FormField,
     FormItem,
-    FormLabel,
+    FormLabel
 } from "@/client/components/basics/form";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
+    SelectValue
 } from "@/client/components/basics/select";
 import {
     AccordionContent,
-    AccordionItem,
+    AccordionItem
 } from "@/client/components/basics/accordion";
 import {
     type KafkaSourceFormValuesDeserialization,
-    kafkaSourceSchema,
+    kafkaSourceSchema
 } from "./schemas";
 import { SectionHeader } from "../SectionHeader";
 import { useFormState } from "@/client/hooks/useFormState";
 
 export const DeserializationSection = ({
     data,
-    onApply,
+    onApply
 }: {
     data: KafkaSourceFormValuesDeserialization;
     onApply: (data: KafkaSourceFormValuesDeserialization) => Promise<boolean>;
 }) => {
     const form = useForm<KafkaSourceFormValuesDeserialization>({
         resolver: zodResolver(kafkaSourceSchema.shape.deserialization),
-        defaultValues: data,
+        defaultValues: data
     });
 
     const { status, handleSubmit } = useFormState(form);

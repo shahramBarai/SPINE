@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 // Create context with session
 export async function createContext({
     req,
-    res,
+    res
 }: {
     req: NextApiRequest;
     res: NextApiResponse;
@@ -15,7 +15,7 @@ export async function createContext({
     return {
         session,
         req,
-        res,
+        res
     };
 }
 
@@ -32,14 +32,14 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
     if (!ctx.session.data || !ctx.session.data.user) {
         throw new TRPCError({
             code: "UNAUTHORIZED",
-            message: "You must be logged in to access this resource",
+            message: "You must be logged in to access this resource"
         });
     }
 
     return next({
         ctx: {
             ...ctx,
-            user: ctx.session.data.user,
-        },
+            user: ctx.session.data.user
+        }
     });
 });

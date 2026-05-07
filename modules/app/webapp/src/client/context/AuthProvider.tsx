@@ -3,7 +3,7 @@ import {
     useContext,
     useState,
     type ReactNode,
-    useEffect,
+    useEffect
 } from "react";
 import { api } from "@/utils/trpc";
 import { useRouter } from "next/router";
@@ -24,7 +24,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType>({
     user: null,
     isLoading: true,
-    signOut: () => {},
+    signOut: () => {}
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         onSuccess: () => {
             setUser(null);
             router.push("/auth");
-        },
+        }
     });
 
     const signOut = () => {

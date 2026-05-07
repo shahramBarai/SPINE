@@ -29,8 +29,8 @@ export const getServerSideProps = withAuthSSR({
 
         return {
             props: {
-                user,
-            },
+                user
+            }
         };
-    },
+    }
 });

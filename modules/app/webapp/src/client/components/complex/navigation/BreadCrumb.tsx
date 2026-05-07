@@ -1,7 +1,7 @@
 import {
     ChevronDoubleRightIcon,
     ChevronRightIcon,
-    HomeIcon,
+    HomeIcon
 } from "@heroicons/react/16/solid";
 import { cn } from "@/client/utils";
 import { Button } from "@/client/components/basics/Button";
@@ -19,7 +19,7 @@ const BreadcrumbItem = ({
     name,
     current,
     className,
-    icon,
+    icon
 }: BreadcrumbItemProps) => (
     <li key={name} className={cn("flex shrink items-center py-0.5", className)}>
         {icon}
@@ -37,7 +37,7 @@ const BreadcrumbItem = ({
 export default function BreadCrumb({
     homeHref,
     pages,
-    className,
+    className
 }: {
     homeHref?: string;
     pages: {

@@ -16,7 +16,7 @@ class MQTTService {
     private connectionState: ConnectionState = {
         isConnected: false,
         isConnecting: false,
-        reconnectAttempts: 0,
+        reconnectAttempts: 0
     };
 
     constructor(config: MQTTConfig) {
@@ -45,7 +45,7 @@ class MQTTService {
                 reconnectPeriod: this.config.reconnectPeriod,
                 connectTimeout: this.config.connectTimeout,
                 username: this.config.username,
-                password: this.config.password,
+                password: this.config.password
             };
 
             this.client = mqtt.connect(this.config.brokerUrl, options);
@@ -123,7 +123,7 @@ class MQTTService {
                     message,
                     {
                         qos: this.config.qos,
-                        retain: this.config.retain,
+                        retain: this.config.retain
                     },
                     (error) => {
                         if (error) {
@@ -194,7 +194,7 @@ class MQTTService {
             connectionState: { ...this.connectionState },
             error: this.connectionState.isConnected
                 ? undefined
-                : "Not connected to MQTT broker",
+                : "Not connected to MQTT broker"
         };
     }
 }

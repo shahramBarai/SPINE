@@ -52,7 +52,7 @@ class KafkaProducer {
     async sendMessage({
         topic,
         key,
-        value,
+        value
     }: {
         topic?: string;
         key: string;
@@ -62,7 +62,7 @@ class KafkaProducer {
             const result = await this.producer.send({
                 topic: topic || this.topic,
                 messages: [{ key, value }],
-                acks: 0,
+                acks: 0
             });
             logger.debug(
                 "Kafka producer: Message sent to Kafka! Result: ",
@@ -98,7 +98,7 @@ class KafkaProducer {
         return {
             status: this.isConnected ? "connected" : "disconnected",
             timestamp: new Date().toISOString(),
-            error: this.isConnected ? undefined : "Not connected to Kafka",
+            error: this.isConnected ? undefined : "Not connected to Kafka"
         };
     }
 }

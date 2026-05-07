@@ -19,8 +19,8 @@ const healthRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
             services: {
                 mqtt: null,
                 kafka: null,
-                schema: null,
-            },
+                schema: null
+            }
         };
 
         // Check Kafka connection

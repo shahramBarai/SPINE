@@ -1,7 +1,7 @@
 import type {
     GetServerSidePropsContext,
     GetServerSidePropsResult,
-    PreviewData,
+    PreviewData
 } from "next";
 import type { ParsedUrlQuery } from "querystring";
 import { getServerSession } from "./iron-session";
@@ -10,7 +10,7 @@ import type { UserSession } from "./iron-session";
 // Enhanced context with authenticated user data
 export interface AuthenticatedContext<
     Params extends ParsedUrlQuery = ParsedUrlQuery,
-    Preview extends PreviewData = PreviewData,
+    Preview extends PreviewData = PreviewData
 > extends GetServerSidePropsContext<Params, Preview> {
     req: GetServerSidePropsContext["req"] & {
         session: {
@@ -23,7 +23,7 @@ export interface AuthenticatedContext<
 export type AuthenticatedGetServerSideProps<
     P extends Record<string, unknown> = Record<string, unknown>,
     Params extends ParsedUrlQuery = ParsedUrlQuery,
-    Preview extends PreviewData = PreviewData,
+    Preview extends PreviewData = PreviewData
 > = (
     context: AuthenticatedContext<Params, Preview>
 ) => Promise<GetServerSidePropsResult<P>>;
@@ -54,8 +54,8 @@ export function withAuthSSR<Props>(opts: {
             return {
                 redirect: {
                     destination: opts.redirectTo ?? "/auth",
-                    permanent: false,
-                },
+                    permanent: false
+                }
             };
         }
 
@@ -65,9 +65,9 @@ export function withAuthSSR<Props>(opts: {
             req: {
                 ...context.req,
                 session: {
-                    data: { user: user },
-                },
-            },
+                    data: { user: user }
+                }
+            }
         } as AuthenticatedContext;
 
         return opts.handler(authenticatedContext);

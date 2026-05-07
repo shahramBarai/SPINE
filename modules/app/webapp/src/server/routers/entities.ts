@@ -19,7 +19,7 @@ export const entitiesRouter = router({
             z.object({
                 name: z.string(),
                 description: z.string(),
-                type: z.nativeEnum(EntityType),
+                type: z.nativeEnum(EntityType)
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -29,7 +29,7 @@ export const entitiesRouter = router({
             if (user.role !== "ADMIN") {
                 throw new TRPCError({
                     code: "FORBIDDEN",
-                    message: "You are not authorized to create entities",
+                    message: "You are not authorized to create entities"
                 });
             }
 
@@ -41,9 +41,9 @@ export const entitiesRouter = router({
                 members: [
                     {
                         userId: user.id,
-                        role: MemberRole.OWNER,
-                    },
-                ],
+                        role: MemberRole.OWNER
+                    }
+                ]
             };
 
             try {
@@ -52,7 +52,7 @@ export const entitiesRouter = router({
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
                     message: "Failed to create entity",
-                    cause: error,
+                    cause: error
                 });
             }
         }),
@@ -64,10 +64,10 @@ export const entitiesRouter = router({
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
                 message: "Failed to get entities",
-                cause: error,
+                cause: error
             });
         }
-    }),
+    })
     // ------------------------------- UPDATE ------------------------------
     // ------------------------------- DELETE ------------------------------
 });

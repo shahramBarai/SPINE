@@ -54,7 +54,7 @@ const env: WorkspaceEnv = {
     SCHEMA_REGISTRY_USERNAME:
         process.env.SCHEMA_REGISTRY_USERNAME?.trim() || undefined,
     SCHEMA_REGISTRY_PASSWORD:
-        process.env.SCHEMA_REGISTRY_PASSWORD?.trim() || undefined,
+        process.env.SCHEMA_REGISTRY_PASSWORD?.trim() || undefined
 };
 
 export type { WorkspaceEnv };

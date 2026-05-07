@@ -8,10 +8,10 @@ const CustomHandle = memo(
         isConnectable,
         position,
         connectionCount,
-        selected,
+        selected
     }: HandleProps & { connectionCount?: number; selected?: boolean }) => {
         const connections = useNodeConnections({
-            handleType: type,
+            handleType: type
         });
 
         return (

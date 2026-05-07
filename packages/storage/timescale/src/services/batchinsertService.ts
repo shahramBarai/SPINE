@@ -11,7 +11,7 @@ class BatchInsertService {
 
     constructor({
         batchSize = 1000,
-        flushInterval = 5000,
+        flushInterval = 5000
     }: {
         batchSize?: number;
         flushInterval?: number;

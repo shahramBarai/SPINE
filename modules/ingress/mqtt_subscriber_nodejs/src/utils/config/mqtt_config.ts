@@ -77,9 +77,9 @@ const getMQTTConfig = (clientId: string): MQTTConfig => {
                       | 0
                       | 1
                       | 2,
-                  retain: MQTT_WILL_RETAIN === "true",
+                  retain: MQTT_WILL_RETAIN === "true"
               }
-            : undefined,
+            : undefined
     };
 
     return mqttConfig;

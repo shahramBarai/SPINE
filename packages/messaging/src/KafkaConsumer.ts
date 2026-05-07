@@ -22,7 +22,7 @@ class KafkaConsumer {
             brokers: config.brokers,
             connectionTimeout: config.connectionTimeout,
             requestTimeout: config.requestTimeout,
-            retry: config.retry,
+            retry: config.retry
         });
         this.consumer = this.kafka.consumer({ groupId: config.clientId });
         this.topic = topic;
@@ -50,7 +50,7 @@ class KafkaConsumer {
 
             await this.consumer.subscribe({
                 topic: this.topic,
-                fromBeginning: false,
+                fromBeginning: false
             });
 
             await this.consumer.run({
@@ -82,7 +82,7 @@ class KafkaConsumer {
                             error
                         );
                     }
-                },
+                }
             });
 
             this.isConnected = true;
@@ -128,7 +128,7 @@ class KafkaConsumer {
         return {
             status: this.isConnected ? "connected" : "disconnected",
             timestamp: new Date().toISOString(),
-            error: this.isConnected ? undefined : "Not connected to Kafka",
+            error: this.isConnected ? undefined : "Not connected to Kafka"
         };
     }
 }

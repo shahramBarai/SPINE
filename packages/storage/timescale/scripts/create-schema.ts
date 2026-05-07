@@ -6,7 +6,7 @@ import { createSchema } from "../src/db/schema";
 console.log("🔃​ Creating schema...\n");
 
 initTimescaleStorage({
-    databaseUrl: `postgresql://${env.DATABASE_URL_TIMESCALE}`,
+    databaseUrl: `postgresql://${env.DATABASE_URL_TIMESCALE}`
 });
 
 const { success, error } = await createSchema();

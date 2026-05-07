@@ -10,14 +10,14 @@ export function KafkaCreateTopicForm({ onCancel }: { onCancel: () => void }) {
         partitions: 1,
         replicationFactor: 1,
         cleanupPolicy: "delete",
-        retentionMs: 604800000, // 7 days
+        retentionMs: 604800000 // 7 days
     });
 
     const utils = api.useUtils();
     const createTopicMutation = api.kafka.createTopic.useMutation({
         onSuccess: () => {
             void utils.kafka.invalidate();
-        },
+        }
     });
 
     const handleSubmit = async () => {
@@ -25,14 +25,14 @@ export function KafkaCreateTopicForm({ onCancel }: { onCancel: () => void }) {
 
         const configEntries = [
             { name: "cleanup.policy", value: newTopic.cleanupPolicy },
-            { name: "retention.ms", value: newTopic.retentionMs.toString() },
+            { name: "retention.ms", value: newTopic.retentionMs.toString() }
         ];
 
         await createTopicMutation.mutateAsync({
             topic: newTopic.name,
             numPartitions: newTopic.partitions,
             replicationFactor: newTopic.replicationFactor,
-            configEntries,
+            configEntries
         });
 
         // Reset form
@@ -41,7 +41,7 @@ export function KafkaCreateTopicForm({ onCancel }: { onCancel: () => void }) {
             partitions: 1,
             replicationFactor: 1,
             cleanupPolicy: "delete",
-            retentionMs: 604800000,
+            retentionMs: 604800000
         });
     };
 
@@ -70,7 +70,7 @@ export function KafkaCreateTopicForm({ onCancel }: { onCancel: () => void }) {
                         onChange={(e) =>
                             setNewTopic({
                                 ...newTopic,
-                                partitions: parseInt(e.target.value) || 1,
+                                partitions: parseInt(e.target.value) || 1
                             })
                         }
                     />
@@ -85,8 +85,7 @@ export function KafkaCreateTopicForm({ onCancel }: { onCancel: () => void }) {
                         onChange={(e) =>
                             setNewTopic({
                                 ...newTopic,
-                                replicationFactor:
-                                    parseInt(e.target.value) || 1,
+                                replicationFactor: parseInt(e.target.value) || 1
                             })
                         }
                     />
@@ -101,7 +100,7 @@ export function KafkaCreateTopicForm({ onCancel }: { onCancel: () => void }) {
                             setNewTopic({
                                 ...newTopic,
                                 retentionMs:
-                                    parseInt(e.target.value) || 604800000,
+                                    parseInt(e.target.value) || 604800000
                             })
                         }
                     />

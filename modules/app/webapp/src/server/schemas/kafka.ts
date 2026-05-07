@@ -9,26 +9,26 @@ const createTopicSchema = z.object({
         .array(
             z.object({
                 name: z.string(),
-                value: z.string(),
+                value: z.string()
             })
         )
-        .optional(),
+        .optional()
 });
 
 const deleteTopicSchema = z.object({
-    topic: z.string().min(1),
+    topic: z.string().min(1)
 });
 
 const topicMetadataSchema = z.object({
-    topics: z.array(z.string()).optional(),
+    topics: z.array(z.string()).optional()
 });
 
 const getConsumerGroupDetailsSchema = z.object({
-    groupId: z.string().min(1),
+    groupId: z.string().min(1)
 });
 
 const getTopicConfigurationSchema = z.object({
-    topicName: z.string().min(1),
+    topicName: z.string().min(1)
 });
 
 type CreateTopicInput = z.infer<typeof createTopicSchema>;
@@ -86,7 +86,7 @@ export type {
     KafkaClusterInfo,
     GroupOverview,
     GroupDescription,
-    ConfigEntries,
+    ConfigEntries
 };
 
 export {
@@ -94,5 +94,5 @@ export {
     deleteTopicSchema,
     topicMetadataSchema,
     getConsumerGroupDetailsSchema,
-    getTopicConfigurationSchema,
+    getTopicConfigurationSchema
 };

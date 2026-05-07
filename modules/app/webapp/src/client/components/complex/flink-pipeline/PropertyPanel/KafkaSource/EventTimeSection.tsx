@@ -9,36 +9,36 @@ import {
     FormField,
     FormItem,
     FormLabel,
-    Form,
+    Form
 } from "@/client/components/basics/form";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
+    SelectValue
 } from "@/client/components/basics/select";
 import {
     AccordionContent,
-    AccordionItem,
+    AccordionItem
 } from "@/client/components/basics/accordion";
 import {
     type KafkaSourceFormValuesEventTime,
-    kafkaSourceSchema,
+    kafkaSourceSchema
 } from "./schemas";
 import { SectionHeader } from "../SectionHeader";
 import { useFormState } from "@/client/hooks/useFormState";
 
 export const EventTimeSection = ({
     data,
-    onApply,
+    onApply
 }: {
     data: KafkaSourceFormValuesEventTime;
     onApply: (data: KafkaSourceFormValuesEventTime) => Promise<boolean>;
 }) => {
     const form = useForm<KafkaSourceFormValuesEventTime>({
         resolver: zodResolver(kafkaSourceSchema.shape.eventTime),
-        defaultValues: data,
+        defaultValues: data
     });
 
     const { status, handleSubmit } = useFormState(form);

@@ -4,7 +4,7 @@ const ConnectionLine = ({
     fromX,
     fromY,
     toX,
-    toY,
+    toY
 }: {
     fromX: number;
     fromY: number;

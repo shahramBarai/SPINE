@@ -9,18 +9,18 @@ import { UserService } from "@spine/storage-platform";
 const signUpSchema = z.object({
     email: z.string().email(),
     password: z.string().min(6),
-    name: z.string().optional(),
+    name: z.string().optional()
 });
 
 const signInSchema = z.object({
     email: z.string().email(),
-    password: z.string().min(6),
+    password: z.string().min(6)
 });
 
 const devSignInSchema = z.object({
     email: z.string().email(),
     name: z.string(),
-    role: z.enum(["ADMIN", "USER"]),
+    role: z.enum(["ADMIN", "USER"])
 });
 
 export const authRouter = router({
@@ -42,7 +42,7 @@ export const authRouter = router({
                 if (existingUser !== null) {
                     throw new TRPCError({
                         code: "CONFLICT",
-                        message: "User already exists",
+                        message: "User already exists"
                     });
                 }
 
@@ -53,7 +53,7 @@ export const authRouter = router({
                 const user = await UserService.createUser({
                     email,
                     password: hashedPassword,
-                    name,
+                    name
                 });
 
                 // Create session
@@ -62,7 +62,7 @@ export const authRouter = router({
                     email: user.email,
                     fullName: user.name ?? "",
                     avatar: "",
-                    role: user.role,
+                    role: user.role
                 };
 
                 ctx.session.data.user = session;
@@ -75,7 +75,7 @@ export const authRouter = router({
                 }
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
-                    message: "Failed to create user",
+                    message: "Failed to create user"
                 });
             }
         }),
@@ -94,7 +94,7 @@ export const authRouter = router({
                 if (!user) {
                     throw new TRPCError({
                         code: "NOT_FOUND",
-                        message: "Invalid email or password",
+                        message: "Invalid email or password"
                     });
                 }
 
@@ -104,7 +104,7 @@ export const authRouter = router({
                 if (!isValid) {
                     throw new TRPCError({
                         code: "UNAUTHORIZED",
-                        message: "Invalid email or password",
+                        message: "Invalid email or password"
                     });
                 }
 
@@ -114,7 +114,7 @@ export const authRouter = router({
                     email: user.email,
                     fullName: user.name ?? "",
                     avatar: "",
-                    role: user.role,
+                    role: user.role
                 };
 
                 ctx.session.data = { user: session };
@@ -127,7 +127,7 @@ export const authRouter = router({
                 }
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
-                    message: "Failed to sign in",
+                    message: "Failed to sign in"
                 });
             }
         }),
@@ -146,7 +146,7 @@ export const authRouter = router({
             if (process.env.NODE_ENV !== "development") {
                 throw new TRPCError({
                     code: "FORBIDDEN",
-                    message: "Dev sign-in only available in development mode",
+                    message: "Dev sign-in only available in development mode"
                 });
             }
 
@@ -163,7 +163,7 @@ export const authRouter = router({
                         email,
                         password: devPassword,
                         name,
-                        role,
+                        role
                     });
                 }
 
@@ -173,7 +173,7 @@ export const authRouter = router({
                     email: user.email,
                     fullName: user.name || name,
                     avatar: "",
-                    role: user.role,
+                    role: user.role
                 };
 
                 ctx.session.data = { user: session };
@@ -186,8 +186,8 @@ export const authRouter = router({
                 }
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
-                    message: "Failed to sign in",
+                    message: "Failed to sign in"
                 });
             }
-        }),
+        })
 });

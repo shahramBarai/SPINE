@@ -19,7 +19,7 @@ async function kafkaConsumerMessageHandler(
             logger.warn(
                 "MQTT bridge service: Missing required fields in message -> skipping message",
                 {
-                    messageData,
+                    messageData
                 }
             );
             return;

@@ -18,12 +18,10 @@ const KAFKA_TOPICS = process.env.KAFKA_TOPICS
 let consumer = null;
 
 export async function startConsumer() {
-    const clientId = `timescale-writer-${Math.random()
-        .toString(36)
-        .substring(2, 15)}`;
+    const clientId = `timescale-writer-${Math.random().toString(36).substring(2, 15)}`;
     const kafka = new Kafka({
         clientId,
-        brokers: KAFKA_BROKERS,
+        brokers: KAFKA_BROKERS
     });
 
     consumer = kafka.consumer({ groupId: "timescale-writer-group" });
@@ -38,7 +36,7 @@ export async function startConsumer() {
             // Pass topic, message buffer and benchmark timestamp to the message handler
             await handleMessage(message.value.toString());
             //console.log(message.value.toString());
-        },
+        }
     });
 }
 
@@ -59,7 +57,7 @@ async function handleMessage(kafkaMessage) {
         await SensorData.create({
             sensor_id,
             message,
-            sensor_timestamp: timestamp,
+            sensor_timestamp: timestamp
         });
     } catch (error) {
         console.error("Error handling message:", error);

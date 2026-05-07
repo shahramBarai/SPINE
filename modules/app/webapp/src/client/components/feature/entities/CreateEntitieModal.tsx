@@ -10,7 +10,7 @@ import {
     SelectTrigger,
     SelectValue,
     SelectItem,
-    SelectContent,
+    SelectContent
 } from "../../basics/select";
 import { Button } from "../../basics/Button";
 
@@ -22,7 +22,7 @@ interface CreateEntityForm {
 
 function CreateEntityModal({
     open,
-    setOpen,
+    setOpen
 }: {
     open: boolean;
     setOpen: (open: boolean) => void;

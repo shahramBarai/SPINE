@@ -6,7 +6,7 @@ import Sidebar from "../components/complex/navigation/Sidebar";
 import { cn } from "@/client/utils";
 
 export default function AppLayout({
-    children,
+    children
 }: Readonly<{
     children: React.ReactNode;
 }>) {

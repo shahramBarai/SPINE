@@ -4,7 +4,7 @@ import FunctionsSection from "./FunctionsSection";
 
 export const Filter = ({
     nodeId,
-    sourceNodeId,
+    sourceNodeId
 }: {
     nodeId: string;
     sourceNodeId?: string;

@@ -12,7 +12,7 @@ if (!DATABASE_URL_TIMESCALE) {
 const sequelize = new Sequelize(DATABASE_URL_TIMESCALE, {
     dialect: "postgres",
     protocol: "postgres",
-    logging: false,
+    logging: false
 });
 
 // Authenticate the connection
@@ -37,19 +37,19 @@ export const SensorData = sequelize.define(
     {
         sensor_id: {
             type: Sequelize.STRING,
-            allowNull: false,
+            allowNull: false
         },
         message: {
             type: Sequelize.STRING,
-            allowNull: false,
+            allowNull: false
         },
         sensor_timestamp: {
             type: Sequelize.DATE,
-            allowNull: false,
-        },
+            allowNull: false
+        }
     },
     {
         timestamps: false, // Disable automatic timestamps
-        freezeTableName: true,
+        freezeTableName: true
     }
 );

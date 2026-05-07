@@ -42,5 +42,5 @@ export type {
     EmpathicBuildingConfig,
     DecodedEvent,
     ChannelSubscription,
-    TokenData,
+    TokenData
 };

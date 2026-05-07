@@ -5,9 +5,9 @@ export const filterSchema = z.object({
     fields: z.array(
         z.object({
             name: z.string(),
-            value: z.string(),
+            value: z.string()
         })
-    ),
+    )
 });
 
 export type FilterFormValues = z.infer<typeof filterSchema>;

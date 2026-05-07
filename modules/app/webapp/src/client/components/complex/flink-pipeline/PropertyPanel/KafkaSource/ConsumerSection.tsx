@@ -10,15 +10,15 @@ import {
     FormField,
     FormItem,
     FormLabel,
-    FormMessage,
+    FormMessage
 } from "@/client/components/basics/form";
 import {
     AccordionContent,
-    AccordionItem,
+    AccordionItem
 } from "@/client/components/basics/accordion";
 import {
     type KafkaSourceFormValuesConsumer,
-    kafkaSourceSchema,
+    kafkaSourceSchema
 } from "./schemas";
 import { SectionHeader } from "../SectionHeader";
 import {
@@ -26,20 +26,20 @@ import {
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
+    SelectValue
 } from "@/client/components/basics/select";
 import { useFormState } from "@/client/hooks/useFormState";
 
 export const ConsumerSection = ({
     data,
-    onApply,
+    onApply
 }: {
     data: KafkaSourceFormValuesConsumer;
     onApply: (data: KafkaSourceFormValuesConsumer) => Promise<boolean>;
 }) => {
     const form = useForm<KafkaSourceFormValuesConsumer>({
         resolver: zodResolver(kafkaSourceSchema.shape.consumer),
-        defaultValues: data,
+        defaultValues: data
     });
 
     const { status, handleSubmit } = useFormState(form);

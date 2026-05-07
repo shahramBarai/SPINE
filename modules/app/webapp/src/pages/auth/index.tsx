@@ -41,14 +41,14 @@ export const getServerSideProps = async (
         return {
             redirect: {
                 destination: "/",
-                permanent: false,
-            },
+                permanent: false
+            }
         };
     }
 
     return {
         props: {
-            isDevelopment: process.env.NODE_ENV === "development",
-        },
+            isDevelopment: process.env.NODE_ENV === "development"
+        }
     };
 };

@@ -17,7 +17,7 @@ import {
     CogIcon,
     UsersIcon,
     ShieldCheckIcon,
-    ArrowRightEndOnRectangleIcon,
+    ArrowRightEndOnRectangleIcon
 } from "@heroicons/react/24/outline";
 import ThemeButton from "./ThemButton";
 
@@ -39,8 +39,8 @@ const navigationSections: NavigationSection[] = [
         title: "Platform",
         items: [
             { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
-            { name: "Projects", href: "/projects", icon: FolderIcon },
-        ],
+            { name: "Projects", href: "/projects", icon: FolderIcon }
+        ]
     },
     {
         title: "Administration",
@@ -53,10 +53,10 @@ const navigationSections: NavigationSection[] = [
             {
                 name: "Security",
                 href: "/admin/security",
-                icon: ShieldCheckIcon,
-            },
-        ],
-    },
+                icon: ShieldCheckIcon
+            }
+        ]
+    }
 ];
 
 interface SidebarProps {
