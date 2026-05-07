@@ -5,7 +5,7 @@ import {
     EntityCardLoading,
     CreateEntityModal,
 } from "@/client/components/feature/entities";
-import { InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { api } from "@/utils/trpc";
 import { useState } from "react";

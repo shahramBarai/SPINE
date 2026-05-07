@@ -1,4 +1,4 @@
-import mqtt, { MqttClient, IClientOptions } from "mqtt";
+import mqtt, { MqttClient, type IClientOptions } from "mqtt";
 import { type MQTTConfig } from "../utils/mqtt_config";
 import { logger } from "@spine/shared";
 

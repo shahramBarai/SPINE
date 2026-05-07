@@ -1,11 +1,11 @@
-import {
+import type {
     GetServerSidePropsContext,
     GetServerSidePropsResult,
     PreviewData,
 } from "next";
-import { ParsedUrlQuery } from "querystring";
+import type { ParsedUrlQuery } from "querystring";
 import { getServerSession } from "./iron-session";
-import { UserSession } from "./iron-session";
+import type { UserSession } from "./iron-session";
 
 // Enhanced context with authenticated user data
 export interface AuthenticatedContext<

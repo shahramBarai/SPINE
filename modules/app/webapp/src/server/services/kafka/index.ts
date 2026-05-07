@@ -1,13 +1,13 @@
-import {
+import type {
     ConsumerGroupsResponse,
     KafkaClusterInfo,
 } from "@/server/schemas/kafka";
 import {
     Kafka,
-    Admin,
-    ITopicConfig,
+    type Admin,
+    type ITopicConfig,
     ConfigResourceTypes,
-    GroupDescription,
+    type GroupDescription,
 } from "kafkajs";
 
 interface KafkaConfig {
@@ -161,7 +161,11 @@ export class KafkaAdminService {
     async getConsumerGroupDetails(groupId: string): Promise<GroupDescription> {
         try {
             const groupDetails = await this.admin.describeGroups([groupId]);
-            return groupDetails.groups[0];
+            const group = groupDetails.groups[0];
+            if (!group) {
+                throw new Error(`Consumer group ${groupId} not found`);
+            }
+            return group;
         } catch (error) {
             console.error(
                 `Failed to get consumer group details for ${groupId}`,

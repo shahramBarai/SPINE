@@ -21,7 +21,7 @@ import {
 import { SectionHeader } from "../SectionHeader";
 import {
     fieldTypes,
-    KafkaSourceFormValuesTargetSchema,
+    type KafkaSourceFormValuesTargetSchema,
     kafkaSourceSchema,
 } from "./schemas";
 import { useFormState } from "@/client/hooks/useFormState";

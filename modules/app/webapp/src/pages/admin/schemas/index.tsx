@@ -9,7 +9,7 @@ import {
     SchemaRegistrationModal,
     SchemaFilters,
 } from "@/client/components/feature/schemas";
-import { SchemaFilters as SchemaFiltersType } from "@/server/schemas/schema-registry";
+import type { SchemaFilters as SchemaFiltersType } from "@/server/schemas/schema-registry";
 
 const SchemaManagementPage = () => {
     const [filters, setFilters] = useState<SchemaFiltersType>({});

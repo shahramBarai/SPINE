@@ -1,4 +1,4 @@
-import { SchemaVersion } from "@/server/schemas/schema-registry";
+import type { SchemaVersion } from "@/server/schemas/schema-registry";
 import {
     CalendarIcon,
     TagIcon,

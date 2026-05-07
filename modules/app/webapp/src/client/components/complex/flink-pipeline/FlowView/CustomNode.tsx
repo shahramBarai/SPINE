@@ -1,6 +1,6 @@
 import React, { memo } from "react";
-import { Node, NodeProps, Position } from "@xyflow/react";
-import { KafkaSourceFormValues } from "../PropertyPanel/KafkaSource/schemas";
+import { type Node, type NodeProps, Position } from "@xyflow/react";
+import { type KafkaSourceFormValues } from "../PropertyPanel/KafkaSource/schemas";
 import CustomHandle from "./CustomHandle";
 import { cn } from "@/client/utils";
 import { getNodeIcon, getNodeType, NodeType } from "../utils";

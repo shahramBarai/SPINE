@@ -1,4 +1,4 @@
-import { ConsumerGroupsResponse, GroupOverview } from "@/server/schemas/kafka";
+import type { ConsumerGroupsResponse, GroupOverview } from "@/server/schemas/kafka";
 
 interface KafkaConsumerGroupsProps {
     data?: ConsumerGroupsResponse | unknown;

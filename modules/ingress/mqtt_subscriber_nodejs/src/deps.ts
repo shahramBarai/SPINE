@@ -4,7 +4,7 @@ import cors from "@fastify/cors";
 import * as config from "./utils/config";
 
 // Types
-import { FastifyPluginAsync, FastifyInstance } from "fastify";
+import type { FastifyPluginAsync, FastifyInstance } from "fastify";
 
 // Initialize services
 import { KafkaProducer, ServiceSchemaManager } from "@spine/messaging";

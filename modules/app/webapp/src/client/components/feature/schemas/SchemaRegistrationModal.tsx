@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { api } from "@/utils/trpc";
-import { SchemaType } from "@/server/schemas/schema-registry";
+import type { SchemaType } from "@/server/schemas/schema-registry";
 import { Button } from "@/client/components/basics/Button";
 import { Input } from "@/client/components/basics/input";
 import {

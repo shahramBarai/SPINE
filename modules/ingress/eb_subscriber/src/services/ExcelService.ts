@@ -36,7 +36,8 @@ export class ExcelService {
 
     private getDateString(): string {
         const now = new Date();
-        return now.toISOString().split("T")[0]; // YYYY-MM-DD format
+        const datePart = now.toISOString().split("T")[0];
+        return datePart || ""; // YYYY-MM-DD format
     }
 
     /**

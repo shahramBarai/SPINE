@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { type ButtonProps as HeadlessButtonProps } from "@headlessui/react";
 import { CheckIcon, XMarkIcon, ArrowPathIcon } from "@heroicons/react/16/solid";
-import { cn, StatusType } from "@/client/utils";
+import { cn, type StatusType } from "@/client/utils";
 import Link from "next/link";
 
 // ----------------------- Button -----------------------

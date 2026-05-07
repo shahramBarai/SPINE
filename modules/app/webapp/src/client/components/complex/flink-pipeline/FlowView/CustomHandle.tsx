@@ -1,5 +1,5 @@
 import { cn } from "@/client/utils";
-import { Handle, HandleProps, useNodeConnections } from "@xyflow/react";
+import { Handle, type HandleProps, useNodeConnections } from "@xyflow/react";
 import { memo } from "react";
 
 const CustomHandle = memo(

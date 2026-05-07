@@ -29,12 +29,15 @@ const empathicBuildingService = new EmpathicBuildingService(
 // Export dependencies
 export {
     Fastify,
-    FastifyPluginAsync,
-    FastifyInstance,
     cors,
     configs,
     excelService,
     kafkaProducer,
     schemaManager,
     empathicBuildingService,
+};
+
+export type {
+    FastifyPluginAsync,
+    FastifyInstance,
 };

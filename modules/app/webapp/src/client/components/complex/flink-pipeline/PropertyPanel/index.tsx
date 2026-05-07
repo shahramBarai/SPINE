@@ -1,12 +1,12 @@
 import { Button } from "@/client/components/basics/Button";
 import { cn } from "@/client/utils";
 import { BookmarkIcon } from "@heroicons/react/16/solid";
-import { Node, useReactFlow } from "@xyflow/react";
+import { type Node, useReactFlow } from "@xyflow/react";
 import KafkaSource from "./KafkaSource";
 import Filter from "./Filter";
-import { KafkaSourceFormValues } from "./KafkaSource/schemas";
+import { type KafkaSourceFormValues } from "./KafkaSource/schemas";
 import { memo, useCallback } from "react";
-import { FilterFormValues } from "./Filter/schemas";
+import { type FilterFormValues } from "./Filter/schemas";
 
 const PropertyPanel = memo(
     ({ className, node }: { className?: string; node: Node | null }) => {

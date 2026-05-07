@@ -22,7 +22,7 @@ import {
     AccordionItem,
 } from "@/client/components/basics/accordion";
 import {
-    KafkaSourceFormValuesDeserialization,
+    type KafkaSourceFormValuesDeserialization,
     kafkaSourceSchema,
 } from "./schemas";
 import { SectionHeader } from "../SectionHeader";

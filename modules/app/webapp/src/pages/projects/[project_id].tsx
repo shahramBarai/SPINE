@@ -1,6 +1,6 @@
 import AppLayout from "@/client/layout/layout";
 import FlowView from "@/client/components/complex/flink-pipeline/FlowView";
-import { ReactFlowProvider, Node } from "@xyflow/react";
+import { ReactFlowProvider, type Node } from "@xyflow/react";
 import PropertyPanel from "@/client/components/complex/flink-pipeline/PropertyPanel";
 import { useState } from "react";
 import { BreadCrumb } from "@/client/components/complex/navigation";

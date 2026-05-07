@@ -105,17 +105,15 @@ export default function BreadCrumb({
                         icon={homeIcon}
                     />
                 )}
-                {pages.map((page) => {
-                    if (page.current) {
-                        return (
-                            <BreadcrumbItem
-                                key={page.href}
-                                {...page}
-                                icon={chevronRightIcon}
-                            />
-                        );
-                    }
-                })}
+                {pages.map((page) =>
+                    page.current ? (
+                        <BreadcrumbItem
+                            key={page.href}
+                            {...page}
+                            icon={chevronRightIcon}
+                        />
+                    ) : null
+                )}
             </ol>
         </>
     );

@@ -16,7 +16,7 @@ import {
     AccordionContent,
     AccordionItem,
 } from "@/client/components/basics/accordion";
-import { KafkaSourceFormValuesConsumer, kafkaSourceSchema } from "./schemas";
+import { type KafkaSourceFormValuesConsumer, kafkaSourceSchema } from "./schemas";
 import { SectionHeader } from "../SectionHeader";
 import {
     Select,

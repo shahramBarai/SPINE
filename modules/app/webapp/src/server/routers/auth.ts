@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../trpc";
 import { hashPassword, verifyPassword } from "../auth/password";
-import { UserSession } from "../auth/iron-session";
+import { type UserSession } from "../auth/iron-session";
 import { UserService } from "@spine/storage-platform";
 
 // User input validation schemas

@@ -1,4 +1,5 @@
-import { getIronSession, IronSessionData, SessionOptions } from "iron-session";
+import { getIronSession } from "iron-session";
+import type { IronSessionData, SessionOptions } from "iron-session";
 import { IncomingMessage, ServerResponse } from "http";
 
 export const sessionOptions: SessionOptions = {

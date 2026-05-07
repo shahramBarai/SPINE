@@ -8,7 +8,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/client/components/basics/select";
-import { SchemaFilters as SchemaFiltersType } from "@/server/schemas/schema-registry";
+import type { SchemaFilters as SchemaFiltersType } from "@/server/schemas/schema-registry";
 
 interface SchemaFiltersProps {
     onFiltersChange: (filters: SchemaFiltersType) => void;

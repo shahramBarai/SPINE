@@ -7,8 +7,8 @@ import {
     topicMetadataSchema,
     getConsumerGroupDetailsSchema,
     getTopicConfigurationSchema,
-    KafkaHealthResponse,
-    KafkaClusterInfo,
+    type KafkaHealthResponse,
+    type KafkaClusterInfo,
 } from "../schemas/kafka";
 
 export const kafkaRouter = router({

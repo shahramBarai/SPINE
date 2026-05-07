@@ -4,7 +4,7 @@ import {
 } from "@/client/components/basics/accordion";
 import { AccordionItem } from "@/client/components/basics/accordion";
 import { useNodesData } from "@xyflow/react";
-import { TargetSchema } from "@/client/components/complex/flink-pipeline/PropertyPanel/KafkaSource/schemas";
+import { type TargetSchema } from "@/client/components/complex/flink-pipeline/PropertyPanel/KafkaSource/schemas";
 
 export const FieldSection = ({ sourceNodeId }: { sourceNodeId?: string }) => {
     const sourceNode = useNodesData(sourceNodeId ? [sourceNodeId] : []);

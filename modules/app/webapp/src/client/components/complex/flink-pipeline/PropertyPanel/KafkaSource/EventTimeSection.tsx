@@ -22,7 +22,7 @@ import {
     AccordionContent,
     AccordionItem,
 } from "@/client/components/basics/accordion";
-import { KafkaSourceFormValuesEventTime, kafkaSourceSchema } from "./schemas";
+import { type KafkaSourceFormValuesEventTime, kafkaSourceSchema } from "./schemas";
 import { SectionHeader } from "../SectionHeader";
 import { useFormState } from "@/client/hooks/useFormState";
 

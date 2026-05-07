@@ -1,6 +1,6 @@
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/router";
-import { SchemaSubject } from "@/server/schemas/schema-registry";
+import { type SchemaSubject } from "@/server/schemas/schema-registry";
 import { Skeleton } from "@/client/components/basics/Skeleton";
 
 interface SchemaListProps {

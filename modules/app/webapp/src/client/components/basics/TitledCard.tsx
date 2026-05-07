@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { type ReactNode } from "react";
 import { cn } from "@/client/utils";
 import { Skeleton } from "@/client/components/basics/Skeleton";
 

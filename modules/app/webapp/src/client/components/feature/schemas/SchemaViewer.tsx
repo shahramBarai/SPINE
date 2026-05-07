@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SchemaVersion } from "@/server/schemas/schema-registry";
+import type { SchemaVersion } from "@/server/schemas/schema-registry";
 import { Button } from "@/client/components/basics/Button";
 import { Skeleton } from "@/client/components/basics/Skeleton";
 import {

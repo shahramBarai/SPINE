@@ -1,4 +1,4 @@
-import { FastifyPluginAsync, FastifyInstance } from "../deps";
+import type { FastifyPluginAsync, FastifyInstance } from "../deps";
 import { kafkaProducer, schemaManager, mqttService } from "../deps";
 
 interface HealthStatus {

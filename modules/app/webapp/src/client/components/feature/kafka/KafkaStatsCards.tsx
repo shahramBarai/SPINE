@@ -2,7 +2,7 @@ import {
     ServerStackIcon,
     Square3Stack3DIcon,
 } from "@heroicons/react/24/outline";
-import { ForwardRefExoticComponent, SVGProps } from "react";
+import type { ForwardRefExoticComponent, SVGProps } from "react";
 import { TitledCard } from "@/client/components/basics/TitledCard";
 import { api } from "@/utils/trpc";
 import { KafkaLogo } from "./KafkaLogo";

@@ -1,5 +1,7 @@
 import mqtt, {
     MqttClient,
+} from "mqtt";
+import type {
     IClientOptions,
     OnConnectCallback,
     OnMessageCallback,
@@ -7,7 +9,7 @@ import mqtt, {
     IConnackPacket,
     IPublishPacket,
 } from "mqtt";
-import { MQTTConfig } from "../utils/config";
+import type { MQTTConfig } from "../utils/config";
 import type { KafkaProducer, ServiceSchemaManager } from "@spine/messaging";
 import { logger } from "@spine/shared";
 

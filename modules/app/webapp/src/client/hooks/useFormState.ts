@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { UseFormReturn } from "react-hook-form";
-import { StatusType } from "@/client/utils";
+import type { UseFormReturn } from "react-hook-form";
+import type { StatusType } from "@/client/utils";
 
 export function useFormState<T extends Record<string, unknown>>(
     form: UseFormReturn<T>

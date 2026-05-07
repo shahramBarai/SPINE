@@ -2,7 +2,7 @@ import { SignInForm } from "@/client/components/complex/auth/SignInForm";
 import { DevSignInForm } from "@/client/components/complex/auth/DevSignInForm";
 import Image from "next/image";
 import { getServerSession } from "@/server/auth/iron-session";
-import { GetServerSidePropsContext } from "next";
+import type { GetServerSidePropsContext } from "next";
 
 interface AuthPageProps {
     isDevelopment: boolean;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "@/utils/trpc";
-import {
+import type {
     SchemaVersion,
     CompatibilityLevel,
 } from "@/server/schemas/schema-registry";
