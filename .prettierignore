@@ -7,3 +7,4 @@
 **/log/**
 **/generated/**
 **/.venv/**
+**/pnpm-lock.yaml
