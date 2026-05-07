@@ -24,7 +24,6 @@ const [user, password] = credentials.split(":");
 const [host, port] = hostPort.split(":");
 
 async function main() {
-
     // Validate the parsed values
     if (!user || !password || !host || !port) {
         throw new Error(ErrorMessages.INVALID_DB_URL);

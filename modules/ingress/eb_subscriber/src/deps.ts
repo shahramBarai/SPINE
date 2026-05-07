@@ -37,7 +37,4 @@ export {
     empathicBuildingService,
 };
 
-export type {
-    FastifyPluginAsync,
-    FastifyInstance,
-};
+export type { FastifyPluginAsync, FastifyInstance };

@@ -15,7 +15,10 @@ import {
     AccordionContent,
     AccordionItem,
 } from "@/client/components/basics/accordion";
-import { type KafkaSourceFormValuesPreview, kafkaSourceSchema } from "./schemas";
+import {
+    type KafkaSourceFormValuesPreview,
+    kafkaSourceSchema,
+} from "./schemas";
 import { SectionHeader } from "../SectionHeader";
 import { useFormState } from "@/client/hooks/useFormState";
 import {

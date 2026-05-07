@@ -1,6 +1,4 @@
-import mqtt, {
-    MqttClient,
-} from "mqtt";
+import mqtt, { MqttClient } from "mqtt";
 import type {
     IClientOptions,
     OnConnectCallback,
