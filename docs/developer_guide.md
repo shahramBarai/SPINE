@@ -72,6 +72,38 @@ You can then access the webapp at `http://localhost:3000`.
 
 2.  **Running Specific Service Locally:** Also, you can run specific service locally if you want to test it (check service's README file for more details).
 
+### 3. Code Formatting & Linting
+
+We use Prettier and ESLint to keep code style consistent across the repository. The Prettier config lives in the repository root (`.prettierrc`). All available lint and format scripts are defined in the root `package.json`.
+
+```bash
+# Check linting across the entire workspace
+pnpm lint
+
+# Auto-fix all linting issues
+pnpm lint:fix
+
+# Check formatting with Prettier
+pnpm format
+
+# Auto-fix all formatting issues
+pnpm format:fix
+
+# Lint/format specific modules
+pnpm lint:app
+pnpm lint:fix:app
+pnpm format:app
+pnpm format:fix:app
+```
+
+Available module shortcuts: `app`, `egress`, `ingress`, `messaging`, `modeling`, `processing`, `storage`, `packages`
+
+Notes:
+
+- All scripts use the root ESLint configuration and `.prettierrc` settings.
+- VS Code is configured to format on-save using Prettier; changes to editor settings require reloading the window or reopening the file.
+- Before committing, run `pnpm lint` and `pnpm format` to ensure consistency.
+
 ## 🗂️ Project Structure
 
 SPINE follows a modular microservices architecture. For detailed setup instructions, see [Architecture Guide](./architecture.md).

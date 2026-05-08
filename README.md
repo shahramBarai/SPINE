@@ -54,6 +54,38 @@ docker compose --profile full down
 
 For more information about how to run the platform, check [📚 Developer Guide](./docs/developer_guide.md).
 
+## 🧹 Formatting & Linting
+
+We enforce formatting and linting to keep the codebase consistent. See the root `package.json` for available scripts:
+
+```bash
+# Check linting issues across the entire workspace
+pnpm lint
+
+# Auto-fix all linting issues
+pnpm lint:fix
+
+# Check formatting (uses .prettierrc in repository root)
+pnpm format
+
+# Auto-fix all formatting issues
+pnpm format:fix
+
+# Lint/format specific modules
+pnpm lint:app          # Check app module
+pnpm lint:fix:app      # Fix app module
+pnpm format:app        # Check app module formatting
+pnpm format:fix:app    # Fix app module formatting
+```
+
+Available module shortcuts: `app`, `egress`, `ingress`, `messaging`, `modeling`, `processing`, `storage`, `packages`
+
+Notes:
+
+- All linting and formatting scripts use the project's ESLint and Prettier configurations.
+- Run these commands before committing to ensure consistency.
+- In CI, run `pnpm lint` and `pnpm format` to validate the codebase.
+
 ## 👨‍💻 Contributing
 
 Contributions are welcome! Please read our [👨‍💻 Contributing Guidelines](./docs/contributing/README.md) for details.
