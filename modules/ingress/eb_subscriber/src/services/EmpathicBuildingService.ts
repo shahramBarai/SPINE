@@ -521,7 +521,9 @@ class EmpathicBuildingService extends EventEmitter {
             return jsonData;
         } catch (error) {
             logger.error("Error decoding event data:", error);
-            throw new Error(`Failed to decode event data: ${error}`);
+            throw new Error(`Failed to decode event data: ${error}`, {
+                cause: error
+            });
         }
     }
 

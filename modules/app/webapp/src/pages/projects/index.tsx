@@ -9,6 +9,17 @@ import type { InferGetServerSidePropsType } from "next";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { api } from "@/utils/trpc";
 import { useState } from "react";
+import { EntityType } from "@spine/storage-platform/types";
+
+type Entity = {
+    id: string;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+    description: string | null;
+    type: EntityType;
+    imageUrl?: string;
+};
 
 function Entities(
     props: InferGetServerSidePropsType<typeof getServerSideProps>
@@ -30,12 +41,12 @@ function Entities(
                         <EntityCardLoading />
                     </>
                 )}
-                {entities.data?.map((entity: any) => (
+                {entities.data?.map((entity: Entity) => (
                     <EntityCard
                         key={entity.id}
-                        imageUrl={entity.imageUrl}
+                        imageUrl={entity.imageUrl || ""}
                         title={entity.name}
-                        description={entity.description}
+                        description={entity.description || ""}
                         type={entity.type}
                         href={`/projects/${entity.id}`}
                     />

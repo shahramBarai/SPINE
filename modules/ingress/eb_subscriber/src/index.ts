@@ -2,7 +2,6 @@ import {
     Fastify,
     cors,
     configs,
-    excelService,
     kafkaProducer,
     schemaManager,
     empathicBuildingService

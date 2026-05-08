@@ -5,7 +5,7 @@ import type {
     OnMessageCallback,
     OnErrorCallback,
     IConnackPacket,
-    IPublishPacket
+    IDisconnectPacket
 } from "mqtt";
 import type { MQTTConfig } from "../utils/config";
 import type { KafkaProducer, ServiceSchemaManager } from "@spine/messaging";
@@ -151,7 +151,7 @@ class MQTTService {
     /**
      * Handle disconnection
      */
-    private onDisconnect = (packet: any) => {
+    private onDisconnect = (packet: IDisconnectPacket) => {
         logger.info("MQTT service: Client disconnected", { packet });
         this.connectionState.isConnected = false;
         this.connectionState.lastDisconnectedAt = new Date();

@@ -6,10 +6,15 @@ import { logger } from "@spine/shared";
  * @param type - The type to check
  * @returns True if the field is optional, false otherwise
  */
-function isOptionalField(type: any): boolean {
+function isOptionalField(type: unknown): boolean {
     if (Array.isArray(type)) {
         return type.some(
-            (t) => t === "null" || (typeof t === "object" && t.type === "null")
+            (t) =>
+                t === "null" ||
+                (typeof t === "object" &&
+                    t !== null &&
+                    "type" in t &&
+                    t.type === "null")
         );
     }
     return false;
@@ -20,18 +25,29 @@ function isOptionalField(type: any): boolean {
  * @param recordType - The Avro record to convert
  * @returns The Zod object schema
  */
-function convertRecord(recordType: any): z.ZodObject<any> {
+function convertRecord(
+    recordType: Record<string, unknown>
+): z.ZodObject<Record<string, z.ZodSchema>> {
     const shape: Record<string, z.ZodSchema> = {};
 
-    for (const field of recordType.fields || []) {
-        let fieldSchema = convertType(field.type);
+    const fields = Array.isArray(recordType.fields) ? recordType.fields : [];
 
-        // Handle optional fields (Avro uses union with null for optional fields)
-        if (isOptionalField(field.type)) {
-            fieldSchema = fieldSchema.optional();
+    for (const field of fields) {
+        if (
+            typeof field === "object" &&
+            field !== null &&
+            "type" in field &&
+            "name" in field
+        ) {
+            let fieldSchema = convertType(field.type);
+
+            // Handle optional fields (Avro uses union with null for optional fields)
+            if (isOptionalField(field.type)) {
+                fieldSchema = fieldSchema.optional();
+            }
+
+            shape[field.name as string] = fieldSchema;
         }
-
-        shape[field.name] = fieldSchema;
     }
 
     return z.object(shape);
@@ -43,7 +59,7 @@ function convertRecord(recordType: any): z.ZodObject<any> {
  * @returns The Zod schema
  * @throws Error if the Avro type is unsupported
  */
-function convertType(avroType: any): z.ZodSchema {
+function convertType(avroType: unknown): z.ZodSchema {
     // Handle union types (Avro allows multiple types)
     if (Array.isArray(avroType)) {
         const zodTypes = avroType.map((type) => convertType(type));
@@ -53,7 +69,12 @@ function convertType(avroType: any): z.ZodSchema {
     }
 
     // Handle primitive types
-    switch (avroType.type || avroType) {
+    const typeKey =
+        typeof avroType === "object" && avroType !== null && "type" in avroType
+            ? avroType.type
+            : avroType;
+
+    switch (typeKey) {
         case "null":
             return z.null();
         case "boolean":
@@ -68,23 +89,54 @@ function convertType(avroType: any): z.ZodSchema {
         case "string":
             return z.string();
         case "array":
-            return z.array(convertType(avroType.items));
+            if (
+                typeof avroType === "object" &&
+                avroType !== null &&
+                "items" in avroType
+            ) {
+                return z.array(convertType(avroType.items));
+            }
+            throw new Error("Array type missing 'items' property");
         case "map":
-            return z.record(z.string(), convertType(avroType.values));
+            if (
+                typeof avroType === "object" &&
+                avroType !== null &&
+                "values" in avroType
+            ) {
+                return z.record(z.string(), convertType(avroType.values));
+            }
+            throw new Error("Map type missing 'values' property");
         case "record":
-            return convertRecord(avroType);
+            if (typeof avroType === "object" && avroType !== null) {
+                return convertRecord(avroType as Record<string, unknown>);
+            }
+            throw new Error("Record type must be an object");
         case "enum":
-            return z.enum(avroType.symbols);
+            if (
+                typeof avroType === "object" &&
+                avroType !== null &&
+                "symbols" in avroType &&
+                Array.isArray(avroType.symbols)
+            ) {
+                return z.enum(avroType.symbols as [string, ...string[]]);
+            }
+            throw new Error("Enum type missing or invalid 'symbols' property");
         case "fixed":
-            return z.string().length(avroType.size);
+            if (
+                typeof avroType === "object" &&
+                avroType !== null &&
+                "size" in avroType &&
+                typeof avroType.size === "number"
+            ) {
+                return z.string().length(avroType.size);
+            }
+            throw new Error("Fixed type missing or invalid 'size' property");
         default:
             // Handle named types (references to other schemas)
-            if (typeof avroType === "string") {
+            if (typeof typeKey === "string") {
                 return z.any(); // For now, we'll use any for references
             }
-            throw new Error(
-                `Unsupported Avro type: ${avroType.type || avroType}`
-            );
+            throw new Error(`Unsupported Avro type: ${typeKey}`);
     }
 }
 
@@ -94,7 +146,7 @@ function convertType(avroType: any): z.ZodSchema {
  * @returns The Zod schema
  * @throws Error if the Avro schema is invalid
  */
-function convertAvroToZod(avroSchema: any): z.ZodSchema {
+function convertAvroToZod(avroSchema: unknown): z.ZodSchema {
     try {
         const parsedSchema =
             typeof avroSchema === "string"
@@ -105,7 +157,8 @@ function convertAvroToZod(avroSchema: any): z.ZodSchema {
     } catch (error) {
         logger.error("Failed to convert Avro schema to Zod:", error);
         throw new Error(
-            `Invalid Avro schema: ${error instanceof Error ? error.message : "Unknown error"}`
+            `Invalid Avro schema: ${error instanceof Error ? error.message : "Unknown error"}`,
+            { cause: error }
         );
     }
 }

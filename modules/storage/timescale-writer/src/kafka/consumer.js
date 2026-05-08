@@ -32,7 +32,7 @@ export async function startConsumer() {
     }
 
     await consumer.run({
-        eachMessage: async ({ topic, partition, message }) => {
+        eachMessage: async ({ message }) => {
             // Pass topic, message buffer and benchmark timestamp to the message handler
             await handleMessage(message.value.toString());
             //console.log(message.value.toString());

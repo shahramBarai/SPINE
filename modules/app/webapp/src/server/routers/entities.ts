@@ -57,7 +57,7 @@ export const entitiesRouter = router({
             }
         }),
     // ------------------------------- READ ------------------------------
-    getEntities: protectedProcedure.query(async ({ ctx }) => {
+    getEntities: protectedProcedure.query(async () => {
         try {
             return await EntityService.getAllEntities();
         } catch (error) {

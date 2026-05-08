@@ -77,18 +77,20 @@ async function fetchSensors(organizationId: string, locationId: string) {
         logger.info(`Total sensors: ${sensorsArray.length}\n`);
 
         if (sensorsArray.length > 0) {
-            sensorsArray.forEach((sensor: any, index: number) => {
-                const id =
-                    sensor.id ||
-                    sensor.sensor_id ||
-                    sensor.sensorId ||
-                    "unknown";
-                const name = sensor.name || sensor.sensor_name || "unnamed";
-                const type = sensor.type || sensor.sensor_type || "unknown";
-                logger.info(
-                    `${index + 1}. ID: ${id}, Name: ${name}, Type: ${type}`
-                );
-            });
+            sensorsArray.forEach(
+                (sensor: Record<string, unknown>, index: number) => {
+                    const id =
+                        sensor.id ||
+                        sensor.sensor_id ||
+                        sensor.sensorId ||
+                        "unknown";
+                    const name = sensor.name || sensor.sensor_name || "unnamed";
+                    const type = sensor.type || sensor.sensor_type || "unknown";
+                    logger.info(
+                        `${index + 1}. ID: ${id}, Name: ${name}, Type: ${type}`
+                    );
+                }
+            );
         } else {
             logger.warn("No sensors found in this location");
         }
@@ -103,10 +105,10 @@ async function fetchSensors(organizationId: string, locationId: string) {
         const fetchedAt = new Date().toISOString();
 
         // Group sensors by type
-        const sensorsByType = new Map<string, any[]>();
+        const sensorsByType = new Map<string, Record<string, unknown>[]>();
 
-        sensorsArray.forEach((sensor: any) => {
-            const type = sensor.type || sensor.sensor_type || "unknown";
+        sensorsArray.forEach((sensor: Record<string, unknown>) => {
+            const type = String(sensor.type || sensor.sensor_type || "unknown");
             if (!sensorsByType.has(type)) {
                 sensorsByType.set(type, []);
             }

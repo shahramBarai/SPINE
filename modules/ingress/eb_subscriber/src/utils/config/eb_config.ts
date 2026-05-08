@@ -77,29 +77,6 @@ const parseJSON = (value: string | undefined) => {
     }
 };
 
-const parseCustomHeaders = (rawHeaders: string | undefined) => {
-    if (!rawHeaders) {
-        return {};
-    }
-    return rawHeaders
-        .split(/[,;]+/u)
-        .reduce<Record<string, string>>((acc, entry) => {
-            const separatorIndex = entry.search(/[:=]/u);
-            const headerKey =
-                separatorIndex === -1
-                    ? entry.trim()
-                    : entry.slice(0, separatorIndex).trim();
-            const headerValue =
-                separatorIndex === -1
-                    ? ""
-                    : entry.slice(separatorIndex + 1).trim();
-            if (headerKey && headerValue) {
-                acc[headerKey] = headerValue;
-            }
-            return acc;
-        }, {});
-};
-
 // Empathic Building API configuration
 import type { EmpathicBuildingConfig } from "../eb_types";
 

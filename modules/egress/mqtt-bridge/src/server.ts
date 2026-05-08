@@ -3,9 +3,9 @@ import { logger } from "@spine/shared";
 
 async function kafkaConsumerMessageHandler(
     message: string,
-    topic: string,
-    partition: number,
-    offset: string
+    _topic: string,
+    _partition: number,
+    _offset: string
 ) {
     try {
         // Parse message
