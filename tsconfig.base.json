@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        /* Basic Options */
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "target": "ES2023",
+        "verbatimModuleSyntax": true,
+        "allowJs": true,
+        "resolveJsonModule": true,
+        "moduleDetection": "force",
+
+        /* Strictness Options */
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+
+        /* Module Resolution Options */
+        "moduleResolution": "bundler",
+        "module": "ESNext",
+
+        "noImplicitReturns": true,
+        "removeComments": true
+    }
+}

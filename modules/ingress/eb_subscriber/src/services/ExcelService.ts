@@ -19,7 +19,8 @@ export class ExcelService {
     constructor(outputDir?: string, fileName?: string) {
         // Default to ./data/excel if not specified
         this.outputDir = outputDir || path.join(process.cwd(), "data", "excel");
-        this.fileName = fileName || `empathic-building-events-${this.getDateString()}.xlsx`;
+        this.fileName =
+            fileName || `empathic-building-events-${this.getDateString()}.xlsx`;
         this.filePath = path.join(this.outputDir, this.fileName);
 
         // Ensure output directory exists
@@ -35,7 +36,8 @@ export class ExcelService {
 
     private getDateString(): string {
         const now = new Date();
-        return now.toISOString().split("T")[0]; // YYYY-MM-DD format
+        const datePart = now.toISOString().split("T")[0];
+        return datePart || ""; // YYYY-MM-DD format
     }
 
     /**
@@ -50,7 +52,9 @@ export class ExcelService {
             // Check if file exists
             if (fs.existsSync(this.filePath)) {
                 await workbook.xlsx.readFile(this.filePath);
-                worksheet = workbook.getWorksheet("Events") || workbook.addWorksheet("Events");
+                worksheet =
+                    workbook.getWorksheet("Events") ||
+                    workbook.addWorksheet("Events");
             } else {
                 worksheet = workbook.addWorksheet("Events");
                 // Add headers if it's a new file
@@ -59,7 +63,7 @@ export class ExcelService {
                     "Channel",
                     "Data",
                     "Timestamp",
-                    "Source",
+                    "Source"
                 ]);
 
                 // Style the header row
@@ -68,7 +72,7 @@ export class ExcelService {
                 headerRow.fill = {
                     type: "pattern",
                     pattern: "solid",
-                    fgColor: { argb: "FFE0E0E0" },
+                    fgColor: { argb: "FFE0E0E0" }
                 };
             }
 
@@ -82,7 +86,7 @@ export class ExcelService {
                 typeof eventData.timestamp === "string"
                     ? eventData.timestamp
                     : new Date(eventData.timestamp).toISOString(),
-                eventData.source,
+                eventData.source
             ]);
 
             // Auto-size columns
@@ -90,7 +94,7 @@ export class ExcelService {
                 if (column.header) {
                     column.width = Math.max(
                         column.width || 10,
-                        column.header.toString().length + 2,
+                        column.header.toString().length + 2
                     );
                 }
             });
@@ -99,12 +103,12 @@ export class ExcelService {
             await workbook.xlsx.writeFile(this.filePath);
 
             logger.debug(
-                `Saved event ${eventData.eventType} to Excel file: ${this.filePath}`,
+                `Saved event ${eventData.eventType} to Excel file: ${this.filePath}`
             );
         } catch (error) {
             logger.error(
                 `Failed to save event to Excel file: ${this.filePath}`,
-                error,
+                error
             );
             throw error;
         }
@@ -117,4 +121,3 @@ export class ExcelService {
         return this.filePath;
     }
 }
-

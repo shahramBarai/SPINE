@@ -1,15 +1,32 @@
 import { z } from "zod";
 import { logger } from "@spine/shared";
 
+type AvroField = {
+    name: string;
+    type: unknown;
+};
+
+type AvroRecordSchema = {
+    fields?: AvroField[];
+};
+
+type AvroStructuredSchema = {
+    type?: string;
+    items?: unknown;
+    values?: unknown;
+    symbols?: string[];
+    size?: number;
+} & Partial<AvroRecordSchema>;
+
 /**
  * Check if a field is optional (union with null)
  * @param type - The type to check
  * @returns True if the field is optional, false otherwise
  */
-function isOptionalField(type: any): boolean {
+function isOptionalField(type: unknown): boolean {
     if (Array.isArray(type)) {
         return type.some(
-            (t) => t === "null" || (typeof t === "object" && t.type === "null"),
+            (t) => t === "null" || (typeof t === "object" && t.type === "null")
         );
     }
     return false;
@@ -20,8 +37,8 @@ function isOptionalField(type: any): boolean {
  * @param recordType - The Avro record to convert
  * @returns The Zod object schema
  */
-function convertRecord(recordType: any): z.ZodObject<any> {
-    const shape: Record<string, z.ZodSchema> = {};
+function convertRecord(recordType: AvroRecordSchema): z.ZodTypeAny {
+    const shape: Record<string, z.ZodTypeAny> = {};
 
     for (const field of recordType.fields || []) {
         let fieldSchema = convertType(field.type);
@@ -43,17 +60,19 @@ function convertRecord(recordType: any): z.ZodObject<any> {
  * @returns The Zod schema
  * @throws Error if the Avro type is unsupported
  */
-function convertType(avroType: any): z.ZodSchema {
+function convertType(avroType: unknown): z.ZodTypeAny {
     // Handle union types (Avro allows multiple types)
     if (Array.isArray(avroType)) {
         const zodTypes = avroType.map((type) => convertType(type));
         return z.union(
-            zodTypes as [z.ZodSchema, z.ZodSchema, ...z.ZodSchema[]],
+            zodTypes as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]
         );
     }
 
     // Handle primitive types
-    switch (avroType.type || avroType) {
+    const structuredType = avroType as AvroStructuredSchema;
+
+    switch (structuredType.type || avroType) {
         case "null":
             return z.null();
         case "boolean":
@@ -68,22 +87,22 @@ function convertType(avroType: any): z.ZodSchema {
         case "string":
             return z.string();
         case "array":
-            return z.array(convertType(avroType.items));
+            return z.array(convertType(structuredType.items));
         case "map":
-            return z.record(z.string(), convertType(avroType.values));
+            return z.record(z.string(), convertType(structuredType.values));
         case "record":
-            return convertRecord(avroType);
+            return convertRecord(structuredType);
         case "enum":
-            return z.enum(avroType.symbols);
+            return z.enum(structuredType.symbols ?? []);
         case "fixed":
-            return z.string().length(avroType.size);
+            return z.string().length(structuredType.size ?? 0);
         default:
             // Handle named types (references to other schemas)
             if (typeof avroType === "string") {
                 return z.any(); // For now, we'll use any for references
             }
             throw new Error(
-                `Unsupported Avro type: ${avroType.type || avroType}`,
+                `Unsupported Avro type: ${structuredType.type || avroType}`
             );
     }
 }
@@ -94,7 +113,7 @@ function convertType(avroType: any): z.ZodSchema {
  * @returns The Zod schema
  * @throws Error if the Avro schema is invalid
  */
-function convertAvroToZod(avroSchema: any): z.ZodSchema {
+function convertAvroToZod(avroSchema: unknown): z.ZodTypeAny {
     try {
         const parsedSchema =
             typeof avroSchema === "string"
@@ -102,10 +121,13 @@ function convertAvroToZod(avroSchema: any): z.ZodSchema {
                 : avroSchema;
 
         return convertType(parsedSchema);
-    } catch (error) {
+    } catch (error: unknown) {
         logger.error("Failed to convert Avro schema to Zod:", error);
         throw new Error(
             `Invalid Avro schema: ${error instanceof Error ? error.message : "Unknown error"}`,
+            {
+                cause: error
+            }
         );
     }
 }

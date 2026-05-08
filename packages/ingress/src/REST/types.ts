@@ -63,5 +63,5 @@ export type {
     RestEndpointConfig,
     RestPaginationConfig,
     RestPollingConfig,
-    RestAuthConfig,
+    RestAuthConfig
 };

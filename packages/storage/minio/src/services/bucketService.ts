@@ -1,8 +1,10 @@
-import { BucketItem } from "minio";
+import { type BucketItem, CopyConditions } from "minio";
 import { getMinioClient, type BUCKET_NAMES } from "../db/minio";
 import { Readable } from "stream";
 
 const minioClient = getMinioClient();
+
+type CopyObjectResult = Awaited<ReturnType<typeof minioClient.copyObject>>;
 
 /* -------------------------------- INTERFACES -------------------------------- */
 
@@ -51,7 +53,7 @@ async function uploadFile(options: UploadFileOptions): Promise<string | null> {
             metaData
         );
         return result.etag;
-    } catch (error) {
+    } catch (_error) {
         return null;
     }
 }
@@ -81,7 +83,7 @@ async function uploadBuffer(
         );
 
         return result.etag;
-    } catch (error) {
+    } catch (_error) {
         return null;
     }
 }
@@ -101,8 +103,8 @@ async function copyFile(
     sourceObject: string,
     destBucket: BUCKET_NAMES,
     destObject: string,
-    conditions?: any
-): Promise<any> {
+    conditions?: CopyConditions
+): Promise<CopyObjectResult> {
     const result = await minioClient.copyObject(
         destBucket,
         destObject,
@@ -122,13 +124,15 @@ async function copyFile(
  * @param bucketName - The name of the bucket to analyse.
  * @returns A promise that resolves to a `StorageStats` object.
  */
-async function getStorageStats(bucketName: BUCKET_NAMES): Promise<StorageStats> {
+async function getStorageStats(
+    bucketName: BUCKET_NAMES
+): Promise<StorageStats> {
     const files = await listFiles({ bucketName, recursive: true });
 
     const stats: StorageStats = {
         totalFiles: files.length,
         totalSize: files.reduce((sum, file) => sum + file.size, 0),
-        filesByType: {},
+        filesByType: {}
     };
 
     files.forEach((file) => {
@@ -153,7 +157,7 @@ async function readFile(
 ): Promise<Readable | null> {
     try {
         return await minioClient.getObject(bucketName, objectName);
-    } catch (error) {
+    } catch (_error) {
         return null;
     }
 }
@@ -166,7 +170,12 @@ async function readFile(
  * @param options - Listing configuration including bucket name, optional prefix, recursive flag, and max key count.
  * @returns A promise that resolves to an array of `BucketItem` objects.
  */
-async function listFiles({ bucketName, prefix = "", recursive = false, maxKeys }: ListFilesOptions): Promise<BucketItem[]> {
+async function listFiles({
+    bucketName,
+    prefix = "",
+    recursive = false,
+    maxKeys
+}: ListFilesOptions): Promise<BucketItem[]> {
     const files: BucketItem[] = [];
     const stream = minioClient.listObjectsV2(bucketName, prefix, recursive);
 
@@ -191,8 +200,6 @@ async function listFiles({ bucketName, prefix = "", recursive = false, maxKeys }
 }
 
 /* -------------------------------- UPDATE -------------------------------- */
-
-
 
 /* -------------------------------- DELETE -------------------------------- */
 
@@ -263,4 +270,4 @@ export {
     deleteFile,
     deleteFiles,
     cleanupOldFiles
-}
+};

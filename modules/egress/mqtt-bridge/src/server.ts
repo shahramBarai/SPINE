@@ -1,18 +1,27 @@
-import {
-    KafkaConsumer,
-    MQTTClient,
-} from "./deps";
+import { KafkaConsumer, MQTTClient } from "./deps";
 import { logger } from "@spine/shared";
 
-async function kafkaConsumerMessageHandler(message: string, topic: string, partition: number, offset: string) {
+async function kafkaConsumerMessageHandler(
+    message: string,
+    _topic: string,
+    _partition: number,
+    _offset: string
+) {
     try {
         // Parse message
         const messageData = JSON.parse(message);
 
-        if (!messageData.campusId || !messageData.sensorId || !messageData.measurement) {
-            logger.warn("MQTT bridge service: Missing required fields in message -> skipping message", {
-                messageData,
-            });
+        if (
+            !messageData.campusId ||
+            !messageData.sensorId ||
+            !messageData.measurement
+        ) {
+            logger.warn(
+                "MQTT bridge service: Missing required fields in message -> skipping message",
+                {
+                    messageData
+                }
+            );
             return;
         }
 
@@ -23,9 +32,14 @@ async function kafkaConsumerMessageHandler(message: string, topic: string, parti
         await MQTTClient.publish(topic, messageOutput);
 
         // Log successful processing
-        logger.debug(`MQTT bridge service: Processed message for topic ${topic}`);
+        logger.debug(
+            `MQTT bridge service: Processed message for topic ${topic}`
+        );
     } catch (error) {
-        logger.error("MQTT bridge service: Error processing Kafka message:", error);
+        logger.error(
+            "MQTT bridge service: Error processing Kafka message:",
+            error
+        );
     }
 }
 
@@ -40,11 +54,12 @@ async function main() {
     }
     logger.info("MQTT bridge service: Kafka consumer connected");
 
-
     // Connect to MQTT broker
     logger.info("MQTT bridge service: Connecting to MQTT broker...");
     if (!(await MQTTClient.connect())) {
-        logger.warn("Gateway service: MQTT gateway failed to connect, continuing without MQTT");
+        logger.warn(
+            "Gateway service: MQTT gateway failed to connect, continuing without MQTT"
+        );
     } else {
         logger.info("MQTT bridge service: MQTT gateway connected");
     }

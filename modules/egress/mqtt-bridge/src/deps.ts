@@ -14,7 +14,10 @@ try {
     process.exit(1);
 }
 
-const KafkaConsumer = new KafkaConsumerService({ config: kafkaConfig, topic: kafkaTopic });
+const KafkaConsumer = new KafkaConsumerService({
+    config: kafkaConfig,
+    topic: kafkaTopic
+});
 const MQTTClient = new MQTTService(mqttConfig);
 
 export { KafkaConsumer, MQTTClient };

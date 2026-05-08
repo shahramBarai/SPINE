@@ -3,7 +3,7 @@ import { logger } from "@spine/shared";
 import type {
     RestApiConfig,
     RestEndpointConfig,
-    RestPaginationConfig,
+    RestPaginationConfig
 } from "./types";
 
 interface PollingResult {
@@ -55,7 +55,7 @@ class RESTService extends EventEmitter {
         void executePoll();
         this.pollingTimer = setInterval(
             () => void executePoll(),
-            this.config.poller.pollIntervalMs,
+            this.config.poller.pollIntervalMs
         );
     }
 
@@ -67,9 +67,7 @@ class RESTService extends EventEmitter {
         }
     }
 
-    async pollOnce(
-        handler?: (result: PollingResult) => Promise<void> | void,
-    ) {
+    async pollOnce(handler?: (result: PollingResult) => Promise<void> | void) {
         for (const endpoint of this.config.endpoints) {
             await this.pollEndpoint(endpoint, handler);
         }
@@ -77,19 +75,20 @@ class RESTService extends EventEmitter {
 
     private async pollEndpoint(
         endpoint: RestEndpointConfig,
-        handler?: (result: PollingResult) => Promise<void> | void,
+        handler?: (result: PollingResult) => Promise<void> | void
     ) {
         const pagination = this.config.pagination;
         let page = 1;
         let cursor: string | undefined;
         let nextLink: string | undefined;
+        let hasNextPage = true;
 
-        do {
+        while (hasNextPage) {
             try {
                 const result = await this.executeRequest(endpoint, {
                     page,
                     cursor,
-                    nextLink,
+                    nextLink
                 });
 
                 const pollingResult: PollingResult = {
@@ -98,7 +97,7 @@ class RESTService extends EventEmitter {
                     payload: result.payload,
                     status: result.status,
                     headers: result.headers,
-                    url: result.url,
+                    url: result.url
                 };
 
                 this.emit("data", pollingResult);
@@ -108,18 +107,18 @@ class RESTService extends EventEmitter {
 
                 ({ cursor, nextLink } = this.extractPaginationState(
                     result.payload,
-                    pagination,
+                    pagination
                 ));
 
-                if (
-                    !this.hasNextPage(
-                        result.payload,
-                        pagination,
-                        page,
-                        cursor,
-                        nextLink,
-                    )
-                ) {
+                hasNextPage = this.hasNextPage(
+                    result.payload,
+                    pagination,
+                    page,
+                    cursor,
+                    nextLink
+                );
+
+                if (!hasNextPage) {
                     break;
                 }
 
@@ -128,34 +127,34 @@ class RESTService extends EventEmitter {
                 this.emit("error", error);
                 logger.error(
                     `RESTService failed to poll endpoint ${endpoint.path}`,
-                    error,
+                    error
                 );
                 break;
             }
-        } while (true);
+        }
     }
 
     private async executeRequest(
         endpoint: RestEndpointConfig,
-        context: RequestContext,
+        context: RequestContext
     ) {
         const { url, headers, body } = await this.createRequestInit(
             endpoint,
-            context,
+            context
         );
 
         const response = await this.executeWithRetry(async () => {
             const controller = new AbortController();
             const timeout = setTimeout(
                 () => controller.abort(),
-                this.config.poller.timeoutMs,
+                this.config.poller.timeoutMs
             );
             try {
                 const res = await fetch(url, {
                     method: endpoint.method,
                     headers,
                     body,
-                    signal: controller.signal,
+                    signal: controller.signal
                 });
                 return res;
             } finally {
@@ -166,9 +165,7 @@ class RESTService extends EventEmitter {
         if (!response.ok) {
             const payload = await this.safeParseBody(response);
             throw new Error(
-                `RESTService got ${response.status} from ${url}: ${JSON.stringify(
-                    payload,
-                )}`,
+                `RESTService got ${response.status} from ${url}: ${JSON.stringify(payload)}`
             );
         }
 
@@ -176,19 +173,19 @@ class RESTService extends EventEmitter {
             payload: await this.safeParseBody(response),
             status: response.status,
             headers: this.headersToRecord(response.headers),
-            url: response.url,
+            url: response.url
         };
     }
 
     private async createRequestInit(
         endpoint: RestEndpointConfig,
-        context: RequestContext,
+        context: RequestContext
     ) {
         const url = this.buildUrl(endpoint.path, context.nextLink);
         const headers: Record<string, string> = {
             accept: "application/json",
             ...this.config.customHeaders,
-            ...(this.config.auth.customHeaders ?? {}),
+            ...(this.config.auth.customHeaders ?? {})
         };
 
         if (endpoint.method === "POST" && !headers["content-type"]) {
@@ -219,12 +216,12 @@ class RESTService extends EventEmitter {
         if (pagination.mode === "page" && context.page) {
             url.searchParams.set(
                 pagination.pageParam ?? "page",
-                context.page.toString(),
+                context.page.toString()
             );
             if (pagination.pageSize && pagination.pageSizeParam) {
                 url.searchParams.set(
                     pagination.pageSizeParam,
-                    pagination.pageSize.toString(),
+                    pagination.pageSize.toString()
                 );
             }
         }
@@ -232,7 +229,7 @@ class RESTService extends EventEmitter {
         if (pagination.mode === "cursor" && context.cursor) {
             url.searchParams.set(
                 pagination.cursorParam ?? "cursor",
-                context.cursor,
+                context.cursor
             );
         }
     }
@@ -242,10 +239,12 @@ class RESTService extends EventEmitter {
         switch (auth.type) {
             case "basic": {
                 if (!auth.username || !auth.password) {
-                    throw new Error("Basic auth requires username and password");
+                    throw new Error(
+                        "Basic auth requires username and password"
+                    );
                 }
                 const encoded = Buffer.from(
-                    `${auth.username}:${auth.password}`,
+                    `${auth.username}:${auth.password}`
                 ).toString("base64");
                 headers.Authorization = `Basic ${encoded}`;
                 break;
@@ -264,7 +263,7 @@ class RESTService extends EventEmitter {
                 if (auth.apiKeyLocation === "query") {
                     url.searchParams.set(
                         auth.apiKeyQueryParam || "api_key",
-                        auth.apiKey,
+                        auth.apiKey
                     );
                 } else {
                     headers[auth.apiKeyHeader ?? "x-api-key"] = auth.apiKey;
@@ -295,7 +294,7 @@ class RESTService extends EventEmitter {
         const body = new URLSearchParams({
             grant_type: oauth.grantType,
             client_id: oauth.clientId,
-            client_secret: oauth.clientSecret,
+            client_secret: oauth.clientSecret
         });
         if (oauth.scope) {
             body.append("scope", oauth.scope);
@@ -307,15 +306,13 @@ class RESTService extends EventEmitter {
         const response = await fetch(oauth.tokenUrl, {
             method: "POST",
             headers: {
-                "content-type": "application/x-www-form-urlencoded",
+                "content-type": "application/x-www-form-urlencoded"
             },
-            body,
+            body
         });
 
         if (!response.ok) {
-            throw new Error(
-                `Failed to obtain OAuth token: ${response.status}`,
-            );
+            throw new Error(`Failed to obtain OAuth token: ${response.status}`);
         }
 
         const payload = (await response.json()) as {
@@ -326,7 +323,7 @@ class RESTService extends EventEmitter {
         const refreshMargin = oauth.refreshMarginSeconds ?? 60;
         this.oauthToken = {
             value: payload.access_token,
-            expiresAt: Date.now() + (expiresInSeconds - refreshMargin) * 1000,
+            expiresAt: Date.now() + (expiresInSeconds - refreshMargin) * 1000
         };
         return this.oauthToken.value;
     }
@@ -338,9 +335,7 @@ class RESTService extends EventEmitter {
         return JSON.stringify(template);
     }
 
-    private async executeWithRetry<T>(
-        fn: () => Promise<T>,
-    ): Promise<T> {
+    private async executeWithRetry<T>(fn: () => Promise<T>): Promise<T> {
         let attempt = 0;
         const { retryAttempts, retryDelayMs } = this.config.poller;
         const maxAttempts = Math.max(1, retryAttempts);
@@ -356,7 +351,7 @@ class RESTService extends EventEmitter {
                 const delay = retryDelayMs * attempt;
                 logger.warn(
                     `RESTService request failed (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms`,
-                    error,
+                    error
                 );
                 await this.delay(delay);
             }
@@ -381,20 +376,20 @@ class RESTService extends EventEmitter {
 
     private extractPaginationState(
         payload: unknown,
-        pagination: RestPaginationConfig,
+        pagination: RestPaginationConfig
     ) {
         if (pagination.mode === "cursor") {
             const cursor = this.resolveField(
                 payload,
-                pagination.nextCursorField,
+                pagination.nextCursorField
             );
-            return { cursor: cursor as string | undefined, nextLink: undefined };
+            return {
+                cursor: cursor as string | undefined,
+                nextLink: undefined
+            };
         }
         if (pagination.mode === "link") {
-            const link = this.resolveField(
-                payload,
-                pagination.nextLinkField,
-            );
+            const link = this.resolveField(payload, pagination.nextLinkField);
             return { cursor: undefined, nextLink: link as string | undefined };
         }
         return { cursor: undefined, nextLink: undefined };
@@ -405,11 +400,10 @@ class RESTService extends EventEmitter {
         pagination: RestPaginationConfig,
         page: number,
         cursor?: string,
-        link?: string,
+        link?: string
     ) {
         if (pagination.mode === "page") {
-            const hasMoreData =
-                Array.isArray(payload) && payload.length > 0;
+            const hasMoreData = Array.isArray(payload) && payload.length > 0;
             const underMaxPages =
                 !pagination.maxPages || page < pagination.maxPages;
             return hasMoreData && underMaxPages;

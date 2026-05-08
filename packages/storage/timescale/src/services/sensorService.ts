@@ -1,14 +1,14 @@
 import { query } from "../db/connection";
-import { SensorReading } from "../db/schema";
+import { type SensorReading } from "../db/schema";
 
 /* -------------------------------- CREATE -------------------------------- */
 
 /**
  * Inserts a single sensor reading into the database.
- * 
+ *
  * NOTE: This method is not recommended for use in production.
  * Use BatchInsertService instead for better performance.
- * 
+ *
  * @param data - The sensor reading to insert.
  * @returns The inserted sensor reading.
  * @throws Error if the sensor reading cannot be inserted.
@@ -34,7 +34,10 @@ async function insertSensorData(data: SensorReading) {
  * @returns The sensor data.
  * @throws Error if the sensor data cannot be retrieved.
  */
-async function getSensorData(id: string, timeRange: { start: Date, end: Date }) {
+async function getSensorData(
+    id: string,
+    timeRange: { start: Date; end: Date }
+) {
     const queryText = `
         SELECT * FROM sensor_readings
         WHERE time >= $1 AND time < $2 AND id = $3
@@ -45,6 +48,5 @@ async function getSensorData(id: string, timeRange: { start: Date, end: Date }) 
 
     return res.rows;
 }
-
 
 export { insertSensorData, getSensorData };

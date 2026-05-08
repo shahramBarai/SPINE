@@ -6,12 +6,17 @@
  */
 
 import { logger } from "@spine/shared";
-import { empathicBuildingService, kafkaProducer, excelService, configs } from "../deps";
+import {
+    empathicBuildingService,
+    kafkaProducer,
+    excelService,
+    configs
+} from "../deps";
 import type { DecodedEvent } from "./eb_types";
 import {
     extractMeasurements,
     resolveCampusId,
-    UNKNOWN_CAMPUS_ID,
+    UNKNOWN_CAMPUS_ID
 } from "./extractor";
 
 /** Extract external locationId from Pusher channel name, e.g. "private-location-7" -> "7" */
@@ -29,11 +34,14 @@ async function handleEmpathicBuildingEvent(event: DecodedEvent): Promise<void> {
         channel: event.channel,
         data: event.data,
         timestamp: event.timestamp,
-        source: "empathic-building",
+        source: "empathic-building"
     };
 
     const locationIdFromCh = locationIdFromChannel(event.channel);
-    const campusId = resolveCampusId(locationIdFromCh, configs.getLocationToCampusMap());
+    const campusId = resolveCampusId(
+        locationIdFromCh,
+        configs.getLocationToCampusMap()
+    );
 
     let outputMessages;
     try {
@@ -42,23 +50,26 @@ async function handleEmpathicBuildingEvent(event: DecodedEvent): Promise<void> {
         logger.warn("EB: extractMeasurements failed, skipping message", {
             err,
             eventType: event.eventType,
-            channel: event.channel,
+            channel: event.channel
         });
         return;
     }
 
     for (const outMsg of outputMessages) {
         if (campusId === UNKNOWN_CAMPUS_ID) {
-            logger.debug("EB: missing location->campus mapping, using unknown", {
-                locationId: outMsg.campusId,
-            });
+            logger.debug(
+                "EB: missing location->campus mapping, using unknown",
+                {
+                    locationId: outMsg.campusId
+                }
+            );
         }
 
         try {
             if (kafkaProducer) {
                 await kafkaProducer.sendMessage({
                     key: outMsg.sensorId,
-                    value: JSON.stringify(outMsg),
+                    value: JSON.stringify(outMsg)
                 });
                 logger.debug("EB: sensor event sent to Kafka", outMsg);
             } else if (excelService) {
@@ -70,7 +81,7 @@ async function handleEmpathicBuildingEvent(event: DecodedEvent): Promise<void> {
         } catch (err) {
             logger.error("EB: Kafka produce failed", {
                 err,
-                outMsg,
+                outMsg
             });
             throw err;
         }
@@ -91,13 +102,18 @@ function setupEmpathicBuildingHandlers(): void {
     });
 
     // Handle specific event types (optional - for additional logging/processing)
-    empathicBuildingService.on("sensor-modified", async (event: DecodedEvent) => {
-        await handleEmpathicBuildingEvent(event);
-    });
+    empathicBuildingService.on(
+        "sensor-modified",
+        async (event: DecodedEvent) => {
+            await handleEmpathicBuildingEvent(event);
+        }
+    );
 
     // Error handling
     empathicBuildingService.on("error", (error: unknown) => {
-        logger.debug("Empathic Building service error event observed", { error });
+        logger.debug("Empathic Building service error event observed", {
+            error
+        });
     });
 
     empathicBuildingService.on("tokenRefreshError", (error: unknown) => {

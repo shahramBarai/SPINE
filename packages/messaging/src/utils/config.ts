@@ -23,7 +23,4 @@ interface SchemaRegistryConfig {
     validateEnabled: boolean;
 }
 
-export {
-    type KafkaConfig,
-    type SchemaRegistryConfig,
-};
+export { type KafkaConfig, type SchemaRegistryConfig };

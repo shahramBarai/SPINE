@@ -1,8 +1,13 @@
-import { Kafka, Consumer, EachMessagePayload } from "kafkajs";
+import { Kafka, type Consumer, type EachMessagePayload } from "kafkajs";
 import { logger } from "@spine/shared";
-import { KafkaConfig } from "./utils/config";
+import type { KafkaConfig } from "./utils/config";
 
-type MessageHandler = (message: string, topic: string, partition: number, offset: string) => Promise<void>;
+type MessageHandler = (
+    message: string,
+    topic: string,
+    partition: number,
+    offset: string
+) => Promise<void>;
 
 class KafkaConsumer {
     private kafka: Kafka;
@@ -11,13 +16,13 @@ class KafkaConsumer {
     private isConnected: boolean = false;
     private messageHandler: MessageHandler | null = null;
 
-    constructor({ config, topic }: { config: KafkaConfig, topic: string }) {
+    constructor({ config, topic }: { config: KafkaConfig; topic: string }) {
         this.kafka = new Kafka({
             clientId: config.clientId,
             brokers: config.brokers,
             connectionTimeout: config.connectionTimeout,
             requestTimeout: config.requestTimeout,
-            retry: config.retry,
+            retry: config.retry
         });
         this.consumer = this.kafka.consumer({ groupId: config.clientId });
         this.topic = topic;
@@ -45,7 +50,7 @@ class KafkaConsumer {
 
             await this.consumer.subscribe({
                 topic: this.topic,
-                fromBeginning: false,
+                fromBeginning: false
             });
 
             await this.consumer.run({
@@ -54,7 +59,7 @@ class KafkaConsumer {
                         const message = payload.message.value?.toString();
                         if (!message) {
                             logger.warn(
-                                `Kafka consumer: Received empty message from topic ${payload.topic}`,
+                                `Kafka consumer: Received empty message from topic ${payload.topic}`
                             );
                             return;
                         }
@@ -64,25 +69,25 @@ class KafkaConsumer {
                                 message,
                                 payload.topic,
                                 payload.partition,
-                                payload.message.offset,
+                                payload.message.offset
                             );
                         } else {
                             logger.warn(
-                                "Kafka consumer: No message handler registered",
+                                "Kafka consumer: No message handler registered"
                             );
                         }
                     } catch (error) {
                         logger.error(
                             `Kafka consumer: Error processing message from topic ${payload.topic}:`,
-                            error,
+                            error
                         );
                     }
-                },
+                }
             });
 
             this.isConnected = true;
             logger.info(
-                `Kafka consumer: Started consuming from topic ${this.topic}`,
+                `Kafka consumer: Started consuming from topic ${this.topic}`
             );
             return true;
         } catch (error) {
@@ -107,7 +112,7 @@ class KafkaConsumer {
         } catch (error) {
             logger.error(
                 "Kafka consumer: Failed to disconnect from Kafka",
-                error,
+                error
             );
         }
     }
@@ -123,9 +128,7 @@ class KafkaConsumer {
         return {
             status: this.isConnected ? "connected" : "disconnected",
             timestamp: new Date().toISOString(),
-            error: this.isConnected
-                ? undefined
-                : "Not connected to Kafka",
+            error: this.isConnected ? undefined : "Not connected to Kafka"
         };
     }
 }

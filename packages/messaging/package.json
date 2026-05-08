@@ -9,7 +9,7 @@
     },
     "scripts": {
         "build": "tsc",
-        "dev": "tsc --watch"
+        "type-check": "tsc --noEmit"
     },
     "dependencies": {
         "@spine/shared": "workspace:*",
@@ -17,7 +17,6 @@
         "zod": "^4.1.12"
     },
     "devDependencies": {
-        "dotenv": "^17.2.2",
-        "typescript": "^5.9.2"
+        "typescript": "catalog:"
     }
 }

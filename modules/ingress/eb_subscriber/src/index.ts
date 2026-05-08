@@ -1,4 +1,11 @@
-import { Fastify, cors, configs, excelService, kafkaProducer, schemaManager, empathicBuildingService } from "./deps";
+import {
+    Fastify,
+    cors,
+    configs,
+    kafkaProducer,
+    schemaManager,
+    empathicBuildingService
+} from "./deps";
 import { logger } from "@spine/shared";
 import { healthRoutes } from "./routes/health";
 import { setupEmpathicBuildingHandlers } from "./utils/eb_helper";
@@ -6,17 +13,19 @@ import { setupEmpathicBuildingHandlers } from "./utils/eb_helper";
 async function setupServer() {
     const server = Fastify({
         maxParamLength: 5000,
-        logger: configs.NODE_ENV === "dev"
-            ? {
-                transport: {
-                    target: "pino-pretty",
-                    options: {
-                        colorize: true,
-                        ignore: "pid,hostname",
-                        translateTime: "HH:MM:ss.l",
-                    },
-                },
-            } : false,
+        logger:
+            configs.NODE_ENV === "dev"
+                ? {
+                      transport: {
+                          target: "pino-pretty",
+                          options: {
+                              colorize: true,
+                              ignore: "pid,hostname",
+                              translateTime: "HH:MM:ss.l"
+                          }
+                      }
+                  }
+                : false
     });
 
     // Register error handler
@@ -24,7 +33,7 @@ async function setupServer() {
 
     // Register CORS for cross-origin requests
     server.register(cors, {
-        origin: true,
+        origin: true
     });
 
     // Register health routes
@@ -34,12 +43,12 @@ async function setupServer() {
     server.get("/", async () => {
         return {
             message: "REST Subscriber Service is running",
-            health: "/health",
+            health: "/health"
         };
     });
 
     // Start server
-    await server.listen({ port: configs.PORT, host: configs.HOST});
+    await server.listen({ port: configs.PORT, host: configs.HOST });
 }
 
 async function main() {
@@ -66,7 +75,10 @@ async function main() {
         const status = empathicBuildingService.getStatus();
         logger.info("Empathic Building service status:", status);
     } catch (error) {
-        logger.warn(`Empathic Building service failed to initialize, continuing without it:`, error);
+        logger.warn(
+            `Empathic Building service failed to initialize, continuing without it:`,
+            error
+        );
     }
 
     // Handle graceful shutdown
@@ -77,20 +89,23 @@ async function main() {
         try {
             await empathicBuildingService.disconnect();
         } catch (error) {
-            logger.error("Error disconnecting from Empathic Building service:", error);
+            logger.error(
+                "Error disconnecting from Empathic Building service:",
+                error
+            );
         }
 
         // Disconnect from Kafka producer if it was initialized
         if (kafkaProducer) {
-            while (!await kafkaProducer.disconnect()) {
+            while (!(await kafkaProducer.disconnect())) {
                 logger.warn("Kafka producer not disconnected, retrying...");
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise((resolve) => setTimeout(resolve, 1000));
             }
             logger.info("Kafka producer disconnected");
         }
         logger.info("Service shutdown complete");
         process.exit(0);
-    }
+    };
 
     // Set up signal handlers
     process.on("SIGINT", shutdown);

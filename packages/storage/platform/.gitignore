@@ -1,7 +1,8 @@
-node_modules
-dist
-# Keep environment variables out of version control
+dist/
+node_modules/
 .env
+*.log
+*.tsbuildinfo
 
 # Generated files for prisma
 generated

@@ -1,6 +1,8 @@
-import Fastify, { type FastifyPluginAsync, type FastifyInstance } from "fastify";
+import Fastify, {
+    type FastifyPluginAsync,
+    type FastifyInstance
+} from "fastify";
 import cors from "@fastify/cors";
-import { z } from "zod";
 import * as configs from "./utils/config";
 
 // Initialize services
@@ -11,25 +13,28 @@ import { ExcelService } from "./services/ExcelService";
 
 // Initialize services based on SEND_TO configuration
 const excelService = configs.SEND_TO === "excel" ? new ExcelService() : null;
-const kafkaProducer = configs.SEND_TO === "kafka"
-    ? new KafkaProducer(configs.getKafkaConfig(), configs.getKafkaTopic())
-    : null;
-const schemaManager = configs.SEND_TO === "kafka"
-    ? new ServiceSchemaManager(configs.getSchemaRegistryConfig())
-    : null;
+const kafkaProducer =
+    configs.SEND_TO === "kafka"
+        ? new KafkaProducer(configs.getKafkaConfig(), configs.getKafkaTopic())
+        : null;
+const schemaManager =
+    configs.SEND_TO === "kafka"
+        ? new ServiceSchemaManager(configs.getSchemaRegistryConfig())
+        : null;
 // Initialize Empathic Building service
-const empathicBuildingService = new EmpathicBuildingService(getEmpathicBuildingConfig());
+const empathicBuildingService = new EmpathicBuildingService(
+    getEmpathicBuildingConfig()
+);
 
 // Export dependencies
 export {
     Fastify,
-    FastifyPluginAsync,
-    FastifyInstance,
     cors,
-    z,
     configs,
     excelService,
     kafkaProducer,
     schemaManager,
-    empathicBuildingService,
+    empathicBuildingService
 };
+
+export type { FastifyPluginAsync, FastifyInstance };

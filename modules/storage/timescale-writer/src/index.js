@@ -2,7 +2,7 @@ import { startConsumer } from "./kafka/consumer.js";
 
 // TODO: Add a health check endpoint
 try {
-  await startConsumer();
+    await startConsumer();
 } catch (error) {
-  console.error(error);
+    console.error(error);
 }

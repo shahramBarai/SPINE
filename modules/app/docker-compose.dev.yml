@@ -1,17 +1,17 @@
 services:
-  # ------ Webapp ------ #
-  webapp:
-    container_name: webapp
-    build:
-      context: ./webapp
-      dockerfile: Dockerfile.dev
-    ports:
-      - "3000:3000"
-    env_file:
-      - path: ./webapp/.env.example
-        required: true
-    volumes:
-      - ./webapp:/app
-      - /app/node_modules
-      - /app/.next
-    profiles: ["app", "full"]
+    # ------ Webapp ------ #
+    webapp:
+        container_name: webapp
+        build:
+            context: ./webapp
+            dockerfile: Dockerfile.dev
+        ports:
+            - "3000:3000"
+        env_file:
+            - path: ./webapp/.env.example
+              required: true
+        volumes:
+            - ./webapp:/app
+            - /app/node_modules
+            - /app/.next
+        profiles: ["app", "full"]
