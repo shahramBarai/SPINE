@@ -12,7 +12,9 @@ import { setupEmpathicBuildingHandlers } from "./utils/eb_helper";
 
 async function setupServer() {
     const server = Fastify({
-        maxParamLength: 5000,
+        routerOptions: {
+            maxParamLength: 5000
+        },
         logger:
             configs.NODE_ENV === "dev"
                 ? {
