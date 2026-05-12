@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
-import Pusher, { Channel } from "pusher-js";
+import Pusher from "pusher-js";
+import type { Channel } from "pusher-js";
 import { logger } from "@spine/shared";
 import { gunzipSync } from "node:zlib";
 import { Buffer } from "node:buffer";
@@ -489,7 +490,9 @@ class EmpathicBuildingService extends EventEmitter {
                 timestamp: Date.now()
             };
 
-            logger.debug(`Received event: ${eventType} on ${channel}`);
+            logger.debug(
+                `Received event: ${eventType} on ${channel}, data: ${JSON.stringify(decoded)}`
+            );
 
             // Emit the decoded event
             this.emit("event", event);

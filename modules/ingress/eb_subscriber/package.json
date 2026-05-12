@@ -26,6 +26,7 @@
         "@types/node": "catalog:",
         "typescript": "catalog:",
         "tsup": "^8.5.1",
-        "tsx": "^3.0.0"
+        "tsx": "^3.0.0",
+        "pino-pretty": "13.1.3"
     }
 }
