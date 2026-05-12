@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Helix Twin — Digital Twin Command Center Design System */
+
+@layer base {
+  :root {
+    /* Deep slate command center palette */
+    --background: 222 30% 6%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 28% 9%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 222 32% 8%;
+    --popover-foreground: 210 40% 96%;
+
+    /* Cyan-blue primary for active states */
+    --primary: 190 95% 55%;
+    --primary-foreground: 222 47% 6%;
+    --primary-glow: 190 100% 65%;
+
+    --secondary: 220 20% 14%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 220 18% 12%;
+    --muted-foreground: 215 16% 60%;
+
+    --accent: 217 25% 16%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 75% 58%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Emerald live sensor status */
+    --live: 152 76% 50%;
+    --live-foreground: 152 80% 8%;
+    --live-glow: 152 90% 60%;
+
+    --warning: 38 95% 58%;
+    --warning-foreground: 38 80% 8%;
+
+    --border: 220 20% 16%;
+    --input: 220 20% 14%;
+    --ring: 190 95% 55%;
+
+    --radius: 0.5rem;
+
+    /* Gradients */
+    --gradient-surface: linear-gradient(180deg, hsl(222 30% 8% / 0.85), hsl(222 30% 6% / 0.95));
+    --gradient-glow: radial-gradient(circle at 50% 0%, hsl(190 95% 55% / 0.15), transparent 60%);
+    --gradient-primary: linear-gradient(135deg, hsl(190 95% 55%), hsl(210 95% 60%));
+
+    /* Shadows */
+    --shadow-glow: 0 0 24px hsl(190 95% 55% / 0.25);
+    --shadow-live: 0 0 12px hsl(152 90% 60% / 0.6);
+    --shadow-elevated: 0 8px 32px hsl(222 50% 2% / 0.6);
+
+    --sidebar-background: 222 30% 7%;
+    --sidebar-foreground: 210 30% 80%;
+    --sidebar-primary: 190 95% 55%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 220 20% 13%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 220 20% 14%;
+    --sidebar-ring: 190 95% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-image:
+      radial-gradient(circle at 0% 0%, hsl(190 95% 55% / 0.06), transparent 40%),
+      radial-gradient(circle at 100% 100%, hsl(210 95% 50% / 0.05), transparent 40%);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: hsl(222 30% 9% / 0.7);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid hsl(220 30% 22% / 0.5);
+  }
+  .glass-strong {
+    background: hsl(222 35% 7% / 0.85);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid hsl(220 30% 22% / 0.6);
+  }
+  .grid-bg {
+    background-image:
+      linear-gradient(hsl(220 30% 18% / 0.4) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(220 30% 18% / 0.4) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .text-glow {
+    text-shadow: 0 0 12px hsl(190 95% 55% / 0.5);
+  }
+  .pulse-live {
+    animation: pulse-live 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-live {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(152 90% 60% / 0.7); }
+  50% { box-shadow: 0 0 0 6px hsl(152 90% 60% / 0); }
+}
+
+@keyframes pulse-primary {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
