@@ -6,12 +6,7 @@
  */
 
 import { logger } from "@spine/shared";
-import {
-    empathicBuildingService,
-    kafkaProducer,
-    excelService,
-    configs
-} from "../deps";
+import { ebPusherService, kafkaProducer, excelService, configs } from "../deps";
 import type { DecodedEvent } from "./eb_types";
 import {
     extractMeasurements,
@@ -92,32 +87,19 @@ async function handleEmpathicBuildingEvent(event: DecodedEvent): Promise<void> {
  * Set up Empathic Building event handlers
  */
 function setupEmpathicBuildingHandlers(): void {
-    // Connection events
-    empathicBuildingService.on("connected", () => {
-        logger.info("Empathic Building service: Connected to Pusher");
-    });
-
-    empathicBuildingService.on("disconnected", () => {
-        logger.warn("Empathic Building service: Disconnected from Pusher");
-    });
-
     // Handle specific event types (optional - for additional logging/processing)
-    empathicBuildingService.on(
-        "sensor-modified",
-        async (event: DecodedEvent) => {
-            await handleEmpathicBuildingEvent(event);
-        }
-    );
-
-    // Error handling
-    empathicBuildingService.on("error", (error: unknown) => {
-        logger.debug("Empathic Building service error event observed", {
-            error
+    ebPusherService.on("sensor-modified", async (event: DecodedEvent) => {
+        logger.debug("EB: Received sensor-modified event", {
+            channel: event.channel,
+            timestamp: event.timestamp
         });
+        await handleEmpathicBuildingEvent(event);
     });
 
-    empathicBuildingService.on("tokenRefreshError", (error: unknown) => {
-        logger.error("Empathic Building token refresh error:", error);
+    ebPusherService.on("eventError", (eventError: unknown) => {
+        logger.debug("EB: event decoding/handling error observed", {
+            eventError
+        });
     });
 }
 

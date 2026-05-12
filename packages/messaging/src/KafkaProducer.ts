@@ -65,8 +65,7 @@ class KafkaProducer {
                 acks: 0
             });
             logger.debug(
-                "Kafka producer: Message sent to Kafka! Result: ",
-                result
+                `Kafka producer: Message sent to Kafka! Result: ${JSON.stringify(result)}`
             );
             if (!this.isConnected) {
                 logger.debug(

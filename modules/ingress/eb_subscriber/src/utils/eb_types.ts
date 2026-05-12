@@ -3,17 +3,22 @@ import type { Channel } from "pusher-js";
 /**
  * Configuration for Empathic Building API connection
  */
-interface EmpathicBuildingConfig {
+interface EBApiConfig {
+    baseUrl: string;
+    // Authentication: either provide username/password OR bearerToken
+    username: string;
+    password: string;
+}
+
+/**
+ * Configuration for Pusher connection to Empathic Building
+ */
+interface EBPusherConfig {
     baseUrl: string;
     pusherKey: string;
     pusherCluster: string;
-    // Authentication: either provide username/password OR bearerToken
-    username?: string;
-    password?: string;
-    bearerToken?: string; // Optional if username/password provided
-    organizationIds?: string[];
-    locationIds?: string[];
-    subscribeToNotifications?: boolean;
+    organizationIds: string[];
+    locationIds: string[];
     reconnectDelayMs: number;
     maxReconnectAttempts: number;
 }
@@ -38,9 +43,19 @@ interface TokenData {
     tokenType: string;
 }
 
+/**
+ * Simple auth provider interface for obtaining bearer tokens.
+ * Implementations should handle refreshing and caching tokens.
+ */
+interface AuthProvider {
+    getToken(): Promise<string>;
+}
+
 export type {
-    EmpathicBuildingConfig,
+    EBApiConfig,
+    EBPusherConfig,
     DecodedEvent,
     ChannelSubscription,
-    TokenData
+    TokenData,
+    AuthProvider
 };
