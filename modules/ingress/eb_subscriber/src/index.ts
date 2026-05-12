@@ -6,7 +6,7 @@ import {
     schemaManager,
     ebPusherService
 } from "./deps";
-import { logger } from "@spine/shared";
+import { logger } from "./utils/logger";
 import { healthRoutes } from "./routes/health";
 import { setupEmpathicBuildingHandlers } from "./utils/eb_helper";
 

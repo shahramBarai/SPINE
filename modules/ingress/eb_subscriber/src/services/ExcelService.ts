@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import * as fs from "fs";
 import * as path from "path";
-import { logger } from "@spine/shared";
+import { logger } from "../utils/logger";
 
 interface EventData {
     eventType: string;

@@ -5,7 +5,7 @@
  * - setupEmpathicBuildingHandlers: Set up Empathic Building event handlers (connection events, event handlers, error handlers, etc.)
  */
 
-import { logger } from "@spine/shared";
+import { logger } from "../utils/logger";
 import { ebPusherService, kafkaProducer, excelService, configs } from "../deps";
 import type { DecodedEvent } from "./eb_types";
 import {

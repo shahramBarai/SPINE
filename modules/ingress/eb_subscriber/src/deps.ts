@@ -4,6 +4,7 @@ import Fastify, {
 } from "fastify";
 import cors from "@fastify/cors";
 import * as configs from "./utils/config";
+import { logger } from "./utils/logger";
 
 // Initialize services
 import { KafkaProducer, ServiceSchemaManager } from "@spine/messaging";
@@ -16,7 +17,11 @@ import { ExcelService } from "./services/ExcelService";
 const excelService = configs.SEND_TO === "excel" ? new ExcelService() : null;
 const kafkaProducer =
     configs.SEND_TO === "kafka"
-        ? new KafkaProducer(configs.getKafkaConfig(), configs.getKafkaTopic())
+        ? new KafkaProducer(
+              configs.getKafkaConfig(),
+              configs.getKafkaTopic(),
+              logger
+          )
         : null;
 const schemaManager =
     configs.SEND_TO === "kafka"

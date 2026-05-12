@@ -3,7 +3,7 @@ import Pusher from "pusher-js";
 import type { Channel } from "pusher-js";
 import { gunzipSync } from "node:zlib";
 import { Buffer } from "node:buffer";
-import { logger } from "@spine/shared";
+import { logger } from "../utils/logger";
 import type {
     EBPusherConfig,
     ChannelSubscription,

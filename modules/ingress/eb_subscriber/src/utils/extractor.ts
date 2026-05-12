@@ -4,7 +4,7 @@
  * Reuses types.RawMeasurement and types.KafkaOutputEvent.
  */
 
-import { logger } from "@spine/shared";
+import { logger } from "../utils/logger";
 
 /**
  * Internal record before campusId is applied.

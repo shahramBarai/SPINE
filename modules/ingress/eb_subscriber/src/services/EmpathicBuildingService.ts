@@ -1,4 +1,4 @@
-import { logger } from "@spine/shared";
+import { logger } from "../utils/logger";
 import type { EBApiConfig, TokenData } from "../utils/eb_types";
 
 class EmpathicBuildingService {
