@@ -2,6 +2,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import * as config from "./utils/config";
+import { logger } from "./utils/logger";
 
 // Types
 import type { FastifyPluginAsync, FastifyInstance } from "fastify";
@@ -25,7 +26,7 @@ try {
     process.exit(1);
 }
 
-const kafkaProducer = new KafkaProducer(kafkaConfig, kafkaTopic);
+const kafkaProducer = new KafkaProducer(kafkaConfig, kafkaTopic, logger);
 const schemaManager = new ServiceSchemaManager(schemaRegistryConfig);
 const mqttService = new MQTTService(mqttConfig, schemaManager, kafkaProducer);
 
