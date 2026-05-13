@@ -114,6 +114,14 @@ const HIGH_FPS_THRESHOLD = 52;
 const BOT_SPACE_TYPE_URI = "https://w3id.org/bot#Space";
 const GLOBAL_ID_IFC_ROOT_PROPERTY = "globalIdIfcRoot_attribute_simple";
 const BOT_SPACE_HIGHLIGHT_SUBSET_ID = "bot-space-highlight";
+const IFC_ENTITY_HIGHLIGHT_SUBSET_ID = "ifc-entity-highlight";
+const IFC_MULTI_SELECT_SUBSET_ID = "ifc-multi-select-highlight";
+
+type ClickedIfcEntity = {
+  selectionId: string;
+  modelID: number;
+  expressId: number;
+};
 
 const MODEL_STAGE_PROGRESS: Record<ModelLoadStage, number> = {
   preparing: 5,
@@ -353,6 +361,8 @@ export const ViewerPane = ({
   const [modelLoadState, setModelLoadState] = useState<ModelLoadState | null>(null);
   const [performanceMetrics, setPerformanceMetrics] = useState({ fps: 0, triangles: 0, drawCalls: 0 });
   const [componentInfo, setComponentInfo] = useState<ComponentInfo | null>(null);
+  const [modifierHint, setModifierHint] = useState<"add" | "remove" | null>(null);
+  const [cursorHintPosition, setCursorHintPosition] = useState<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -366,12 +376,21 @@ export const ViewerPane = ({
   const visibleSelectionIdsRef = useRef<Set<string>>(new Set());
   const selectedModelHelperRef = useRef<THREE.BoxHelper | null>(null);
   const componentInfoCacheRef = useRef<Map<string, ComponentInfo>>(new Map());
+  const componentInfoRequestIdRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const metricsUpdateRef = useRef<number>(0);
   const performanceMonitorRef = useRef<PerformanceMonitor | null>(null);
   const adaptivePixelRatioRef = useRef<number>(Math.min(window.devicePixelRatio, MAX_ADAPTIVE_PIXEL_RATIO));
   const materialSnapshotsRef = useRef<Map<string, MaterialSnapshot>>(new Map());
+  const focusedMaterialSnapshotsRef = useRef<Map<string, MaterialSnapshot>>(new Map());
+  const focusedSubsetRef = useRef<THREE.Object3D | null>(null);
+  const focusedHighlightMaterialRef = useRef<THREE.Material | null>(null);
+  const multiSelectedEntitiesRef = useRef<Map<string, ClickedIfcEntity>>(new Map());
+  const multiHighlightSubsetsRef = useRef<Map<string, THREE.Object3D>>(new Map());
+  const multiHighlightMaterialRef = useRef<THREE.Material | null>(null);
   const guidToExpressIdCacheRef = useRef<Map<string, Map<string, number>>>(new Map());
+  const focusedIfcEntityRef = useRef<ClickedIfcEntity | null>(null);
+  const lastPointerPositionRef = useRef<{ x: number; y: number } | null>(null);
   const [loadedModelsVersion, setLoadedModelsVersion] = useState(0);
   const selectedIfcFile = useMemo(() => parseSelectedIfcFile(selectedId), [selectedId]);
   const selectedDiscipline = useMemo(() => {
@@ -518,9 +537,318 @@ export const ViewerPane = ({
     }
   };
 
+  const clearFocusedEntityHighlightSubset = () => {
+    const records = loadedModelsBySelectionRef.current;
+    for (const record of records.values()) {
+      const ifcModel = record.model as {
+        modelID?: number;
+        ifcManager?: {
+          removeSubset?: (modelID: number, material?: unknown, customID?: string) => void;
+        };
+      };
+
+      if (typeof ifcModel.modelID !== "number") {
+        continue;
+      }
+
+      try {
+        ifcModel.ifcManager?.removeSubset?.(ifcModel.modelID, undefined, IFC_ENTITY_HIGHLIGHT_SUBSET_ID);
+      } catch (error) {
+        console.warn("Failed to clear focused IFC entity subset", error);
+      }
+    }
+
+    const scene = sceneRef.current;
+    if (scene && focusedSubsetRef.current) {
+      scene.remove(focusedSubsetRef.current);
+    }
+    focusedSubsetRef.current = null;
+
+    if (focusedHighlightMaterialRef.current) {
+      focusedHighlightMaterialRef.current.dispose();
+      focusedHighlightMaterialRef.current = null;
+    }
+  };
+
+  const clearMultiSelectHighlightSubsets = () => {
+    const records = loadedModelsBySelectionRef.current;
+    for (const record of records.values()) {
+      const ifcModel = record.model as {
+        modelID?: number;
+        ifcManager?: {
+          removeSubset?: (modelID: number, material?: unknown, customID?: string) => void;
+        };
+      };
+
+      if (typeof ifcModel.modelID !== "number") {
+        continue;
+      }
+
+      try {
+        ifcModel.ifcManager?.removeSubset?.(ifcModel.modelID, undefined, IFC_MULTI_SELECT_SUBSET_ID);
+      } catch (error) {
+        console.warn("Failed to clear multi-select IFC subset", error);
+      }
+    }
+
+    const scene = sceneRef.current;
+    if (scene) {
+      for (const subset of multiHighlightSubsetsRef.current.values()) {
+        scene.remove(subset);
+      }
+    }
+    multiHighlightSubsetsRef.current.clear();
+
+    if (multiHighlightMaterialRef.current) {
+      multiHighlightMaterialRef.current.dispose();
+      multiHighlightMaterialRef.current = null;
+    }
+  };
+
+  const updateMultiSelectHighlight = () => {
+    clearMultiSelectHighlightSubsets();
+
+    const entities = Array.from(multiSelectedEntitiesRef.current.values());
+    if (!entities.length) {
+      return;
+    }
+
+    const scene = sceneRef.current;
+    if (!scene) {
+      return;
+    }
+
+    const highlightMaterial = new THREE.MeshLambertMaterial({
+      color: new THREE.Color("#f8fafc"),
+      emissive: new THREE.Color("#22d3ee"),
+      emissiveIntensity: 0.8,
+      transparent: true,
+      opacity: 0.98,
+      depthTest: false,
+    });
+    multiHighlightMaterialRef.current = highlightMaterial;
+
+    const groupedBySelection = new Map<string, { modelID: number; ids: number[] }>();
+    for (const entity of entities) {
+      const current = groupedBySelection.get(entity.selectionId);
+      if (current) {
+        current.ids.push(entity.expressId);
+      } else {
+        groupedBySelection.set(entity.selectionId, { modelID: entity.modelID, ids: [entity.expressId] });
+      }
+    }
+
+    for (const [selectionId, group] of groupedBySelection.entries()) {
+      const record = loadedModelsBySelectionRef.current.get(selectionId);
+      if (!record) {
+        continue;
+      }
+
+      const ifcModel = record.model as {
+        ifcManager?: {
+          createSubset?: (config: {
+            modelID: number;
+            ids: number[];
+            material?: THREE.Material;
+            scene?: THREE.Scene;
+            removePrevious?: boolean;
+            customID?: string;
+          }) => unknown;
+        };
+      };
+
+      try {
+        const subset = ifcModel.ifcManager?.createSubset?.({
+          modelID: group.modelID,
+          ids: Array.from(new Set(group.ids)),
+          material: highlightMaterial,
+          scene,
+          removePrevious: true,
+          customID: IFC_MULTI_SELECT_SUBSET_ID,
+        });
+
+        if (subset instanceof THREE.Object3D) {
+          multiHighlightSubsetsRef.current.set(selectionId, subset);
+        }
+      } catch (error) {
+        console.warn("Failed to create multi-select IFC subset", error);
+      }
+    }
+  };
+
   const restoreDefaultIfcVisualization = () => {
     clearBotSpaceHighlightSubset();
     restoreMaterialVisualization();
+  };
+
+  const restoreFocusedEntityVisualization = () => {
+    const snapshots = focusedMaterialSnapshotsRef.current;
+
+    clearFocusedEntityHighlightSubset();
+
+    if (snapshots.size) {
+      for (const model of modelsRef.current) {
+        model.traverse((object) => {
+          if (!(object instanceof THREE.Mesh)) {
+            return;
+          }
+
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          for (const material of materials) {
+            try {
+              const snapshot = snapshots.get(material.uuid);
+              if (!snapshot) {
+                continue;
+              }
+
+              material.transparent = snapshot.transparent;
+              material.opacity = snapshot.opacity;
+
+              const mutable = material as THREE.Material & {
+                color?: THREE.Color;
+                emissive?: THREE.Color;
+                emissiveIntensity?: number;
+              };
+
+              if (snapshot.color && mutable.color) {
+                mutable.color.copy(snapshot.color);
+              }
+              if (snapshot.emissive && mutable.emissive) {
+                mutable.emissive.copy(snapshot.emissive);
+              }
+              if (typeof snapshot.emissiveIntensity === "number" && typeof mutable.emissiveIntensity === "number") {
+                mutable.emissiveIntensity = snapshot.emissiveIntensity;
+              }
+
+              material.needsUpdate = true;
+            } catch (error) {
+              console.warn("Failed to restore focused IFC material snapshot", error);
+            }
+          }
+        });
+      }
+
+      snapshots.clear();
+    }
+
+    focusedIfcEntityRef.current = null;
+  };
+
+  const applyFocusedEntityVisualization = (focused: ClickedIfcEntity) => {
+    const records = loadedModelsBySelectionRef.current;
+    const record = records.get(focused.selectionId);
+    if (!record) {
+      restoreFocusedEntityVisualization();
+      return;
+    }
+
+    restoreFocusedEntityVisualization();
+
+    let focusedHighlightApplied = false;
+
+    const ifcModel = record.model as {
+      modelID?: number;
+      ifcManager?: {
+        createSubset?: (config: {
+          modelID: number;
+          ids: number[];
+          material?: THREE.Material;
+          scene?: THREE.Scene;
+          removePrevious?: boolean;
+          customID?: string;
+        }) => unknown;
+      };
+    };
+
+    const scene = sceneRef.current;
+    if (scene && typeof ifcModel.modelID === "number" && typeof ifcModel.ifcManager?.createSubset === "function") {
+      const highlightMaterial = new THREE.MeshLambertMaterial({
+        color: new THREE.Color("#f8fafc"),
+        emissive: new THREE.Color("#38bdf8"),
+        emissiveIntensity: 0.85,
+        transparent: true,
+        opacity: 0.98,
+        depthTest: false,
+      });
+
+      try {
+        const subset = ifcModel.ifcManager.createSubset({
+          modelID: ifcModel.modelID,
+          ids: [focused.expressId],
+          material: highlightMaterial,
+          scene,
+          removePrevious: true,
+          customID: IFC_ENTITY_HIGHLIGHT_SUBSET_ID,
+        });
+        focusedHighlightMaterialRef.current = highlightMaterial;
+        if (subset instanceof THREE.Object3D) {
+          focusedSubsetRef.current = subset;
+        }
+        focusedHighlightApplied = true;
+      } catch (error) {
+        highlightMaterial.dispose();
+        focusedHighlightMaterialRef.current = null;
+        console.warn("Failed to create focused IFC entity subset", error);
+      }
+    }
+
+    if (!focusedHighlightApplied) {
+      focusedIfcEntityRef.current = null;
+      return;
+    }
+
+    const snapshots = focusedMaterialSnapshotsRef.current;
+    for (const model of modelsRef.current) {
+      model.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) {
+          return;
+        }
+
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) {
+          try {
+            if (!snapshots.has(material.uuid)) {
+              const mutable = material as THREE.Material & {
+                color?: THREE.Color;
+                emissive?: THREE.Color;
+                emissiveIntensity?: number;
+              };
+              snapshots.set(material.uuid, {
+                transparent: material.transparent,
+                opacity: material.opacity,
+                color: mutable.color ? mutable.color.clone() : undefined,
+                emissive: mutable.emissive ? mutable.emissive.clone() : undefined,
+                emissiveIntensity:
+                  typeof mutable.emissiveIntensity === "number" ? mutable.emissiveIntensity : undefined,
+              });
+            }
+
+            const mutable = material as THREE.Material & {
+              color?: THREE.Color;
+              emissive?: THREE.Color;
+              emissiveIntensity?: number;
+            };
+
+            material.transparent = true;
+            material.opacity = Math.max(0.35, material.opacity * 0.6);
+            if (mutable.color) {
+              mutable.color.multiplyScalar(0.55);
+            }
+            if (mutable.emissive) {
+              mutable.emissive.multiplyScalar(0.45);
+            }
+            if (typeof mutable.emissiveIntensity === "number") {
+              mutable.emissiveIntensity *= 0.6;
+            }
+            material.needsUpdate = true;
+          } catch (error) {
+            console.warn("Failed to dim non-selected IFC material", error);
+          }
+        }
+      });
+    }
+
+    focusedIfcEntityRef.current = focused;
   };
 
   const applyDimToAllIfcEntities = () => {
@@ -715,15 +1043,55 @@ export const ViewerPane = ({
     return null;
   };
 
-  const loadComponentInfo = async (intersection: THREE.Intersection<THREE.Object3D>) => {
+  const resolveClickedIfcEntity = (
+    intersection: THREE.Intersection<THREE.Object3D>
+  ): ClickedIfcEntity | null => {
     const mesh = intersection.object as THREE.Mesh;
     if (!(mesh instanceof THREE.Mesh)) {
-      return;
+      return null;
     }
 
     const record = resolveModelRecord(mesh);
     if (!record) {
-      return;
+      return null;
+    }
+
+    const ifcModel = record.model as {
+      modelID?: number;
+      ifcManager?: {
+        getExpressId?: (geometry: THREE.BufferGeometry, faceIndex: number) => number;
+      };
+    };
+
+    const modelID = ifcModel.modelID;
+    const manager = ifcModel.ifcManager;
+    const faceIndex = intersection.faceIndex;
+    if (typeof modelID !== "number" || !manager || typeof faceIndex !== "number") {
+      return null;
+    }
+
+    const expressId = manager.getExpressId?.(mesh.geometry, faceIndex);
+    if (typeof expressId !== "number" || expressId < 0) {
+      return null;
+    }
+
+    return {
+      selectionId: record.ifc.selectionId,
+      modelID,
+      expressId,
+    };
+  };
+
+  const toClickedEntityKey = (entity: ClickedIfcEntity): string => `${entity.selectionId}:${entity.expressId}`;
+
+  const loadComponentInfo = async (
+    focusedEntity: ClickedIfcEntity
+  ): Promise<ClickedIfcEntity | null> => {
+    const requestId = ++componentInfoRequestIdRef.current;
+
+    const record = loadedModelsBySelectionRef.current.get(focusedEntity.selectionId);
+    if (!record) {
+      return null;
     }
 
     const ifcModel = record.model as {
@@ -737,36 +1105,41 @@ export const ViewerPane = ({
 
     const modelID = ifcModel.modelID;
     const manager = ifcModel.ifcManager;
-    const faceIndex = intersection.faceIndex;
-    if (typeof modelID !== "number" || !manager || typeof faceIndex !== "number") {
-      return;
+    if (typeof modelID !== "number" || !manager) {
+      return null;
     }
 
-    const expressId = manager.getExpressId?.(mesh.geometry, faceIndex);
-    if (typeof expressId !== "number" || expressId < 0) {
-      return;
+    const expressId = focusedEntity.expressId;
+    if (expressId < 0) {
+      return null;
     }
 
     const cacheKey = `${modelID}:${expressId}`;
     const cached = componentInfoCacheRef.current.get(cacheKey);
     if (cached) {
-      setComponentInfo(cached);
-      return;
+      if (requestId === componentInfoRequestIdRef.current) {
+        setComponentInfo(cached);
+      }
+      return focusedEntity;
     }
 
-    setComponentInfo({
-      modelName: record.ifc.file.name,
-      expressId,
-      globalId: "",
-      type: "",
-      name: "",
-      rows: [],
-      loading: true,
-    });
+    if (requestId === componentInfoRequestIdRef.current) {
+      setComponentInfo({
+        modelName: record.ifc.file.name,
+        expressId,
+        globalId: "",
+        type: "",
+        name: "",
+        rows: [],
+        loading: true,
+      });
+    }
 
     try {
-      const itemProperties = await manager.getItemProperties?.(modelID, expressId, true);
-      const propertySets = await manager.getPropertySets?.(modelID, expressId, true);
+      const [itemProperties, propertySets] = await Promise.all([
+        manager.getItemProperties?.(modelID, expressId, true),
+        manager.getPropertySets?.(modelID, expressId, true),
+      ]);
       const item = (itemProperties ?? {}) as Record<string, unknown>;
 
       const info: ComponentInfo = {
@@ -779,17 +1152,23 @@ export const ViewerPane = ({
       };
 
       componentInfoCacheRef.current.set(cacheKey, info);
-      setComponentInfo(info);
+      if (requestId === componentInfoRequestIdRef.current) {
+        setComponentInfo(info);
+      }
+      return focusedEntity;
     } catch (error) {
-      setComponentInfo({
-        modelName: record.ifc.file.name,
-        expressId,
-        globalId: "",
-        type: "",
-        name: "",
-        rows: [],
-        error: error instanceof Error ? error.message : "Failed to read IFC properties.",
-      });
+      if (requestId === componentInfoRequestIdRef.current) {
+        setComponentInfo({
+          modelName: record.ifc.file.name,
+          expressId,
+          globalId: "",
+          type: "",
+          name: "",
+          rows: [],
+          error: error instanceof Error ? error.message : "Failed to read IFC properties.",
+        });
+      }
+      return focusedEntity;
     }
   };
 
@@ -907,25 +1286,101 @@ export const ViewerPane = ({
       const raycaster = raycasterRef.current;
       raycaster.setFromCamera({ x, y }, camera);
       const intersects = raycaster.intersectObjects(modelsRef.current, true);
+      const isAddSelection = event.ctrlKey;
+      const isRemoveSelection = event.altKey;
 
       if (intersects.length === 0) {
+        if (isAddSelection || isRemoveSelection) {
+          return;
+        }
+
+        componentInfoRequestIdRef.current += 1;
+        multiSelectedEntitiesRef.current.clear();
+        clearMultiSelectHighlightSubsets();
+        restoreFocusedEntityVisualization();
         setComponentInfo(null);
         if (!selectedIfcFileRef.current) return;
         onSelectRef.current(null);
         return;
       }
 
-      void loadComponentInfo(intersects[0]);
+      const focusedEntity = resolveClickedIfcEntity(intersects[0]);
+      if (!focusedEntity) {
+        return;
+      }
+
+      if (isAddSelection || isRemoveSelection) {
+        componentInfoRequestIdRef.current += 1;
+        restoreFocusedEntityVisualization();
+
+        const key = toClickedEntityKey(focusedEntity);
+        if (isRemoveSelection) {
+          multiSelectedEntitiesRef.current.delete(key);
+        } else {
+          multiSelectedEntitiesRef.current.set(key, focusedEntity);
+        }
+
+        updateMultiSelectHighlight();
+
+        if (multiSelectedEntitiesRef.current.size > 1) {
+          setComponentInfo(null);
+        }
+        return;
+      }
+
+      multiSelectedEntitiesRef.current.clear();
+      clearMultiSelectHighlightSubsets();
+
+      // Apply visual focus immediately; metadata fetch can complete asynchronously.
+      applyFocusedEntityVisualization(focusedEntity);
+      void loadComponentInfo(focusedEntity);
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey) {
+        setModifierHint("remove");
+        if (lastPointerPositionRef.current) {
+          setCursorHintPosition(lastPointerPositionRef.current);
+        }
+      } else if (event.ctrlKey) {
+        setModifierHint("add");
+        if (lastPointerPositionRef.current) {
+          setCursorHintPosition(lastPointerPositionRef.current);
+        }
+      }
+
       if (event.key !== "Escape") return;
       if (!selectedIfcFileRef.current) return;
+      multiSelectedEntitiesRef.current.clear();
+      clearMultiSelectHighlightSubsets();
+        restoreFocusedEntityVisualization();
       onSelectRef.current(null);
     };
 
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (!event.altKey && !event.ctrlKey) {
+        setModifierHint(null);
+        setCursorHintPosition(null);
+      }
+    };
+
+    const onWindowMouseMove = (event: MouseEvent) => {
+      lastPointerPositionRef.current = { x: event.clientX, y: event.clientY };
+
+      if (!event.altKey && !event.ctrlKey) {
+        setModifierHint(null);
+        setCursorHintPosition(null);
+        return;
+      }
+
+      setModifierHint(event.altKey ? "remove" : "add");
+      setCursorHintPosition({ x: event.clientX, y: event.clientY });
+    };
+
     renderer.domElement.addEventListener("click", onCanvasClick);
+    window.addEventListener("mousemove", onWindowMouseMove);
     window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
     onResize();
     tick();
 
@@ -936,7 +1391,9 @@ export const ViewerPane = ({
 
     return () => {
       renderer.domElement.removeEventListener("click", onCanvasClick);
+      window.removeEventListener("mousemove", onWindowMouseMove);
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("resize", onResize);
       resizeObserver.disconnect();
       if (rafRef.current !== null) {
@@ -951,8 +1408,13 @@ export const ViewerPane = ({
       loadedModelsBySelectionRef.current.clear();
       componentInfoCacheRef.current.clear();
       guidToExpressIdCacheRef.current.clear();
+      multiSelectedEntitiesRef.current.clear();
+      clearMultiSelectHighlightSubsets();
+      setCursorHintPosition(null);
+      setModifierHint(null);
       setComponentInfo(null);
       restoreDefaultIfcVisualization();
+      restoreFocusedEntityVisualization();
       clearSelectedModelHighlight();
       
       controls.dispose();
@@ -1000,6 +1462,7 @@ export const ViewerPane = ({
       const records = loadedModelsBySelectionRef.current;
       const desired = new Map(viewerFiles.map((file) => [file.selectionId, file]));
 
+      restoreFocusedEntityVisualization();
       clearSelectedModelHighlight();
 
       for (const [selectionId, record] of Array.from(records.entries())) {
@@ -1184,6 +1647,48 @@ export const ViewerPane = ({
   }, [selectedId]);
 
   useEffect(() => {
+    const focused = focusedIfcEntityRef.current;
+    if (!focused) {
+      return;
+    }
+
+    if (!selectedId) {
+      restoreFocusedEntityVisualization();
+      return;
+    }
+
+    const selectedFile = parseSelectedIfcFile(selectedId);
+    if (!selectedFile) {
+      restoreFocusedEntityVisualization();
+      return;
+    }
+
+    const currentSelectionId = makeIfcFileSelectionId(selectedFile.disciplineId, selectedFile.fileKey);
+    if (currentSelectionId !== focused.selectionId) {
+      restoreFocusedEntityVisualization();
+    }
+  }, [selectedId]);
+
+  useEffect(() => {
+    const validSelectionIds = new Set(viewerFiles.map((file) => file.selectionId));
+    let changed = false;
+
+    for (const [key, entity] of multiSelectedEntitiesRef.current.entries()) {
+      if (!validSelectionIds.has(entity.selectionId)) {
+        multiSelectedEntitiesRef.current.delete(key);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      updateMultiSelectHighlight();
+      if (multiSelectedEntitiesRef.current.size > 1) {
+        setComponentInfo(null);
+      }
+    }
+  }, [viewerFiles]);
+
+  useEffect(() => {
     let cancelled = false;
 
     const run = async () => {
@@ -1312,6 +1817,16 @@ export const ViewerPane = ({
             <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
               <div>
                 <div className="text-xs font-semibold">IFC Component</div>
+
+            {modifierHint && cursorHintPosition && (
+              <div
+                className="pointer-events-none fixed z-[200] rounded-md border border-primary/60 bg-background px-2 py-0.5 text-sm font-bold text-primary shadow-[0_0_0_1px_rgba(14,165,233,0.35),0_6px_14px_rgba(15,23,42,0.45)]"
+                style={{ left: `${cursorHintPosition.x + 14}px`, top: `${cursorHintPosition.y + 14}px` }}
+                aria-hidden="true"
+              >
+                {modifierHint === "add" ? "+" : "-"}
+              </div>
+            )}
                 <div className="text-[10px] font-mono text-muted-foreground truncate">{componentInfo.modelName}</div>
               </div>
               <button

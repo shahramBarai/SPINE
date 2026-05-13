@@ -1,4 +1,4 @@
-import { Database, Filter, Download, ChevronUp, ChevronDown, Search, Loader2 } from "lucide-react";
+import { Database, Filter, Download, ChevronUp, ChevronDown, Search, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
@@ -25,11 +25,15 @@ const prefixColor = (s: string) => {
 export const BottomPanel = ({
   collapsed,
   onToggle,
+  maximized,
+  onToggleMaximize,
   onGraphResultChange,
   selectedNodeId,
 }: {
   collapsed: boolean;
   onToggle: () => void;
+  maximized: boolean;
+  onToggleMaximize: () => void;
   onGraphResultChange: (graph: GraphData | null, triples?: Triple[]) => void;
   selectedNodeId?: string | null;
 }) => {
@@ -126,12 +130,11 @@ export const BottomPanel = ({
   return (
     <div
       className={cn(
-        "shrink-0 border-t border-border/60 glass-strong overflow-hidden transition-[height] duration-300",
-        collapsed ? "h-10" : "h-64"
+        "h-full min-h-0 border border-border/60 rounded-md glass-strong overflow-hidden flex flex-col"
       )}
     >
       {/* Header */}
-      <div className="flex items-center h-10 px-3 border-b border-border/60 gap-3">
+      <div className="flex items-center h-10 shrink-0 px-3 border-b border-border/60 gap-3">
         <Database className="h-3.5 w-3.5 text-primary" />
         <span className="text-[11px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
           Semantic Search
@@ -147,6 +150,13 @@ export const BottomPanel = ({
             <Download className="h-3.5 w-3.5" />
           </button>
           <button
+            onClick={onToggleMaximize}
+            className="h-7 w-7 rounded hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground"
+            aria-label={maximized ? "Restore" : "Maximize"}
+          >
+            {maximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+          </button>
+          <button
             onClick={onToggle}
             className="h-7 w-7 rounded hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground"
             aria-label={collapsed ? "Expand" : "Collapse"}
@@ -157,7 +167,7 @@ export const BottomPanel = ({
       </div>
 
       {!collapsed && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 h-[calc(100%-40px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 min-h-0">
           <section className="border-r border-border/40 p-3 min-h-0 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <h3 className="text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground">Semantic Search</h3>

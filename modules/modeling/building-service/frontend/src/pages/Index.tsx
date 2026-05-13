@@ -8,6 +8,7 @@ import { useApiHealthQuery, useProjectTreeQuery } from "@/hooks/use-twin-data";
 import { type GraphData } from "@/lib/twin-api";
 import { type IfcNode, type Triple } from "@/lib/twin-data";
 import { cn } from "@/lib/utils";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 type LoadedIfcFile = File;
 type ProjectName = "Metropolia Myllypuro Campus" | "SmartLab";
@@ -47,13 +48,14 @@ const Index = () => {
   const [semanticGraphResult, setSemanticGraphResult] = useState<GraphData | null>(null);
   const [semanticTriples, setSemanticTriples] = useState<Triple[]>([]);
   const [layers, setLayers] = useState({ geometry: true, semantic: true, heatmap: false });
-  const [maximized, setMaximized] = useState<"viewer" | "graph" | null>(null);
+  const [maximized, setMaximized] = useState<"viewer" | "graph" | "semantic" | null>(null);
 
   const loadedIfcByDiscipline = loadedIfcByProject[selectedProject];
   const ifcVisibilityByFile = ifcVisibilityByProject[selectedProject];
   const liveMode = apiHealthQuery.data?.timescaledb.connected ?? false;
-  const viewerHidden = maximized === "graph";
-  const graphHidden = maximized === "viewer";
+  const semanticMaximized = maximized === "semantic";
+  const viewerHidden = maximized === "graph" || semanticMaximized;
+  const graphHidden = maximized === "viewer" || semanticMaximized;
 
   useEffect(() => {
     setSelectedId(null);
@@ -137,51 +139,82 @@ const Index = () => {
           liveMode={liveMode}
         />
 
-        <main className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 flex gap-2 p-2 min-h-0">
-            <section
-              className={cn("min-w-0", viewerHidden ? "hidden" : "flex-1")}
-              aria-label="3D Viewer"
-              aria-hidden={viewerHidden}
-            >
-              <ViewerPane
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-                liveMode={liveMode}
-                loadedIfcByDiscipline={loadedIfcByDiscipline}
-                ifcVisibilityByFile={ifcVisibilityByFile}
-                semanticTriples={semanticTriples}
-                maximized={maximized === "viewer"}
-                onToggleMaximize={() => setMaximized((m) => (m === "viewer" ? null : "viewer"))}
-              />
-            </section>
-            <section
-              className={cn("min-w-0", graphHidden ? "hidden" : maximized === "graph" ? "flex-1" : "w-[42%]")}
-              aria-label="Relationship Graph"
-              aria-hidden={graphHidden}
-            >
-              <GraphPane
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-                graphDataOverride={semanticGraphResult}
-                semanticTriples={semanticTriples}
-                maximized={maximized === "graph"}
-                onToggleMaximize={() => setMaximized((m) => (m === "graph" ? null : "graph"))}
-              />
-            </section>
-          </div>
+        <main className="flex-1 flex flex-col min-w-0 min-h-0">
+          <div className="flex-1 min-h-0 p-2">
+            <ResizablePanelGroup direction="vertical" className="min-h-0 gap-2">
+              <ResizablePanel
+                defaultSize={68}
+                minSize={25}
+                className={cn("min-h-0", semanticMaximized ? "hidden" : "")}
+              >
+                <ResizablePanelGroup direction="horizontal" className="min-h-0 gap-2">
+                  <ResizablePanel
+                    defaultSize={58}
+                    minSize={25}
+                    className={cn("min-w-0", maximized === "graph" ? "hidden" : "")}
+                  >
+                    <section
+                      className={cn("h-full min-w-0", viewerHidden ? "hidden" : "")}
+                      aria-label="3D Viewer"
+                      aria-hidden={viewerHidden}
+                    >
+                      <ViewerPane
+                        selectedId={selectedId}
+                        onSelect={setSelectedId}
+                        liveMode={liveMode}
+                        loadedIfcByDiscipline={loadedIfcByDiscipline}
+                        ifcVisibilityByFile={ifcVisibilityByFile}
+                        semanticTriples={semanticTriples}
+                        maximized={maximized === "viewer"}
+                        onToggleMaximize={() => setMaximized((m) => (m === "viewer" ? null : "viewer"))}
+                      />
+                    </section>
+                  </ResizablePanel>
 
-          <BottomPanel
-            collapsed={bottomCollapsed}
-            onToggle={() => setBottomCollapsed((v) => !v)}
-            onGraphResultChange={(graph, triples) => {
-              setSemanticGraphResult(graph);
-              if (triples) {
-                setSemanticTriples(triples);
-              }
-            }}
-            selectedNodeId={selectedId}
-          />
+                  <ResizableHandle withHandle className={cn(maximized === "viewer" || maximized === "graph" ? "hidden" : "")} />
+
+                  <ResizablePanel
+                    defaultSize={42}
+                    minSize={25}
+                    className={cn("min-w-0", maximized === "viewer" ? "hidden" : "")}
+                  >
+                    <section
+                      className={cn("h-full min-w-0", graphHidden ? "hidden" : "")}
+                      aria-label="Relationship Graph"
+                      aria-hidden={graphHidden}
+                    >
+                      <GraphPane
+                        selectedId={selectedId}
+                        onSelect={setSelectedId}
+                        graphDataOverride={semanticGraphResult}
+                        semanticTriples={semanticTriples}
+                        maximized={maximized === "graph"}
+                        onToggleMaximize={() => setMaximized((m) => (m === "graph" ? null : "graph"))}
+                      />
+                    </section>
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle className={cn(semanticMaximized ? "hidden" : "")} />
+
+              <ResizablePanel defaultSize={32} minSize={10} className="min-h-0">
+                <BottomPanel
+                  collapsed={bottomCollapsed}
+                  onToggle={() => setBottomCollapsed((v) => !v)}
+                  maximized={semanticMaximized}
+                  onToggleMaximize={() => setMaximized((m) => (m === "semantic" ? null : "semantic"))}
+                  onGraphResultChange={(graph, triples) => {
+                    setSemanticGraphResult(graph);
+                    if (triples) {
+                      setSemanticTriples(triples);
+                    }
+                  }}
+                  selectedNodeId={selectedId}
+                />
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
         </main>
       </div>
     </div>
