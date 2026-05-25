@@ -1,4 +1,4 @@
-import { type ChangeEvent, useRef, useState } from "react";
+import { Fragment, type ChangeEvent, type Dispatch, type SetStateAction, useMemo, useRef, useState } from "react";
 import {
   Building2,
   ChevronRight,
@@ -23,14 +23,13 @@ import { type Sensor } from "@/lib/twin-data";
 import { useSensorsQuery } from "@/hooks/use-twin-data";
 import { useToast } from "@/hooks/use-toast";
 import { SelectedElementPanel } from "./SelectedElementPanel";
+import { type ViewerComponentInfo, type ViewerFloorOption } from "./ViewerPane";
 
 type LoadedIfcFile = File;
 type LoadedTtlFile = File;
 
 const getIfcFileKey = (file: LoadedIfcFile): string => `${file.name}:${file.size}:${file.lastModified}`;
 const getTtlFileKey = (file: LoadedTtlFile): string => `${file.name}:${file.size}:${file.lastModified}`;
-const makeIfcFileSelectionId = (disciplineId: string, fileKey: string): string =>
-  `${disciplineId}:ifc-file:${encodeURIComponent(fileKey)}`;
 
 const DISCIPLINES = [
   { id: "disc-ark", name: "ARK - Architectural" },
@@ -192,6 +191,11 @@ export const LeftSidebar = ({
   collapsed,
   onToggleCollapsed,
   liveMode,
+  selectedComponentInfo,
+  floorOptions,
+  selectedFloorKeys,
+  setSelectedFloorKeys,
+  getIfcSelectionId,
 }: {
   projectName: string;
   selectedId: string | null;
@@ -206,6 +210,11 @@ export const LeftSidebar = ({
   collapsed: boolean;
   onToggleCollapsed: () => void;
   liveMode: boolean;
+  selectedComponentInfo: ViewerComponentInfo | null;
+  floorOptions: ViewerFloorOption[];
+  selectedFloorKeys: string[];
+  setSelectedFloorKeys: Dispatch<SetStateAction<string[]>>;
+  getIfcSelectionId: (disciplineId: string, file: LoadedIfcFile) => string;
 }) => {
   const { data: sensorsData } = useSensorsQuery();
   const { toast } = useToast();
@@ -217,9 +226,29 @@ export const LeftSidebar = ({
   const [activeIfcDiscipline, setActiveIfcDiscipline] = useState<string | null>(null);
   const [activeTtlNode, setActiveTtlNode] = useState<string | null>(null);
   const [loadedTtlByNode, setLoadedTtlByNode] = useState<Record<string, LoadedTtlFile[]>>({});
+  const [floorsExpandedByFileSelectionId, setFloorsExpandedByFileSelectionId] = useState<Record<string, boolean>>({});
   const ifcFileInputRef = useRef<HTMLInputElement>(null);
   const ttlFileInputRef = useRef<HTMLInputElement>(null);
   const toggleGroup = (k: string) => setHiddenGroups((p) => ({ ...p, [k]: !p[k] }));
+
+  const floorOptionsBySelectionId = useMemo(() => {
+    const grouped = new Map<string, ViewerFloorOption[]>();
+
+    for (const option of floorOptions) {
+      const current = grouped.get(option.selectionId);
+      if (current) {
+        current.push(option);
+      } else {
+        grouped.set(option.selectionId, [option]);
+      }
+    }
+
+    for (const options of grouped.values()) {
+      options.sort((left, right) => left.label.localeCompare(right.label));
+    }
+
+    return grouped;
+  }, [floorOptions]);
 
   const lineId = (nodeId: string, line: "ifc" | "ttl") => `${nodeId}:${line}`;
 
@@ -573,31 +602,47 @@ export const LeftSidebar = ({
 
                   {ifcExpanded && ifcCount > 0 && (
                     <div className="ml-7 mr-1 mb-1 rounded border border-border/40 bg-background/20">
-                      {ifcFiles.map((file) => {
+                      {ifcFiles.map((file, fileIndex) => {
                         const fileKey = getIfcFileKey(file);
-                        const fileSelectionId = makeIfcFileSelectionId(discipline.id, fileKey);
+                        const fileSelectionId = getIfcSelectionId(discipline.id, file);
                         const isVisible = ifcVisibilityByFile[`${discipline.id}:${fileKey}`] ?? true;
+                        const fileFloorOptions = floorOptionsBySelectionId.get(fileSelectionId) ?? [];
+                        const floorsExpanded = floorsExpandedByFileSelectionId[fileSelectionId] ?? false;
+                        const fileFloorKeys = new Set(fileFloorOptions.map((option) => option.key));
+                        const selectedFileFloorKeys = selectedFloorKeys.filter((key) => fileFloorKeys.has(key));
+                        const allFloorsSelected = selectedFileFloorKeys.length === 0;
 
                         return (
-                          <div
-                            key={`${discipline.id}-${fileKey}`}
-                            className={cn(
-                              "flex items-center gap-1 px-2 py-1 text-[10px] font-mono",
-                              !isVisible && "opacity-50"
-                            )}
-                            title={file.name}
-                          >
+                          <Fragment key={`${discipline.id}-${fileIndex}-${fileKey}`}>
+                            <div
+                              className={cn(
+                                "flex items-center gap-1 px-2 py-1 text-[10px] font-mono",
+                                !isVisible && "opacity-50"
+                              )}
+                              title={file.name}
+                            >
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onSelect(fileSelectionId);
+                                if (fileFloorOptions.length > 0) {
+                                  setFloorsExpandedByFileSelectionId((prev) => ({
+                                    ...prev,
+                                    [fileSelectionId]: !floorsExpanded,
+                                  }));
+                                }
                               }}
                               className={cn(
-                                "flex-1 truncate text-left",
+                                "flex-1 truncate text-left inline-flex items-center gap-1",
                                 selectedId === fileSelectionId ? "text-primary" : "text-muted-foreground hover:text-foreground"
                               )}
                               title={file.name}
                             >
+                              {fileFloorOptions.length > 0 && (
+                                <ChevronRight
+                                  className={cn("h-3 w-3 shrink-0 transition-transform", floorsExpanded && "rotate-90")}
+                                />
+                              )}
                               {file.name}
                             </button>
                             <button
@@ -624,7 +669,54 @@ export const LeftSidebar = ({
                             >
                               <X className="h-3 w-3" />
                             </button>
-                          </div>
+                            </div>
+                            {floorsExpanded && fileFloorOptions.length > 0 && (
+                              <div className="ml-4 mr-1 mb-1 rounded border border-border/40 bg-background/30 p-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedFloorKeys((current) => current.filter((key) => !fileFloorKeys.has(key)));
+                                }}
+                                className={cn(
+                                  "w-full rounded px-2 py-1 text-left text-[10px] hover:bg-accent/60 flex items-center gap-2",
+                                  allFloorsSelected && "bg-primary/10 text-primary"
+                                )}
+                              >
+                                <input type="checkbox" readOnly checked={allFloorsSelected} className="h-3 w-3" />
+                                <span>All floors</span>
+                              </button>
+                              <div className="my-1 h-px bg-border/50" />
+                              <div className="max-h-40 overflow-y-auto space-y-0.5">
+                                {fileFloorOptions.map((option) => {
+                                  const checked = selectedFloorKeys.includes(option.key);
+
+                                  return (
+                                    <button
+                                      key={option.key}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedFloorKeys((current) => {
+                                          if (current.includes(option.key)) {
+                                            return current.filter((key) => key !== option.key);
+                                          }
+                                          return [...current, option.key];
+                                        });
+                                      }}
+                                      className={cn(
+                                        "w-full rounded px-2 py-1 text-left text-[10px] hover:bg-accent/60 flex items-center gap-2",
+                                        checked && "bg-primary/10 text-primary"
+                                      )}
+                                      title={option.label}
+                                    >
+                                      <input type="checkbox" readOnly checked={checked} className="h-3 w-3" />
+                                      <span className="truncate">{option.label}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              </div>
+                            )}
+                          </Fragment>
                         );
                       })}
                     </div>
@@ -732,7 +824,7 @@ export const LeftSidebar = ({
 
         {/* Selected Element details */}
         <SectionHeader icon={Eye} label="Selected Element" />
-        <SelectedElementPanel selectedId={selectedId} liveMode={liveMode} />
+        <SelectedElementPanel selectedId={selectedId} liveMode={liveMode} viewerComponentInfo={selectedComponentInfo} />
 
         <div className="mx-3 h-px bg-border/60" />
 

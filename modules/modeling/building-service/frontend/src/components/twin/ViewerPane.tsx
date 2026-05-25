@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Box, Maximize2, Minimize2, Move3d, Layers, Scan, X } from "lucide-react";
+import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
+import { Box, Maximize2, Minimize2, Move3d, Scan, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type IfcNode } from "@/lib/twin-data";
 import { useProjectTreeQuery } from "@/hooks/use-twin-data";
@@ -31,9 +31,27 @@ type ViewerIfcFile = {
   selectionId: string;
 };
 
+type IfcManagerLike = {
+  removeSubset?: (modelID: number, material?: unknown, customID?: string) => void;
+  createSubset?: (config: {
+    modelID: number;
+    ids: number[];
+    material?: THREE.Material;
+    scene?: THREE.Scene;
+    removePrevious?: boolean;
+    customID?: string;
+  }) => unknown;
+  getSpatialStructure?: (modelID: number, includeProperties?: boolean) => Promise<unknown>;
+  getAllItemsOfType?: (modelID: number, type: number, verbose?: boolean) => Promise<number[]>;
+  getItemProperties?: (modelID: number, expressID: number, recursive?: boolean) => Promise<unknown>;
+  types?: Record<string, number>;
+};
+
 type LoadedModelRecord = {
   model: THREE.Object3D;
   ifc: ViewerIfcFile;
+  modelID: number | null;
+  ifcManager: IfcManagerLike | null;
 };
 
 type MaterialSnapshot = {
@@ -59,6 +77,28 @@ type ComponentInfo = {
   rows: ComponentInfoRow[];
   loading?: boolean;
   error?: string;
+};
+
+export type ViewerComponentInfo = ComponentInfo;
+export type ViewerFloorOption = FloorOption;
+
+type FloorOption = {
+  key: string;
+  label: string;
+  fileName: string;
+  disciplineId: string;
+  selectionId: string;
+  modelID: number;
+  storeyExpressId: number;
+  elementExpressIds: number[];
+};
+
+type SpatialNode = {
+  type?: string;
+  expressID?: number;
+  name?: string;
+  Name?: unknown;
+  children?: SpatialNode[];
 };
 
 type ModelLoadStage = "preparing" | "reading" | "parsing" | "optimizing" | "finalizing";
@@ -116,6 +156,7 @@ const GLOBAL_ID_IFC_ROOT_PROPERTY = "globalIdIfcRoot_attribute_simple";
 const BOT_SPACE_HIGHLIGHT_SUBSET_ID = "bot-space-highlight";
 const IFC_ENTITY_HIGHLIGHT_SUBSET_ID = "ifc-entity-highlight";
 const IFC_MULTI_SELECT_SUBSET_ID = "ifc-multi-select-highlight";
+const IFC_FLOOR_FILTER_SUBSET_ID = "ifc-floor-filter";
 
 type ClickedIfcEntity = {
   selectionId: string;
@@ -238,9 +279,125 @@ const extractPropertySetRows = (propertySets: unknown): ComponentInfoRow[] => {
   return rows;
 };
 
+const readExpressId = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const obj = value as Record<string, unknown>;
+    if (typeof obj.expressID === "number" && Number.isFinite(obj.expressID)) {
+      return obj.expressID;
+    }
+    if (typeof obj.value === "number" && Number.isFinite(obj.value)) {
+      return obj.value;
+    }
+  }
+
+  return null;
+};
+
+const collectExpressIds = (source: unknown, target: Set<number>) => {
+  if (Array.isArray(source)) {
+    for (const item of source) {
+      collectExpressIds(item, target);
+    }
+    return;
+  }
+
+  const expressId = readExpressId(source);
+  if (typeof expressId === "number" && expressId >= 0) {
+    target.add(expressId);
+  }
+};
+
+const extractStoreyElementExpressIds = (storeyProperties: unknown, storeyExpressId: number): number[] => {
+  const item = (storeyProperties ?? {}) as Record<string, unknown>;
+  const ids = new Set<number>();
+  ids.add(storeyExpressId);
+
+  if (Array.isArray(item.ContainsElements)) {
+    for (const relation of item.ContainsElements) {
+      if (!relation || typeof relation !== "object") {
+        continue;
+      }
+      const relationObj = relation as Record<string, unknown>;
+      collectExpressIds(relationObj.RelatedElements, ids);
+    }
+  }
+
+  if (Array.isArray(item.IsDecomposedBy)) {
+    for (const relation of item.IsDecomposedBy) {
+      if (!relation || typeof relation !== "object") {
+        continue;
+      }
+      const relationObj = relation as Record<string, unknown>;
+      collectExpressIds(relationObj.RelatedObjects, ids);
+    }
+  }
+
+  return Array.from(ids);
+};
+
+const collectSpatialExpressIds = (node: SpatialNode, target: Set<number>) => {
+  if (typeof node.expressID === "number" && Number.isFinite(node.expressID)) {
+    target.add(node.expressID);
+  }
+
+  if (!Array.isArray(node.children)) {
+    return;
+  }
+
+  for (const child of node.children) {
+    collectSpatialExpressIds(child, target);
+  }
+};
+
+const collectStoreyNodesFromSpatialStructure = (node: SpatialNode, target: SpatialNode[]) => {
+  if ((node.type ?? "").toUpperCase() === "IFCBUILDINGSTOREY") {
+    target.push(node);
+  }
+
+  if (!Array.isArray(node.children)) {
+    return;
+  }
+
+  for (const child of node.children) {
+    collectStoreyNodesFromSpatialStructure(child, target);
+  }
+};
+
 const isWasmAbortError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
   return message.toLowerCase().includes("aborted");
+};
+
+const resolveManagerModelID = (ifcManager: IfcManagerLike | null, model: THREE.Object3D): number | null => {
+  if (!ifcManager) {
+    return null;
+  }
+
+  const managerState = (ifcManager as unknown as { state?: { models?: Record<string, { mesh?: unknown }> } }).state;
+  const models = managerState?.models;
+  if (models && typeof models === "object") {
+    for (const [rawId, entry] of Object.entries(models)) {
+      if (entry?.mesh !== model) {
+        continue;
+      }
+
+      const parsed = Number(rawId);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  const modelWithId = model as { modelID?: unknown };
+  if (typeof modelWithId.modelID === "number" && Number.isFinite(modelWithId.modelID)) {
+    return modelWithId.modelID;
+  }
+
+  return null;
 };
 
 const configureIfcLoaderForLargeModels = async (ifcLoader: IFCLoader, lightweight = false): Promise<void> => {
@@ -343,8 +500,13 @@ export const ViewerPane = ({
   loadedIfcByDiscipline,
   ifcVisibilityByFile,
   semanticTriples,
+  selectedFloorKeys,
+  setSelectedFloorKeys,
+  getIfcSelectionId,
   maximized = false,
   onToggleMaximize,
+  onComponentInfoChange,
+  onFloorOptionsChange,
 }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -352,8 +514,13 @@ export const ViewerPane = ({
   loadedIfcByDiscipline: Record<string, LoadedIfcFile[]>;
   ifcVisibilityByFile: Record<string, boolean>;
   semanticTriples?: Triple[];
+  selectedFloorKeys: string[];
+  setSelectedFloorKeys: Dispatch<SetStateAction<string[]>>;
+  getIfcSelectionId: (disciplineId: string, file: LoadedIfcFile) => string;
   maximized?: boolean;
   onToggleMaximize?: () => void;
+  onComponentInfoChange?: (info: ViewerComponentInfo | null) => void;
+  onFloorOptionsChange?: (options: ViewerFloorOption[]) => void;
 }) => {
   const { data: projectTreeData } = useProjectTreeQuery();
   const node = useMemo(() => (selectedId ? findNode(projectTreeData, selectedId) : null), [projectTreeData, selectedId]);
@@ -361,6 +528,7 @@ export const ViewerPane = ({
   const [modelLoadState, setModelLoadState] = useState<ModelLoadState | null>(null);
   const [performanceMetrics, setPerformanceMetrics] = useState({ fps: 0, triangles: 0, drawCalls: 0 });
   const [componentInfo, setComponentInfo] = useState<ComponentInfo | null>(null);
+  const [floorOptions, setFloorOptions] = useState<FloorOption[]>([]);
   const [modifierHint, setModifierHint] = useState<"add" | "remove" | null>(null);
   const [cursorHintPosition, setCursorHintPosition] = useState<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -385,12 +553,14 @@ export const ViewerPane = ({
   const focusedMaterialSnapshotsRef = useRef<Map<string, MaterialSnapshot>>(new Map());
   const focusedSubsetRef = useRef<THREE.Object3D | null>(null);
   const focusedHighlightMaterialRef = useRef<THREE.Material | null>(null);
+  const floorFilterSubsetsRef = useRef<Map<string, THREE.Object3D>>(new Map());
   const multiSelectedEntitiesRef = useRef<Map<string, ClickedIfcEntity>>(new Map());
   const multiHighlightSubsetsRef = useRef<Map<string, THREE.Object3D>>(new Map());
   const multiHighlightMaterialRef = useRef<THREE.Material | null>(null);
   const guidToExpressIdCacheRef = useRef<Map<string, Map<string, number>>>(new Map());
   const focusedIfcEntityRef = useRef<ClickedIfcEntity | null>(null);
   const lastPointerPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const selectedFloorKeysRef = useRef<Set<string>>(new Set());
   const [loadedModelsVersion, setLoadedModelsVersion] = useState(0);
   const selectedIfcFile = useMemo(() => parseSelectedIfcFile(selectedId), [selectedId]);
   const selectedDiscipline = useMemo(() => {
@@ -407,40 +577,36 @@ export const ViewerPane = ({
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  useEffect(() => {
+    onComponentInfoChange?.(componentInfo);
+  }, [componentInfo, onComponentInfoChange]);
+
+  useEffect(() => {
+    onFloorOptionsChange?.(floorOptions);
+  }, [floorOptions, onFloorOptionsChange]);
+
   const totalLoadedIfc = useMemo(
     () => Object.values(loadedIfcByDiscipline).reduce((sum, files) => sum + files.length, 0),
     [loadedIfcByDiscipline]
   );
   const viewerFiles = useMemo<ViewerIfcFile[]>(
     () => {
-      if (selectedDiscipline) {
-        return (loadedIfcByDiscipline[selectedDiscipline] ?? [])
-          .map((file) => {
+      return Object.entries(loadedIfcByDiscipline)
+        .flatMap(([disciplineId, files]) => {
+          return files.map((file) => {
             const fileKey = getIfcFileKey(file);
+
             return {
-              disciplineId: selectedDiscipline,
+              disciplineId,
               file,
               fileKey,
-              selectionId: makeIfcFileSelectionId(selectedDiscipline, fileKey),
+              selectionId: getIfcSelectionId(disciplineId, file),
             };
           });
-      }
-
-      return Object.entries(loadedIfcByDiscipline)
-        .flatMap(([disciplineId, files]) =>
-          files
-            .map((file) => {
-              const fileKey = getIfcFileKey(file);
-              return {
-                disciplineId,
-                file,
-                fileKey,
-                selectionId: makeIfcFileSelectionId(disciplineId, fileKey),
-              };
-            })
-        );
+        });
     },
-    [loadedIfcByDiscipline, selectedDiscipline]
+    [loadedIfcByDiscipline, selectedDiscipline, getIfcSelectionId]
   );
 
   const visibleSelectionIds = useMemo(() => {
@@ -457,6 +623,10 @@ export const ViewerPane = ({
   useEffect(() => {
     visibleSelectionIdsRef.current = visibleSelectionIds;
   }, [visibleSelectionIds]);
+
+  useEffect(() => {
+    selectedFloorKeysRef.current = new Set(selectedFloorKeys);
+  }, [selectedFloorKeys]);
 
   const clearSelectedModelHighlight = () => {
     const scene = sceneRef.current;
@@ -603,6 +773,183 @@ export const ViewerPane = ({
       multiHighlightMaterialRef.current.dispose();
       multiHighlightMaterialRef.current = null;
     }
+  };
+
+  const clearFloorFilterSubsets = () => {
+    const records = loadedModelsBySelectionRef.current;
+    for (const record of records.values()) {
+      if (typeof record.modelID !== "number" || !record.ifcManager) {
+        continue;
+      }
+
+      try {
+        record.ifcManager.removeSubset?.(record.modelID, undefined, IFC_FLOOR_FILTER_SUBSET_ID);
+      } catch (error) {
+        console.warn("Failed to clear floor filter subset", error);
+      }
+    }
+
+    const scene = sceneRef.current;
+    if (scene) {
+      for (const subset of floorFilterSubsetsRef.current.values()) {
+        scene.remove(subset);
+      }
+    }
+    floorFilterSubsetsRef.current.clear();
+  };
+
+  const applyFloorFilter = () => {
+    clearFloorFilterSubsets();
+
+    const records = loadedModelsBySelectionRef.current;
+    if (selectedFloorKeys.length === 0) {
+      for (const [selectionId, record] of records.entries()) {
+        record.model.visible = visibleSelectionIdsRef.current.has(selectionId);
+      }
+      return;
+    }
+
+    const grouped = new Map<string, { modelID: number; ids: Set<number> }>();
+    for (const option of floorOptions) {
+      if (!selectedFloorKeysRef.current.has(option.key)) {
+        continue;
+      }
+
+      const existing = grouped.get(option.selectionId);
+      if (existing) {
+        for (const id of option.elementExpressIds) {
+          existing.ids.add(id);
+        }
+      } else {
+        grouped.set(option.selectionId, {
+          modelID: option.modelID,
+          ids: new Set(option.elementExpressIds),
+        });
+      }
+    }
+
+    const scene = sceneRef.current;
+    if (!scene) {
+      return;
+    }
+
+    for (const [selectionId, record] of records.entries()) {
+      if (!visibleSelectionIdsRef.current.has(selectionId)) {
+        record.model.visible = false;
+        continue;
+      }
+
+      const group = grouped.get(selectionId);
+      if (!group) {
+        // No floor selection for this file means the full IFC stays visible.
+        record.model.visible = true;
+        continue;
+      }
+
+      record.model.visible = false;
+
+      if (!record.ifcManager) {
+        continue;
+      }
+
+      try {
+        const subset = record.ifcManager.createSubset?.({
+          modelID: group.modelID,
+          ids: Array.from(group.ids),
+          scene,
+          removePrevious: true,
+          customID: IFC_FLOOR_FILTER_SUBSET_ID,
+        });
+
+        if (subset instanceof THREE.Object3D) {
+          const subsetObject = subset as THREE.Object3D;
+          subsetObject.userData.ifcSelectionId = selectionId;
+          floorFilterSubsetsRef.current.set(selectionId, subsetObject);
+        }
+      } catch (error) {
+        console.warn("Failed to apply floor filter subset", error);
+      }
+    }
+  };
+
+  const resolveFloorOptions = async (): Promise<FloorOption[]> => {
+    const options: FloorOption[] = [];
+    const records = loadedModelsBySelectionRef.current;
+
+    for (const [selectionId, record] of records.entries()) {
+      const modelID = record.modelID;
+      const manager = record.ifcManager;
+      if (typeof modelID !== "number" || !manager) {
+        continue;
+      }
+
+      // Prefer spatial structure traversal because some IFC variants do not expose
+      // storeys reliably through getAllItemsOfType(IFCBUILDINGSTOREY).
+      try {
+        const root = (await manager.getSpatialStructure?.(modelID, true)) as SpatialNode | undefined;
+        if (root && typeof root === "object") {
+          const storeys: SpatialNode[] = [];
+          collectStoreyNodesFromSpatialStructure(root, storeys);
+
+          for (const storey of storeys) {
+            if (typeof storey.expressID !== "number") {
+              continue;
+            }
+
+            const ids = new Set<number>();
+            collectSpatialExpressIds(storey, ids);
+            ids.add(storey.expressID);
+
+            options.push({
+              key: `${selectionId}:${storey.expressID}`,
+              label: readIfcLabel(storey.name ?? storey.Name)?.trim() || `Storey ${storey.expressID}`,
+              fileName: record.ifc.file.name,
+              disciplineId: record.ifc.disciplineId,
+              selectionId,
+              modelID,
+              storeyExpressId: storey.expressID,
+              elementExpressIds: Array.from(ids),
+            });
+          }
+
+          if (storeys.length > 0) {
+            continue;
+          }
+        }
+      } catch (error) {
+        console.warn("Failed to read IFC spatial structure for floor extraction", error);
+      }
+
+      const ifcStoreyType = manager.types?.IFCBUILDINGSTOREY;
+      if (typeof ifcStoreyType !== "number") {
+        continue;
+      }
+
+      const storeyIds = await manager.getAllItemsOfType?.(modelID, ifcStoreyType, false);
+      if (!Array.isArray(storeyIds) || storeyIds.length === 0) {
+        continue;
+      }
+
+      for (const storeyExpressId of storeyIds) {
+        const storeyProperties = await manager.getItemProperties?.(modelID, storeyExpressId, true);
+        const storeyItem = (storeyProperties ?? {}) as Record<string, unknown>;
+        const label = readIfcLabel(storeyItem.Name)?.trim() || `Storey ${storeyExpressId}`;
+        const elementExpressIds = extractStoreyElementExpressIds(storeyItem, storeyExpressId);
+
+        options.push({
+          key: `${selectionId}:${storeyExpressId}`,
+          label,
+          fileName: record.ifc.file.name,
+          disciplineId: record.ifc.disciplineId,
+          selectionId,
+          modelID,
+          storeyExpressId,
+          elementExpressIds,
+        });
+      }
+    }
+
+    return options.sort((a, b) => a.label.localeCompare(b.label));
   };
 
   const updateMultiSelectHighlight = () => {
@@ -1016,6 +1363,8 @@ export const ViewerPane = ({
     const scene = sceneRef.current;
     if (!scene) return;
 
+    if (selectedFloorKeys.length > 0) return;
+
     const selectedFile = parseSelectedIfcFile(selectedId);
     if (!selectedFile) return;
 
@@ -1189,12 +1538,9 @@ export const ViewerPane = ({
   };
 
   useEffect(() => {
-    const records = loadedModelsBySelectionRef.current;
-    for (const [selectionId, record] of records.entries()) {
-      record.model.visible = visibleSelectionIds.has(selectionId);
-    }
+    applyFloorFilter();
     updateSelectedModelHighlight();
-  }, [visibleSelectionIds, selectedId]);
+  }, [visibleSelectionIds, selectedId, selectedFloorKeys, floorOptions]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -1285,7 +1631,11 @@ export const ViewerPane = ({
 
       const raycaster = raycasterRef.current;
       raycaster.setFromCamera({ x, y }, camera);
-      const intersects = raycaster.intersectObjects(modelsRef.current, true);
+      const raycastTargets =
+        selectedFloorKeysRef.current.size === 0
+          ? modelsRef.current
+          : Array.from(floorFilterSubsetsRef.current.values());
+      const intersects = raycaster.intersectObjects(raycastTargets, true);
       const isAddSelection = event.ctrlKey;
       const isRemoveSelection = event.altKey;
 
@@ -1408,6 +1758,7 @@ export const ViewerPane = ({
       loadedModelsBySelectionRef.current.clear();
       componentInfoCacheRef.current.clear();
       guidToExpressIdCacheRef.current.clear();
+      clearFloorFilterSubsets();
       multiSelectedEntitiesRef.current.clear();
       clearMultiSelectHighlightSubsets();
       setCursorHintPosition(null);
@@ -1475,6 +1826,8 @@ export const ViewerPane = ({
 
       if (!desired.size) {
         modelsRef.current = [];
+        setFloorOptions([]);
+        setSelectedFloorKeys([]);
         setLoadedModelsVersion((value) => value + 1);
         setModelLoadState(null);
         return;
@@ -1494,6 +1847,8 @@ export const ViewerPane = ({
       } else {
         setModelLoadState(null);
       }
+
+      const parseLoader = new IFCLoader();
 
       for (let i = 0; i < filesToLoad.length; i++) {
         const viewerFile = filesToLoad[i];
@@ -1521,15 +1876,13 @@ export const ViewerPane = ({
           });
 
           if (isLargeIfc) {
-            const lightweightLoader = new IFCLoader();
-            await configureIfcLoaderForLargeModels(lightweightLoader, true);
-            model = await lightweightLoader.parse(buffer);
+            await configureIfcLoaderForLargeModels(parseLoader, true);
+            model = await parseLoader.parse(buffer);
           } else {
-            const primaryLoader = new IFCLoader();
-            await configureIfcLoaderForLargeModels(primaryLoader, false);
+            await configureIfcLoaderForLargeModels(parseLoader, false);
 
             try {
-              model = await primaryLoader.parse(buffer);
+              model = await parseLoader.parse(buffer);
             } catch (error) {
               if (!isWasmAbortError(error)) {
                 throw error;
@@ -1540,9 +1893,8 @@ export const ViewerPane = ({
                 error
               );
 
-              const fallbackLoader = new IFCLoader();
-              await configureIfcLoaderForLargeModels(fallbackLoader, true);
-              model = await fallbackLoader.parse(buffer);
+              await configureIfcLoaderForLargeModels(parseLoader, true);
+              model = await parseLoader.parse(buffer);
             }
           }
 
@@ -1575,7 +1927,23 @@ export const ViewerPane = ({
           model.visible = visibleSelectionIdsRef.current.has(viewerFile.selectionId);
           
           scene.add(model);
-          records.set(viewerFile.selectionId, { model, ifc: viewerFile });
+          const modelWithIfc = model as {
+            modelID?: number;
+            ifcManager?: IfcManagerLike;
+          };
+          const ifcManager =
+            (parseLoader.ifcManager as unknown as IfcManagerLike | undefined) ?? modelWithIfc.ifcManager ?? null;
+          const modelID = resolveManagerModelID(ifcManager, model);
+          if (typeof modelID === "number") {
+            modelWithIfc.modelID = modelID;
+          }
+
+          records.set(viewerFile.selectionId, {
+            model,
+            ifc: viewerFile,
+            modelID,
+            ifcManager,
+          });
 
           await paintLoadingState({
             currentFileName: file.name,
@@ -1605,6 +1973,11 @@ export const ViewerPane = ({
       setModelLoadState(null);
 
       modelsRef.current = Array.from(records.values()).map((record) => record.model);
+      const resolvedFloorOptions = await resolveFloorOptions();
+      if (!cancelled) {
+        setFloorOptions(resolvedFloorOptions);
+        setSelectedFloorKeys((current) => current.filter((key) => resolvedFloorOptions.some((option) => option.key === key)));
+      }
       setLoadedModelsVersion((value) => value + 1);
 
       for (const record of records.values()) {
@@ -1644,7 +2017,11 @@ export const ViewerPane = ({
     return () => {
       clearSelectedModelHighlight();
     };
-  }, [selectedId]);
+  }, [selectedId, selectedFloorKeys]);
+
+  useEffect(() => {
+    setSelectedFloorKeys((current) => current.filter((key) => floorOptions.some((option) => option.key === key)));
+  }, [floorOptions]);
 
   useEffect(() => {
     const focused = focusedIfcEntityRef.current;
@@ -1759,13 +2136,14 @@ export const ViewerPane = ({
 
       {/* Toolbar */}
       <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 glass rounded-md p-1">
-        {[Move3d, Scan, Layers].map((Icon, i) => (
+        {[Move3d, Scan].map((Icon, i) => (
           <button
             key={i}
             className={cn(
               "h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors",
               i === 0 && "text-primary bg-primary/10"
             )}
+            aria-label={i === 0 ? "Move" : "Inspect"}
           >
             <Icon className="h-3.5 w-3.5" />
           </button>
@@ -1817,16 +2195,6 @@ export const ViewerPane = ({
             <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
               <div>
                 <div className="text-xs font-semibold">IFC Component</div>
-
-            {modifierHint && cursorHintPosition && (
-              <div
-                className="pointer-events-none fixed z-[200] rounded-md border border-primary/60 bg-background px-2 py-0.5 text-sm font-bold text-primary shadow-[0_0_0_1px_rgba(14,165,233,0.35),0_6px_14px_rgba(15,23,42,0.45)]"
-                style={{ left: `${cursorHintPosition.x + 14}px`, top: `${cursorHintPosition.y + 14}px` }}
-                aria-hidden="true"
-              >
-                {modifierHint === "add" ? "+" : "-"}
-              </div>
-            )}
                 <div className="text-[10px] font-mono text-muted-foreground truncate">{componentInfo.modelName}</div>
               </div>
               <button
@@ -1891,6 +2259,16 @@ export const ViewerPane = ({
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {modifierHint && cursorHintPosition && (
+          <div
+            className="pointer-events-none fixed z-[200] rounded-md border border-primary/60 bg-background px-2 py-0.5 text-sm font-bold text-primary shadow-[0_0_0_1px_rgba(14,165,233,0.35),0_6px_14px_rgba(15,23,42,0.45)]"
+            style={{ left: `${cursorHintPosition.x + 14}px`, top: `${cursorHintPosition.y + 14}px` }}
+            aria-hidden="true"
+          >
+            {modifierHint === "add" ? "+" : "-"}
           </div>
         )}
       </div>

@@ -4,9 +4,17 @@ import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { runSemanticSearch, type GraphData } from "@/lib/twin-api";
 import { type Triple } from "@/lib/twin-data";
+import { SEMANTIC_SEARCH_EXAMPLES } from "@/lib/semantic-search-examples";
 
 const defaultSparqlQuery = `SELECT ?s ?p ?o
 WHERE {
@@ -39,6 +47,7 @@ export const BottomPanel = ({
 }) => {
   const { toast } = useToast();
   const [query, setQuery] = useState(defaultSparqlQuery);
+  const [selectedExampleId, setSelectedExampleId] = useState<string>("none");
   const [triples, setTriples] = useState<Triple[]>([]);
   const [hovered, setHovered] = useState<number | null>(null);
   const rowRefs = useRef<Record<number, HTMLTableRowElement | null>>({});
@@ -127,6 +136,21 @@ export const BottomPanel = ({
     searchMutation.mutate(queryText);
   };
 
+  const applyExample = (exampleId: string) => {
+    setSelectedExampleId(exampleId);
+
+    if (exampleId === "none") {
+      return;
+    }
+
+    const example = SEMANTIC_SEARCH_EXAMPLES.find((entry) => entry.id === exampleId);
+    if (!example) {
+      return;
+    }
+
+    setQuery(example.query);
+  };
+
   return (
     <div
       className={cn(
@@ -171,19 +195,35 @@ export const BottomPanel = ({
           <section className="border-r border-border/40 p-3 min-h-0 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <h3 className="text-[11px] font-mono uppercase tracking-[0.15em] text-muted-foreground">Semantic Search</h3>
-              <Button
-                onClick={runSearch}
-                size="sm"
-                className="h-7 px-2.5 text-[11px]"
-                disabled={searchMutation.isPending}
-              >
-                {searchMutation.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Search className="h-3.5 w-3.5" />
-                )}
-                Search
-              </Button>
+              <div className="flex items-center gap-2">
+                <Select value={selectedExampleId} onValueChange={applyExample}>
+                  <SelectTrigger className="h-7 w-[170px] text-[11px] font-mono">
+                    <SelectValue placeholder="Examples" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Examples</SelectItem>
+                    {SEMANTIC_SEARCH_EXAMPLES.map((example) => (
+                      <SelectItem key={example.id} value={example.id}>
+                        {example.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  onClick={runSearch}
+                  size="sm"
+                  className="h-7 px-2.5 text-[11px]"
+                  disabled={searchMutation.isPending}
+                >
+                  {searchMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Search className="h-3.5 w-3.5" />
+                  )}
+                  Search
+                </Button>
+              </div>
             </div>
             <Textarea
               value={query}
