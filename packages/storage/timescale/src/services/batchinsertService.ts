@@ -1,6 +1,6 @@
 import { query } from "../db/connection";
 import { SensorReading } from "../db/schema";
-import { logger } from "@spine/shared";
+import { logger } from "../logger";
 
 class BatchInsertService {
     private batchSize: number;

@@ -1,5 +1,5 @@
 import { Pool, PoolClient } from "pg";
-import { logger } from "@spine/shared";
+import { logger } from "../logger";
 import { type TimescaleConfig } from "../config";
 
 let pool: Pool | null = null;
