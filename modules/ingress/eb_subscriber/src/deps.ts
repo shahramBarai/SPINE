@@ -4,10 +4,12 @@ import Fastify, {
 } from "fastify";
 import cors from "@fastify/cors";
 import * as configs from "./utils/config";
+import { logger } from "./utils/logger";
 
 // Initialize services
 import { KafkaProducer, ServiceSchemaManager } from "@spine/messaging";
 import { EmpathicBuildingService } from "./services/EmpathicBuildingService";
+import { EBPusherService } from "./services/EBPusherService";
 import { getEmpathicBuildingConfig } from "./utils/config";
 import { ExcelService } from "./services/ExcelService";
 
@@ -15,16 +17,21 @@ import { ExcelService } from "./services/ExcelService";
 const excelService = configs.SEND_TO === "excel" ? new ExcelService() : null;
 const kafkaProducer =
     configs.SEND_TO === "kafka"
-        ? new KafkaProducer(configs.getKafkaConfig(), configs.getKafkaTopic())
+        ? new KafkaProducer(
+              configs.getKafkaConfig(),
+              configs.getKafkaTopic(),
+              logger
+          )
         : null;
 const schemaManager =
     configs.SEND_TO === "kafka"
         ? new ServiceSchemaManager(configs.getSchemaRegistryConfig())
         : null;
-// Initialize Empathic Building service
-const empathicBuildingService = new EmpathicBuildingService(
-    getEmpathicBuildingConfig()
-);
+// Initialize Empathic Building services
+const { api: ebApiConfig, pusher: ebPusherConfig } =
+    getEmpathicBuildingConfig();
+const ebApiService = new EmpathicBuildingService(ebApiConfig);
+const ebPusherService = new EBPusherService(ebPusherConfig);
 
 // Export dependencies
 export {
@@ -34,7 +41,8 @@ export {
     excelService,
     kafkaProducer,
     schemaManager,
-    empathicBuildingService
+    ebApiService,
+    ebPusherService
 };
 
 export type { FastifyPluginAsync, FastifyInstance };

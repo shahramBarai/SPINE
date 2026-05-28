@@ -4,15 +4,18 @@ import {
     configs,
     kafkaProducer,
     schemaManager,
-    empathicBuildingService
+    ebApiService,
+    ebPusherService
 } from "./deps";
-import { logger } from "@spine/shared";
+import { logger } from "./utils/logger";
 import { healthRoutes } from "./routes/health";
 import { setupEmpathicBuildingHandlers } from "./utils/eb_helper";
 
 async function setupServer() {
     const server = Fastify({
-        maxParamLength: 5000,
+        routerOptions: {
+            maxParamLength: 5000
+        },
         logger:
             configs.NODE_ENV === "dev"
                 ? {
@@ -64,22 +67,42 @@ async function main() {
         logger.info("Schema manager initialized successfully");
     }
 
+    logger.info("Authenticating with Empathic Building API...");
+    // Authenticate with Empathic Building API (this will also schedule token refreshes)
+    const eb_token = await ebApiService.authenticate();
+    logger.info("Authenticated with Empathic Building API successfully");
+
+    // Empathic Building Pusher service events (logging only - service handles reconnect)
+    ebPusherService.on("connected", () => {
+        logger.info("Empathic Building Pusher: connected");
+    });
+
+    ebPusherService.on("disconnected", () => {
+        logger.warn("Empathic Building Pusher: disconnected");
+    });
+
+    ebPusherService.on("connectionError", async (error: unknown) => {
+        logger.error("Empathic Building Pusher: connection error", error);
+        logger.warn(
+            "Attempting to reconnect to Empathic Building Pusher with new token..."
+        );
+        await ebPusherService.disconnect();
+        const newToken = await ebApiService.authenticate();
+        await ebPusherService.connect(newToken);
+        logger.info("Reconnected to Empathic Building Pusher successfully");
+    });
+
+    ebPusherService.on("subscriptionError", (payload: unknown) => {
+        logger.warn("Empathic Building Pusher: subscription error", payload);
+    });
+
+    // Start pusher service (it will request tokens and manage reconnects itself)
+    logger.info("Starting Empathic Building Pusher service...");
+    await ebPusherService.connect(eb_token);
+    logger.info("Empathic Building Pusher: started");
+
     // Set up Empathic Building event handlers
     setupEmpathicBuildingHandlers();
-
-    // Initialize Empathic Building service
-    try {
-        logger.info("Empathic Building service: Initializing...");
-        await empathicBuildingService.connect();
-        logger.info("Empathic Building service: Initialized successfully");
-        const status = empathicBuildingService.getStatus();
-        logger.info("Empathic Building service status:", status);
-    } catch (error) {
-        logger.warn(
-            `Empathic Building service failed to initialize, continuing without it:`,
-            error
-        );
-    }
 
     // Handle graceful shutdown
     const shutdown = async () => {
@@ -87,7 +110,7 @@ async function main() {
 
         // Disconnect from Empathic Building service
         try {
-            await empathicBuildingService.disconnect();
+            await ebPusherService.disconnect();
         } catch (error) {
             logger.error(
                 "Error disconnecting from Empathic Building service:",

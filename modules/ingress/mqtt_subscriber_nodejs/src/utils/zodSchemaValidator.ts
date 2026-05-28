@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { logger } from "@spine/shared";
+import { logger } from "../utils/logger";
 
 /**
  * Check if a field is optional (union with null)

@@ -4,6 +4,11 @@
         "outDir": "./dist",
         "rootDir": "./src"
     },
+    "references": [
+        { "path": "../../../packages/messaging" },
+        { "path": "../../../packages/ingress" },
+        { "path": "../../../packages/shared" }
+    ],
     "include": ["src/**/*"],
     "exclude": ["node_modules", "dist"]
 }

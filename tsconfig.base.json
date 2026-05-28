@@ -3,7 +3,7 @@
         /* Basic Options */
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "target": "ES2023",
+        "target": "ES2022",
         "verbatimModuleSyntax": true,
         "allowJs": true,
         "resolveJsonModule": true,

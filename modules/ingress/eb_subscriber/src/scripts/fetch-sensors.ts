@@ -9,14 +9,14 @@
  *   EB_ORG_ID=10 EB_LOCATION_ID=123 tsx src/scripts/fetch-sensors.ts
  */
 
-import { logger } from "@spine/shared";
+import { logger } from "../utils/logger";
 import { getEmpathicBuildingConfig } from "../utils/config";
 import * as fs from "fs";
 import * as path from "path";
 
 async function fetchSensors(organizationId: string, locationId: string) {
     try {
-        const config = getEmpathicBuildingConfig();
+        const { api: config } = getEmpathicBuildingConfig();
 
         // Authenticate to get bearer token
         const formData = new URLSearchParams();
