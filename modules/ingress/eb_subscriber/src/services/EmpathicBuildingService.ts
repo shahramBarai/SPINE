@@ -150,7 +150,7 @@ class EmpathicBuildingService {
         const expiresIn = this.tokenData.expiresAt - Date.now();
         this.scheduleTokenRefresh(expiresIn - 60000); // Refresh 1 minute before expiration
         logger.debug(
-            `Authentication successful. Token expires in ${expiresIn} seconds`
+            `Authentication successful. Token expires in ${expiresIn} milliseconds.`
         );
         return this.tokenData.accessToken;
     }

@@ -4,7 +4,7 @@ import {
     configs,
     kafkaProducer,
     schemaManager,
-    ebAPIService,
+    ebApiService,
     ebPusherService
 } from "./deps";
 import { logger } from "./utils/logger";
@@ -69,7 +69,7 @@ async function main() {
 
     logger.info("Authenticating with Empathic Building API...");
     // Authenticate with Empathic Building API (this will also schedule token refreshes)
-    const eb_token = await ebAPIService.authenticate();
+    const eb_token = await ebApiService.authenticate();
     logger.info("Authenticated with Empathic Building API successfully");
 
     // Empathic Building Pusher service events (logging only - service handles reconnect)
@@ -87,7 +87,7 @@ async function main() {
             "Attempting to reconnect to Empathic Building Pusher with new token..."
         );
         await ebPusherService.disconnect();
-        const newToken = await ebAPIService.authenticate();
+        const newToken = await ebApiService.authenticate();
         await ebPusherService.connect(newToken);
         logger.info("Reconnected to Empathic Building Pusher successfully");
     });

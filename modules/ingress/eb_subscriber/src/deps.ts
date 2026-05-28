@@ -30,7 +30,7 @@ const schemaManager =
 // Initialize Empathic Building services
 const { api: ebApiConfig, pusher: ebPusherConfig } =
     getEmpathicBuildingConfig();
-const ebAPIService = new EmpathicBuildingService(ebApiConfig);
+const ebApiService = new EmpathicBuildingService(ebApiConfig);
 const ebPusherService = new EBPusherService(ebPusherConfig);
 
 // Export dependencies
@@ -41,7 +41,7 @@ export {
     excelService,
     kafkaProducer,
     schemaManager,
-    ebAPIService,
+    ebApiService,
     ebPusherService
 };
 

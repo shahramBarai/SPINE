@@ -270,7 +270,7 @@ class EBPusherService extends EventEmitter {
                 if (!this.isShuttingDown) {
                     this.emit("connectionError", error);
                 }
-                // TODO: Move reconnection logyc here whene pusher-js supports programmatic reconnects
+                // TODO: Move reconnection logic here when pusher-js supports programmatic reconnects
                 // (currently it does not have a way to trigger reconnect attempts outside of its built-in logic)
             });
 

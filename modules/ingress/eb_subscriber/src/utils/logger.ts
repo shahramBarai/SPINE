@@ -6,7 +6,7 @@ import { createLogger } from "@spine/shared";
 // });
 
 const logger = createLogger({
-    level: "error"
+    level: NODE_ENV === "dev" ? "debug" : "error"
 });
 
 export { logger };
