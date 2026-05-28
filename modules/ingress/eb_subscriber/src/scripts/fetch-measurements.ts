@@ -266,10 +266,10 @@ async function main() {
 
     const organizationId = normalizedArgs[0] || process.env.EB_ORG_ID;
     const locationId = normalizedArgs[1] || process.env.EB_LOCATION_ID;
-    const sensorType = normalizedArgs[2] || process.env.EB_SENSOR_TYPE;
-    const start = normalizedArgs[3] || process.env.EB_START;
-    const end = normalizedArgs[4] || process.env.EB_END;
-    const outputFile = normalizedArgs[5] || process.env.EB_OUTPUT_FILE;
+    const sensorType = normalizedArgs[2];
+    const start = normalizedArgs[3];
+    const end = normalizedArgs[4];
+    const outputFile = normalizedArgs[5] || "../../data/measurements/";
     const limitValue = process.env.EB_LIMIT;
     const limit = limitValue ? Number(limitValue) : undefined;
 
