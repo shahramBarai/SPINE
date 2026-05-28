@@ -10,7 +10,8 @@
         "start": "node dist/index.js",
         "type-check": "tsc --noEmit",
         "test": "echo \"No tests specified\"",
-        "fetch-sensors": "tsx src/scripts/fetch-sensors.ts"
+        "fetch-sensors": "tsx src/scripts/fetch-sensors.ts",
+        "fetch-measurements": "tsx src/scripts/fetch-measurements.ts"
     },
     "dependencies": {
         "@spine/messaging": "workspace:*",
