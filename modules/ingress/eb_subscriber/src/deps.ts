@@ -31,19 +31,7 @@ const schemaManager =
 const { api: ebApiConfig, pusher: ebPusherConfig } =
     getEmpathicBuildingConfig();
 const ebAPIService = new EmpathicBuildingService(ebApiConfig);
-
-// Auth provider adapter for pusher service
-const ebAuthProvider = {
-    getToken: async (): Promise<string> => {
-        // Ensure we have a valid token (authenticate will refresh if needed)
-        await ebAPIService.authenticate();
-        const token = ebAPIService.getAccessToken();
-        if (!token) throw new Error("Failed to obtain EB access token");
-        return token;
-    }
-};
-
-const ebPusherService = new EBPusherService(ebPusherConfig, ebAuthProvider);
+const ebPusherService = new EBPusherService(ebPusherConfig);
 
 // Export dependencies
 export {

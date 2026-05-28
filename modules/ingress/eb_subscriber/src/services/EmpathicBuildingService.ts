@@ -116,14 +116,22 @@ class EmpathicBuildingService {
 
     /**
      * Authenticate with Empathic Building API
+     *
+     * This method will handle both initial authentication and token refresh logic.
+     * It will ensure that a valid access token is available and will schedule automatic refreshes before the token expires.
+     *
+     * To get the current access token for API requests, use the `getAccessToken()` method.
+     * To check token status, use `getTokenStatus()`
+     *
+     * @returns The current access token string after authentication or refresh is complete
      */
-    async authenticate(): Promise<void> {
+    async authenticate(): Promise<string> {
         // If we have valid token data
         if (this.tokenData) {
             // And if token is still valid, return it (refresh if expiring within 1 minute)
             if (Date.now() < this.tokenData.expiresAt - 60000) {
                 logger.debug("Using existing valid token");
-                return;
+                return this.tokenData.accessToken;
             } else {
                 // Else try to refresh the token
                 logger.debug("Refreshing access token...");
@@ -144,6 +152,7 @@ class EmpathicBuildingService {
         logger.debug(
             `Authentication successful. Token expires in ${expiresIn} seconds`
         );
+        return this.tokenData.accessToken;
     }
 
     /**

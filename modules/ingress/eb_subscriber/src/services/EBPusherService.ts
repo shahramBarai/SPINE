@@ -7,24 +7,20 @@ import { logger } from "../utils/logger";
 import type {
     EBPusherConfig,
     ChannelSubscription,
-    DecodedEvent,
-    AuthProvider
+    DecodedEvent
 } from "../utils/eb_types";
 
 class EBPusherService extends EventEmitter {
     private config: EBPusherConfig;
-    private authProvider: AuthProvider;
     private pusher?: Pusher;
     private isConnected = false;
     private subscriptions: Map<string, ChannelSubscription> = new Map();
-    private reconnectAttempts = 0;
     private reconnectTimer?: NodeJS.Timeout;
     private isShuttingDown = false;
 
-    constructor(config: EBPusherConfig, authProvider: AuthProvider) {
+    constructor(config: EBPusherConfig) {
         super();
         this.config = config;
-        this.authProvider = authProvider;
     }
 
     /**
@@ -233,7 +229,9 @@ class EBPusherService extends EventEmitter {
     /**
      * Connect to Pusher and subscribe to configured channels
      */
-    async connect(): Promise<void> {
+    async connect(bearerToken: string): Promise<void> {
+        this.isShuttingDown = false;
+
         if (this.pusher && this.isConnected) {
             logger.warn("Empathic Building pusher already connected");
             return;
@@ -242,15 +240,13 @@ class EBPusherService extends EventEmitter {
         try {
             logger.debug("Connecting to Empathic Building Pusher service...");
 
-            const token = await this.authProvider.getToken();
-
             // Initialize Pusher client
             this.pusher = new Pusher(this.config.pusherKey, {
                 cluster: this.config.pusherCluster,
                 authEndpoint: `${this.config.baseUrl}/v1/pusher/auth`,
                 auth: {
                     headers: {
-                        authorization: `Bearer ${token}`
+                        authorization: `Bearer ${bearerToken}`
                     }
                 },
                 enabledTransports: ["ws", "wss"]
@@ -265,13 +261,17 @@ class EBPusherService extends EventEmitter {
             this.pusher.connection.bind("disconnected", () => {
                 this.isConnected = false;
                 this.emit("disconnected");
-                this.emit("connectionLost");
-                this.scheduleReconnect("disconnected");
+                if (!this.isShuttingDown) {
+                    this.emit("connectionLost");
+                }
             });
 
             this.pusher.connection.bind("error", (error: Error) => {
-                this.emit("connectionError", error);
-                this.scheduleReconnect("connection_error", error);
+                if (!this.isShuttingDown) {
+                    this.emit("connectionError", error);
+                }
+                // TODO: Move reconnection logyc here whene pusher-js supports programmatic reconnects
+                // (currently it does not have a way to trigger reconnect attempts outside of its built-in logic)
             });
 
             this.pusher.connection.bind(
@@ -288,60 +288,10 @@ class EBPusherService extends EventEmitter {
 
             // Connect Pusher
             this.pusher.connect();
-
-            // Clear any previous reconnect attempts
-            this.clearReconnect();
         } catch (error) {
             this.emit("connectionError", error);
-            // schedule reconnect unless shutting down
-            this.scheduleReconnect("connect_failed", error);
             throw error;
         }
-    }
-
-    private clearReconnect(): void {
-        if (this.reconnectTimer) {
-            clearTimeout(this.reconnectTimer);
-            this.reconnectTimer = undefined;
-        }
-        this.reconnectAttempts = 0;
-    }
-
-    private scheduleReconnect(reason: string, error?: unknown): void {
-        if (this.isShuttingDown) return;
-        if (this.reconnectTimer) return;
-
-        if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
-            this.emit("maxReconnectAttemptsReached", {
-                reason,
-                maxReconnectAttempts: this.config.maxReconnectAttempts,
-                error
-            });
-            return;
-        }
-
-        this.reconnectAttempts++;
-        const delayMs = this.config.reconnectDelayMs * this.reconnectAttempts;
-        logger.warn("EB Pusher: scheduling reconnect", {
-            reason,
-            attempt: this.reconnectAttempts,
-            delayMs,
-            error
-        });
-
-        this.reconnectTimer = setTimeout(async () => {
-            this.reconnectTimer = undefined;
-            try {
-                await this.disconnect();
-            } catch (e) {
-                logger.debug("Error during disconnect before reconnect", e);
-            }
-            try {
-                await this.connect();
-            } catch (e) {
-                this.scheduleReconnect("reconnect_failed", e);
-            }
-        }, delayMs);
     }
 
     /**
@@ -349,6 +299,7 @@ class EBPusherService extends EventEmitter {
      */
     async disconnect(): Promise<void> {
         logger.debug("Disconnecting from Empathic Building Pusher...");
+        this.isShuttingDown = true;
 
         if (!this.pusher) {
             logger.warn("EB Pusher service not connected");

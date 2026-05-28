@@ -4,6 +4,7 @@ import {
     configs,
     kafkaProducer,
     schemaManager,
+    ebAPIService,
     ebPusherService
 } from "./deps";
 import { logger } from "./utils/logger";
@@ -66,6 +67,11 @@ async function main() {
         logger.info("Schema manager initialized successfully");
     }
 
+    logger.info("Authenticating with Empathic Building API...");
+    // Authenticate with Empathic Building API (this will also schedule token refreshes)
+    const eb_token = await ebAPIService.authenticate();
+    logger.info("Authenticated with Empathic Building API successfully");
+
     // Empathic Building Pusher service events (logging only - service handles reconnect)
     ebPusherService.on("connected", () => {
         logger.info("Empathic Building Pusher: connected");
@@ -75,8 +81,15 @@ async function main() {
         logger.warn("Empathic Building Pusher: disconnected");
     });
 
-    ebPusherService.on("connectionError", (error: unknown) => {
+    ebPusherService.on("connectionError", async (error: unknown) => {
         logger.error("Empathic Building Pusher: connection error", error);
+        logger.warn(
+            "Attempting to reconnect to Empathic Building Pusher with new token..."
+        );
+        await ebPusherService.disconnect();
+        const newToken = await ebAPIService.authenticate();
+        await ebPusherService.connect(newToken);
+        logger.info("Reconnected to Empathic Building Pusher successfully");
     });
 
     ebPusherService.on("subscriptionError", (payload: unknown) => {
@@ -84,12 +97,9 @@ async function main() {
     });
 
     // Start pusher service (it will request tokens and manage reconnects itself)
-    try {
-        await ebPusherService.connect();
-        logger.info("Empathic Building Pusher: started");
-    } catch (err) {
-        logger.warn("Empathic Building Pusher: initial connect failed", err);
-    }
+    logger.info("Starting Empathic Building Pusher service...");
+    await ebPusherService.connect(eb_token);
+    logger.info("Empathic Building Pusher: started");
 
     // Set up Empathic Building event handlers
     setupEmpathicBuildingHandlers();
