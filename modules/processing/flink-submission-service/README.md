@@ -45,13 +45,13 @@ flink-submission-service/
 
 Environment variables used by the service:
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `FLINK_JOBMANAGER` | `jobmanager:8081` | Flink JobManager REST address |
-| `FLINK_BIN` | `flink` | Path to the `flink` CLI binary |
-| `CHECK_TIMEOUT` | `30` | Seconds before pre-submit checks time out |
-| `SUBMIT_TIMEOUT` | `120` | Seconds before `flink run` times out |
-| `MAX_ZIP_SIZE_MB` | `1` | Maximum allowed size for zip uploads |
+| Variable              | Default                  | Description                                   |
+| --------------------- | ------------------------ | --------------------------------------------- |
+| `FLINK_JOBMANAGER`    | `jobmanager:8081`        | Flink JobManager REST address                 |
+| `FLINK_BIN`           | `flink`                  | Path to the `flink` CLI binary                |
+| `CHECK_TIMEOUT`       | `30`                     | Seconds before pre-submit checks time out     |
+| `SUBMIT_TIMEOUT`      | `120`                    | Seconds before `flink run` times out          |
+| `MAX_ZIP_SIZE_MB`     | `1`                      | Maximum allowed size for zip uploads          |
 | `TEMP_EXTRACTION_DIR` | `/tmp/flink-submissions` | Temporary directory for extracted zip uploads |
 
 ## API endpoints

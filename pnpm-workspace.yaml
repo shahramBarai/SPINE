@@ -1,3 +1,22 @@
 packages:
-  - 'modules/**'
-  - 'packages/**'
+    - "modules/**"
+    - "packages/**"
+
+catalog:
+    # Node.js types and dependencies
+    "@types/node": ^25.6.0
+    # Linting and formatting toolchain
+    eslint: ^10.2.1
+    "@eslint/js": ^10.0.1
+    globals: ^16.5.0
+    prettier: 3.6.2
+    typescript-eslint: ^8.59.1
+    "@typescript-eslint/eslint-plugin": ^8.59.1
+    "@typescript-eslint/parser": ^8.59.1
+    # Web framework
+    "@fastify/cors": ^11.0.1
+    fastify: ^5.4.0
+    # Environment variable management
+    dotenv: ^17.4.2
+    # Typescript for type safety and development
+    typescript: ^6.0.3

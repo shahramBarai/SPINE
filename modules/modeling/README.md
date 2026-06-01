@@ -3,6 +3,7 @@
 The Modeling module provides Building Information Modeling (BIM) and 3D city modeling services for the SPINE platform. This module enables storage, management, visualization, and processing of 3D spatial data and building models.
 
 ## Table of contents:
+
 1. [🎯 Purpose](#1-🎯-purpose)
 2. [📂 Directory Structure](#2-📂-directory-structure)
 3. [🚀 Quick Start](#3-🚀-quick-start)
@@ -17,6 +18,7 @@ The Modeling module provides Building Information Modeling (BIM) and 3D city mod
 ## 1. 🎯 Purpose
 
 The Modeling module serves as a container for BIM-related services that support:
+
 - **3D City Modeling**: Storage and management of 3D city models and spatial data
 - **Building Information Modeling**: Integration and processing of BIM data
 - **Spatial Data Services**: Provision of geospatial data through standardized interfaces
@@ -34,6 +36,7 @@ modeling/
 ```
 
 Each service directory (`citydb/`, etc.) contains:
+
 - Service-specific configuration
 - Data directories (if needed)
 - Documentation in `README.md`
@@ -49,21 +52,20 @@ Each service directory (`citydb/`, etc.) contains:
 
 1. **Start Services**
 
-   ```bash
-   # Start all services
-   docker-compose up -d
+    ```bash
+    # Start all services
+    docker-compose up -d
 
-   # Verify services are running
-   docker-compose ps
+    # Verify services are running
+    docker-compose ps
 
-   # View logs
-   docker-compose logs -f
-   ```
+    # View logs
+    docker-compose logs -f
+    ```
 
 2. **Access Services**
-
-   - **Web Client**: http://localhost:8081 (or configured port)
-   - **WFS Service**: http://localhost:8080 (or configured port)
+    - **Web Client**: http://localhost:8081 (or configured port)
+    - **WFS Service**: http://localhost:8080 (or configured port)
 
 ## 4. 🏃 Running the Module
 
@@ -126,34 +128,40 @@ Docker Compose will use the `.env` file if it exists, otherwise it will use the 
 To add a new BIM-related service to this module:
 
 1. **Create Service Directory**
-   ```bash
-   mkdir -p new-service
-   ```
+
+    ```bash
+    mkdir -p new-service
+    ```
 
 2. **Add Service to docker-compose.yml**
-   ```yaml
-   new-service:
-     image: your-image:tag
-     # ... service configuration
-   ```
-   or 
-   ```yaml
-   new-service:
-     build:
-       context: ./new-service
-       dockerfile: Dockerfile
-     # ... service configuration
-   ```
+
+    ```yaml
+    new-service:
+        image: your-image:tag
+        # ... service configuration
+    ```
+
+    or
+
+    ```yaml
+    new-service:
+        build:
+            context: ./new-service
+            dockerfile: Dockerfile
+        # ... service configuration
+    ```
 
 3. **Create Service Documentation**
-   ```bash
-   touch new-service/README.md
-   ```
-   Document service-specific setup, configuration, and usage.
+
+    ```bash
+    touch new-service/README.md
+    ```
+
+    Document service-specific setup, configuration, and usage.
 
 4. **Update This README**
-   - Add service to "Current Services" section
-   - Update directory structure if needed
+    - Add service to "Current Services" section
+    - Update directory structure if needed
 
 ## 7. 📦 Integration
 

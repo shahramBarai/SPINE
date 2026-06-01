@@ -1,4 +1,4 @@
-import mqtt, { MqttClient, IClientOptions } from "mqtt";
+import mqtt, { MqttClient, type IClientOptions } from "mqtt";
 import { type MQTTConfig } from "../utils/mqtt_config";
 import { logger } from "@spine/shared";
 
@@ -16,7 +16,7 @@ class MQTTService {
     private connectionState: ConnectionState = {
         isConnected: false,
         isConnecting: false,
-        reconnectAttempts: 0,
+        reconnectAttempts: 0
     };
 
     constructor(config: MQTTConfig) {
@@ -27,7 +27,10 @@ class MQTTService {
      * Connect to MQTT broker
      */
     async connect(): Promise<boolean> {
-        if (this.connectionState.isConnected || this.connectionState.isConnecting) {
+        if (
+            this.connectionState.isConnected ||
+            this.connectionState.isConnecting
+        ) {
             logger.warn("MQTT gateway: Already connected or connecting");
             return this.connectionState.isConnected;
         }
@@ -42,7 +45,7 @@ class MQTTService {
                 reconnectPeriod: this.config.reconnectPeriod,
                 connectTimeout: this.config.connectTimeout,
                 username: this.config.username,
-                password: this.config.password,
+                password: this.config.password
             };
 
             this.client = mqtt.connect(this.config.brokerUrl, options);
@@ -79,7 +82,7 @@ class MQTTService {
                 this.client.on("reconnect", () => {
                     this.connectionState.reconnectAttempts++;
                     logger.info(
-                        `MQTT gateway: Reconnecting (attempt ${this.connectionState.reconnectAttempts})`,
+                        `MQTT gateway: Reconnecting (attempt ${this.connectionState.reconnectAttempts})`
                     );
                 });
 
@@ -103,7 +106,7 @@ class MQTTService {
     async publish(topic: string, message: string): Promise<void> {
         if (!this.client || !this.connectionState.isConnected) {
             logger.warn(
-                "MQTT gateway: Cannot publish, not connected to MQTT broker",
+                "MQTT gateway: Cannot publish, not connected to MQTT broker"
             );
             return;
         }
@@ -120,28 +123,28 @@ class MQTTService {
                     message,
                     {
                         qos: this.config.qos,
-                        retain: this.config.retain,
+                        retain: this.config.retain
                     },
                     (error) => {
                         if (error) {
                             logger.error(
                                 `MQTT gateway: Failed to publish to topic ${topic}`,
-                                error,
+                                error
                             );
                             reject(error);
                         } else {
                             logger.debug(
-                                `MQTT gateway: Published message to topic ${topic}`,
+                                `MQTT gateway: Published message to topic ${topic}`
                             );
                             resolve();
                         }
-                    },
+                    }
                 );
             });
         } catch (error) {
             logger.error(
                 `MQTT gateway: Error publishing message for topic ${topic} message: ${message}`,
-                error,
+                error
             );
         }
     }
@@ -184,12 +187,14 @@ class MQTTService {
         error?: string;
     }> {
         return {
-            status: this.connectionState.isConnected ? "connected" : "disconnected",
+            status: this.connectionState.isConnected
+                ? "connected"
+                : "disconnected",
             timestamp: new Date().toISOString(),
             connectionState: { ...this.connectionState },
             error: this.connectionState.isConnected
                 ? undefined
-                : "Not connected to MQTT broker",
+                : "Not connected to MQTT broker"
         };
     }
 }

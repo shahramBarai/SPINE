@@ -1,25 +1,23 @@
 {
-  "name": "@spine/storage-minio",
-  "version": "1.0.0",
-  "description": "MinIO storage services for SPINE",
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "scripts": {
-    "db:init": "tsx scripts/initialize-buckets.ts",
-    "lint": "eslint --ext .ts src",
-    "type-check": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@spine/shared": "workspace:*",
-    "minio": "^8.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^25.2.0",
-    "dotenv": "^17.3.1",
-    "eslint": "^9.17.0",
-    "tsx": "^3.14.0",
-    "typescript": "^5.9.3"
-  }
+    "name": "@spine/storage-minio",
+    "version": "1.0.0",
+    "description": "MinIO storage services for SPINE",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "db:init": "tsx scripts/initialize-buckets.ts",
+        "type-check": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@spine/shared": "workspace:*",
+        "minio": "^8.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "dotenv": "catalog:",
+        "tsx": "^3.14.0"
+    }
 }

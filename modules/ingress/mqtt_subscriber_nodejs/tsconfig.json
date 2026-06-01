@@ -1,29 +1,13 @@
 {
+    "extends": "../../../tsconfig.base.json",
     "compilerOptions": {
-      "target": "ES2022",
-      "module": "ES2022",
-      "outDir": "./dist",
-      "rootDir": "./src",
-      "strict": true,
-      "esModuleInterop": true,
-      "skipLibCheck": true,
-      "forceConsistentCasingInFileNames": true,
-      "declaration": true,
-      "declarationMap": true,
-      "sourceMap": true,
-      "removeComments": true,
-      "noImplicitReturns": true,
-      "noFallthroughCasesInSwitch": true,
-      "moduleResolution": "node",
-      "resolveJsonModule": true,
-      "isolatedModules": true,
-      "noEmit": false
+        "outDir": "./dist",
+        "rootDir": "./src"
     },
-    "include": [
-      "src/**/*"
+    "references": [
+        { "path": "../../../packages/shared" },
+        { "path": "../../../packages/messaging" }
     ],
-    "exclude": [
-      "node_modules",
-      "dist"
-    ]
-  }
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+}

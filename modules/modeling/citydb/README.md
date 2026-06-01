@@ -26,6 +26,7 @@ citydb/
 ## 2. 📢 Services Overview
 
 ### CityDB Database
+
 - **Image**: `3dcitydb/3dcitydb-pg:5.0.0-alpine`
 - **Container**: `citydb`
 - **Port**: `5432` (configurable via `CITYDB_PORT` env var)
@@ -33,12 +34,14 @@ citydb/
 - **Data Persistence**: Docker volume `citydb_data`
 
 ### Impexp (Importer/Exporter)
+
 - **Image**: `3dcitydb/impexp:5.5.2`
 - **Container**: `citydb-impexp`
 - **Purpose**: Command-line tool for importing/exporting CityGML files
 - **Data Directory**: `./impexp-data` (mounted at `/data` in container)
 
 ### Web Client
+
 - **Image**: `tumgis/3dcitydb-web-map`
 - **Container**: `citydb-web-client`
 - **Port**: `8081` (configurable via `WEB_CLIENT_PORT` env var)
@@ -46,12 +49,12 @@ citydb/
 - **Access**: http://localhost:8081
 
 ### Web Feature Service (WFS)
+
 - **Image**: `3dcitydb/wfs:5.0.0-alpine`
 - **Container**: `citydb-wfs`
 - **Port**: `8080` (configurable via `WFS_PORT` env var)
 - **Purpose**: OGC Web Feature Service for programmatic access to CityDB data
 - **Access**: http://localhost:8080
-
 
 ## 3. 📦 Importing and Exporting Data
 
@@ -60,19 +63,20 @@ citydb/
 1. **Place CityGML files** in `./impexp-data/` directory
 
 2. **Run import command**:
-   ```bash
-   cd ..
-   docker-compose run --rm impexp ImporterCLI \
-     -h citydb \
-     -d ${CITYDB_DB} \
-     -u ${CITYDB_USER} \
-     -p ${CITYDB_PASSWORD} \
-     -f /data/your-file.gml
-   ```
+    ```bash
+    cd ..
+    docker-compose run --rm impexp ImporterCLI \
+      -h citydb \
+      -d ${CITYDB_DB} \
+      -u ${CITYDB_USER} \
+      -p ${CITYDB_PASSWORD} \
+      -f /data/your-file.gml
+    ```
 
 ### Export Data from Database
 
 Export to CityGML format:
+
 ```bash
 docker-compose run --rm impexp ExporterCLI \
   -h citydb \
@@ -95,16 +99,19 @@ The exported file will be saved to `./impexp-data/export.gml` on your host machi
 ## 5. 🔗 Accessing Services
 
 ### Web Client
+
 - **URL**: http://localhost:8081 (or configured port)
 - **Reads directly from**: CityDB database
 - No static file volume required
 
 ### Web Feature Service (WFS)
+
 - **Base URL**: http://localhost:8080 (or configured port)
 - **GetCapabilities**: http://localhost:8080/wfs?service=WFS&version=2.0.0&request=GetCapabilities
 - **GetFeature example**: http://localhost:8080/wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=core:Building
 
 ### Database Direct Access
+
 - **Host**: `localhost` (or `citydb` from within Docker network)
 - **Port**: `5432` (or configured port)
 - **Database**: Configured via `CITYDB_DB` env var (default: `citydb`)
@@ -136,6 +143,7 @@ docker run --rm -v modeling_citydb_data:/data -v $(pwd):/backup alpine tar xzf /
 ## 7. 🔧 Maintenance
 
 ### View Logs
+
 ```bash
 # All services
 docker-compose logs -f
@@ -148,6 +156,7 @@ docker-compose logs -f citydb-wfs
 ```
 
 ### Restart Services
+
 ```bash
 # Restart all
 docker-compose restart
@@ -157,6 +166,7 @@ docker-compose restart citydb
 ```
 
 ### Stop and Clean
+
 ```bash
 # Stop services (keeps data)
 docker-compose down
@@ -171,4 +181,3 @@ docker-compose down -v
 - [3DCityDB Docker Images](https://3dcitydb-docs.readthedocs.io/en/latest/first-steps/docker.html)
 - [CityGML Specification](https://www.ogc.org/standards/citygml)
 - [OGC WFS Standard](https://www.ogc.org/standards/wfs)
-

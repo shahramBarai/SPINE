@@ -53,20 +53,20 @@ NODE_ENV=development
 
 1. **Install dependencies:**
 
-   ```bash
-   npm install
-   ```
+    ```bash
+    npm install
+    ```
 
 2. **Start development server:**
 
-   ```bash
-   npm run dev
-   ```
+    ```bash
+    npm run dev
+    ```
 
 3. **Production start:**
-   ```bash
-   npm start
-   ```
+    ```bash
+    npm start
+    ```
 
 ## Dependencies
 

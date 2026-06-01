@@ -13,6 +13,7 @@ This DevContainer provides a complete development environment for the IoT Platfo
 ### Working with Different Modules
 
 **Node.js/TypeScript modules** (e.g., `modules/app/webapp`):
+
 ```bash
 cd modules/app/webapp
 pnpm install
@@ -20,6 +21,7 @@ pnpm dev
 ```
 
 **Rust modules** (e.g., `modules/ingress/mqtt_subscriber`):
+
 ```bash
 cd modules/ingress/mqtt_subscriber
 cargo build
@@ -27,6 +29,7 @@ cargo run
 ```
 
 **Python modules** (e.g., `modules/analytics/flink-cep`):
+
 ```bash
 cd modules/analytics/flink-cep
 python3 -m venv venv
@@ -39,23 +42,23 @@ pip install -r requirements.txt
 ### Multi-Language Support
 
 - **Node.js 20** with TypeScript support
-  - pnpm package manager pre-installed
-  - For modules: app/webapp, storage/data-service, storage/timescale-writer, ingress/mqtt_subscriber_nodejs, analytics/job-submission-service
+    - pnpm package manager pre-installed
+    - For modules: app/webapp, storage/data-service, storage/timescale-writer, ingress/mqtt_subscriber_nodejs, analytics/job-submission-service
 
 - **Rust** (latest stable)
-  - rustup, cargo, rustfmt, clippy
-  - For modules: ingress/mqtt_subscriber
+    - rustup, cargo, rustfmt, clippy
+    - For modules: ingress/mqtt_subscriber
 
 - **Python 3** with pip and venv
-  - For modules: analytics/flink-cep
+    - For modules: analytics/flink-cep
 
 ### Development Tools
 
 - VS Code extensions for:
-  - TypeScript/JavaScript: ESLint, Prettier, Tailwind CSS, Prisma
-  - Rust: rust-analyzer, TOML support
-  - Python: Python, Pylance, Black formatter
-  - General: GitLens, REST Client, Copilot
+    - TypeScript/JavaScript: ESLint, Prettier, Tailwind CSS, Prisma
+    - Rust: rust-analyzer, TOML support
+    - Python: Python, Pylance, Black formatter
+    - General: GitLens, REST Client, Copilot
 
 ### Infrastructure Integration
 

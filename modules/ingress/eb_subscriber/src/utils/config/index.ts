@@ -16,12 +16,7 @@ if (SEND_TO !== "kafka" && SEND_TO !== "excel" && SEND_TO !== "console") {
     throw new Error(`SEND_TO must be one of: kafka, excel, console`);
 }
 
-export {
-    NODE_ENV,
-    HOST,
-    PORT,
-    SEND_TO,
-};
+export { NODE_ENV, HOST, PORT, SEND_TO };
 
 export * from "./kafka_config";
 export * from "./eb_config";
