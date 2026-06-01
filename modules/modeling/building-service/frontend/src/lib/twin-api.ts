@@ -168,6 +168,16 @@ export type EntityProperty = {
   value: string;
 };
 
+export type SensorSelectionDetails = {
+  id: string;
+  telemetry_identifier: string;
+  location_id: string | null;
+  location_name: string | null;
+  latest_value: string | null;
+  latest_time: string | null;
+  telemetry_error: string | null;
+};
+
 export type SemanticSearchRequest = {
   query: string;
   limit?: number;
@@ -765,6 +775,9 @@ const detectSparqlForm = (query: string): "select" | "construct" | "other" => {
 export const fetchProjectTree = async (): Promise<IfcNode[]> => fetchJson<IfcNode[]>("/tree");
 
 export const fetchSensors = async (): Promise<Sensor[]> => fetchJson<Sensor[]>("/sensors");
+
+export const fetchSensorSelectionDetails = async (sensorId: string): Promise<SensorSelectionDetails> =>
+  fetchJson<SensorSelectionDetails>(`/sensors/${encodeURIComponent(sensorId)}/selection`);
 
 export const fetchTriples = async (): Promise<Triple[]> => fetchJson<Triple[]>("/triples");
 

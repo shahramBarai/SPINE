@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import os
 import math
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -34,6 +36,16 @@ class SensorDto(BaseModel):
 	value: float
 	unit: str
 	bound: str
+
+
+class SensorSelectionDto(BaseModel):
+	id: str
+	telemetry_identifier: str
+	location_id: str | None = None
+	location_name: str | None = None
+	latest_value: str | None = None
+	latest_time: str | None = None
+	telemetry_error: str | None = None
 
 
 class TripleDto(BaseModel):
@@ -367,6 +379,127 @@ def _fuseki_manager() -> FusekiTTLManager:
 	)
 
 
+def _normalize_sensor_identifier(sensor_id: str) -> str:
+	if sensor_id.startswith("sensor_"):
+		return sensor_id[len("sensor_"):]
+	return sensor_id
+
+
+def _extract_sensor_value(raw_message: str) -> str:
+	value = (raw_message or "").strip()
+	if not value:
+		return ""
+
+	try:
+		parsed = json.loads(value)
+	except json.JSONDecodeError:
+		return value
+
+	if isinstance(parsed, dict):
+		for key in ("value", "reading", "sensor_value", "message", "v"):
+			if key in parsed:
+				return str(parsed[key])
+		return json.dumps(parsed)
+
+	if isinstance(parsed, list):
+		return json.dumps(parsed)
+
+	return str(parsed)
+
+
+def _query_latest_sensor_timeseries(sensor_identifier: str) -> tuple[str | None, str | None, str | None]:
+	if not re.fullmatch(r"[0-9a-fA-F-]{8,64}", sensor_identifier):
+		return None, None, "Invalid sensor identifier format for telemetry lookup."
+
+	container_name = os.getenv("TIMESCALEDB_CONTAINER_NAME", "timescaledb")
+	db_name = os.getenv("TIMESCALEDB_DB", "timescale")
+	db_user = os.getenv("TIMESCALEDB_USER", "username")
+
+	sql = (
+		"SELECT json_build_object('message', message, 'sensor_timestamp', sensor_timestamp)::text "
+		"FROM sensor_data "
+		f"WHERE sensor_id = '{sensor_identifier}' "
+		"ORDER BY sensor_timestamp DESC LIMIT 1;"
+	)
+
+	command = [
+		"docker",
+		"exec",
+		container_name,
+		"psql",
+		"-U",
+		db_user,
+		"-d",
+		db_name,
+		"-t",
+		"-A",
+		"-c",
+		sql,
+	]
+
+	try:
+		result = subprocess.run(command, capture_output=True, text=True, timeout=5, check=False)
+	except FileNotFoundError:
+		return None, None, "docker cli not available"
+	except subprocess.TimeoutExpired:
+		return None, None, "timescaledb query timed out"
+	except OSError as exc:
+		return None, None, str(exc)
+
+	if result.returncode != 0:
+		error_text = result.stderr.strip() or result.stdout.strip() or "timescaledb query failed"
+		return None, None, error_text
+
+	row = result.stdout.strip()
+	if not row:
+		return None, None, None
+
+	try:
+		payload = json.loads(row)
+	except json.JSONDecodeError:
+		return row, None, None
+
+	latest_value = _extract_sensor_value(str(payload.get("message", "")))
+	latest_time = str(payload.get("sensor_timestamp", "")) or None
+	return latest_value or None, latest_time, None
+
+
+def _resolve_sensor_location(sensor_id: str) -> tuple[str | None, str | None]:
+	query = f"""
+	PREFIX brick: <https://brickschema.org/schema/Brick#>
+	PREFIX s223: <http://data.ashrae.org/standard223#>
+	PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+	SELECT ?space ?spaceLabel
+	WHERE {{
+	  ?sensor a ?sensorType .
+	  FILTER(CONTAINS(LCASE(STR(?sensorType)), "sensor"))
+	  FILTER(STRENDS(STR(?sensor), "{sensor_id}"))
+	  OPTIONAL {{
+	    {{ ?sensor brick:isPointOf ?space . }}
+	    UNION
+	    {{ ?sensor s223:isLocatedIn ?space . }}
+	    OPTIONAL {{ ?space rdfs:label ?spaceLabel }}
+	  }}
+	}}
+	LIMIT 1
+	"""
+
+	try:
+		bindings = _client().select_query(query)
+	except FusekiSparqlError:
+		return None, None
+
+	if not bindings:
+		return None, None
+
+	row = bindings[0]
+	space_uri = _v(row, "space")
+	space_id = _uri_to_id(space_uri) if space_uri else None
+	space_name = _v(row, "spaceLabel") or space_id
+	return space_id, (space_name if space_name else None)
+
+
 def _timescaledb_health() -> ServiceHealthDto:
 	container_name = os.getenv("TIMESCALEDB_CONTAINER_NAME", "timescaledb")
 	command = [
@@ -598,6 +731,23 @@ def get_sensors() -> list[SensorDto]:
 		raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 	return [_to_sensor(row) for row in bindings]
+
+
+@app.get("/api/sensors/{sensor_id}/selection", response_model=SensorSelectionDto)
+def get_sensor_selection(sensor_id: str) -> SensorSelectionDto:
+	location_id, location_name = _resolve_sensor_location(sensor_id)
+	telemetry_identifier = _normalize_sensor_identifier(sensor_id)
+	latest_value, latest_time, telemetry_error = _query_latest_sensor_timeseries(telemetry_identifier)
+
+	return SensorSelectionDto(
+		id=sensor_id,
+		telemetry_identifier=telemetry_identifier,
+		location_id=location_id,
+		location_name=location_name,
+		latest_value=latest_value,
+		latest_time=latest_time,
+		telemetry_error=telemetry_error,
+	)
 
 
 @app.get("/api/triples", response_model=list[TripleDto])

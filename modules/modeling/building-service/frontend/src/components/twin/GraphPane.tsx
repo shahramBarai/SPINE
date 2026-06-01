@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Crosshair, GitBranch, GripHorizontal, Maximize2, Minimize2, Pause, Play, Search, RotateCcw, RefreshCw, X } from "lucide-react";
 import { useGraphQuery } from "@/hooks/use-twin-data";
-import { type GraphData, type EntityProperty, fetchEntityProperties } from "@/lib/twin-api";
+import { type GraphData, type EntityProperty, type SensorSelectionDetails, fetchEntityProperties, fetchSensorSelectionDetails } from "@/lib/twin-api";
 import { type Triple } from "@/lib/twin-data";
 
 type NodeState = {
@@ -277,6 +277,8 @@ export const GraphPane = ({
   const [searchText, setSearchText] = useState("");
   const [properties, setProperties] = useState<EntityProperty[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(false);
+  const [sensorSelectionDetails, setSensorSelectionDetails] = useState<SensorSelectionDetails | null>(null);
+  const [loadingSensorSelectionDetails, setLoadingSensorSelectionDetails] = useState(false);
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string | null>(null);
   const [selectionPanelPosition, setSelectionPanelPosition] = useState<PanelPosition>({ x: 12, y: 208 });
   const [panelVisible, setPanelVisible] = useState(false);
@@ -474,6 +476,24 @@ export const GraphPane = ({
 
   const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
+  const selectedNode = useMemo(() => {
+    if (!selectedId) {
+      return null;
+    }
+    return nodeMap.get(selectedId) ?? null;
+  }, [nodeMap, selectedId]);
+
+  const selectedNodeIsSensor = useMemo(() => {
+    if (!selectedId) {
+      return false;
+    }
+
+    const idLooksLikeSensor = selectedId.startsWith("sensor_");
+    const typeLooksLikeSensor = (selectedNode?.type ?? "").toLowerCase().includes("sensor");
+    const labelLooksLikeSensor = (selectedNode?.label ?? "").toLowerCase().includes("sensor");
+    return idLooksLikeSensor || typeLooksLikeSensor || labelLooksLikeSensor;
+  }, [selectedId, selectedNode?.label, selectedNode?.type]);
+
   const selectedEdge = useMemo(() => {
     if (!selectedEdgeKey) {
       return null;
@@ -536,6 +556,38 @@ export const GraphPane = ({
         setLoadingProperties(false);
       });
   }, [selectedId, semanticTriples]);
+
+  useEffect(() => {
+    if (!selectedId || !selectedNodeIsSensor) {
+      setSensorSelectionDetails(null);
+      setLoadingSensorSelectionDetails(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingSensorSelectionDetails(true);
+
+    fetchSensorSelectionDetails(selectedId)
+      .then((details) => {
+        if (!cancelled) {
+          setSensorSelectionDetails(details);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSensorSelectionDetails(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingSensorSelectionDetails(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, selectedNodeIsSensor]);
 
   useEffect(() => {
     const onPointerMove = (event: PointerEvent) => {
@@ -975,6 +1027,36 @@ export const GraphPane = ({
                     <div className="break-words font-mono text-[10px] text-muted-foreground">{row.value}</div>
                   </div>
                 ))}
+                {selectedNodeIsSensor && (
+                  <>
+                    <div className="border-b border-border/30 pb-1">
+                      <div className="text-[10px] font-mono text-primary">Location (bot:Space)</div>
+                      <div className="break-words font-mono text-[10px] text-muted-foreground">
+                        {sensorSelectionDetails?.location_name ?? sensorSelectionDetails?.location_id ?? "Unavailable"}
+                      </div>
+                    </div>
+                    <div className="border-b border-border/30 pb-1">
+                      <div className="text-[10px] font-mono text-primary">Latest Value</div>
+                      <div className="break-words font-mono text-[10px] text-muted-foreground">
+                        {sensorSelectionDetails?.latest_value ?? "Unavailable"}
+                      </div>
+                    </div>
+                    <div className="border-b border-border/30 pb-1">
+                      <div className="text-[10px] font-mono text-primary">Latest Time</div>
+                      <div className="break-words font-mono text-[10px] text-muted-foreground">
+                        {sensorSelectionDetails?.latest_time ?? "Unavailable"}
+                      </div>
+                    </div>
+                  </>
+                )}
+                {loadingSensorSelectionDetails && (
+                  <div className="pt-1 text-[10px] font-mono text-muted-foreground">Loading sensor telemetry...</div>
+                )}
+                {!loadingSensorSelectionDetails && selectedNodeIsSensor && sensorSelectionDetails?.telemetry_error && (
+                  <div className="pt-1 text-[10px] font-mono text-muted-foreground">
+                    Telemetry lookup issue: {sensorSelectionDetails.telemetry_error}
+                  </div>
+                )}
                 {loadingProperties && (
                   <div className="pt-1 text-[10px] font-mono text-muted-foreground">Loading properties...</div>
                 )}
