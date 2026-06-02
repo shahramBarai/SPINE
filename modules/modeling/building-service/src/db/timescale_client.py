@@ -20,7 +20,7 @@ import asyncpg
 class SensorReading(BaseModel):
     id: str 
     timestamp: datetime
-    data: dict
+    data: object
 
 class TimescaleClient:
     """
