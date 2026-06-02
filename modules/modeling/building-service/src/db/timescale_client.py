@@ -34,7 +34,7 @@ class TimescaleClient:
     """
     def __init__(self, database_url: str):
         # database_url should be in the format: "username:password@host:port/database"
-        self.database_url = database_url
+        self.database_url = f"postgresql://{database_url}"
         self.pool: Optional[asyncpg.Pool] = None
 
     
@@ -146,3 +146,24 @@ class TimescaleClient:
             records = await self._fetch(query, sensor_id, start_time)
         
         return [SensorReading(id=record['id'], timestamp=record['time'], data=record['data']) for record in records]
+    
+    async def get_latest_sensor_reading(self, sensor_id: str) -> Optional[SensorReading]:
+        """
+        Get the latest sensor reading for a given sensor ID.
+
+        Args:
+            sensor_id: The ID of the sensor to read from
+        Returns:
+            A SensorReading object if found, otherwise None
+        """
+        query = """
+            SELECT id, time, data
+            FROM sensor_readings
+            WHERE id = $1
+            ORDER BY time DESC
+            LIMIT 1
+        """
+        record = await self._fetchrow(query, sensor_id)
+        if record:
+            return SensorReading(id=record['id'], timestamp=record['time'], data=record['data'])
+        return None
