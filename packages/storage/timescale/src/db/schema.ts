@@ -1,5 +1,5 @@
 import { withTransaction } from "./connection";
-import { logger } from "../logger";
+import { logger } from "@spine/shared";
 
 interface SensorReading {
     time: Date;
