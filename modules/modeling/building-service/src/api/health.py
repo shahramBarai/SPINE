@@ -24,7 +24,7 @@ class ServiceStatus(BaseModel):
 
 class HealthResponse(BaseModel):
 	status: HealthStatus
-	fusekiDB: ServiceStatus
+	fusekidb: ServiceStatus
 	timescaledb: ServiceStatus
 
 @router.get("/api/health", response_model=HealthResponse)
@@ -38,15 +38,15 @@ def health() -> HealthResponse:
     )
 	
     # TODO: Implement actual health check logic for FusekiDB
-	fusekiDB = ServiceStatus(
+	fusekidb = ServiceStatus(
         connected=True,  # Placeholder for actual health check logic
         health_status=HealthStatus.HEALTHY,  # Placeholder for actual health status
         error=None  # Placeholder for actual error message if any
     )
 
-	status = HealthStatus.HEALTHY if timescaledb.connected and fusekiDB.connected else HealthStatus.DEGRADED
+	status = HealthStatus.HEALTHY if timescaledb.connected and fusekidb.connected else HealthStatus.DEGRADED
 	return HealthResponse(
 		status=status,
 		timescaledb=timescaledb,
-		fusekiDB=fusekiDB
+		fusekidb=fusekidb
 	)
