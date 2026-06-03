@@ -7,20 +7,12 @@ Provide domain-specific methods for working with sensor readings.
 Public functions:
 - connect: Create connection pool with specified limits
 - close: Close the connection pool when done
-- get_sensor_readings: Read sensor readings from the database for a given sensor ID and time range.
-
-TODO: Move domain-specific methods to a separate class or module if the client grows significantly in scope.
+- fetch: Execute a query and return the result
+- fetchrow: Execute a query and return a single row
 """
 
-from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
 import asyncpg
-
-class SensorReading(BaseModel):
-    id: str 
-    timestamp: datetime
-    data: object
 
 class TimescaleClient:
     """
@@ -41,6 +33,9 @@ class TimescaleClient:
     async def connect(self):
         """
         Create connection pool with specified specified limits
+
+        Raises:
+            RuntimeError: If the connection pool could not be established
         """
         if self.pool is not None:
             return  # Already connected
@@ -54,6 +49,9 @@ class TimescaleClient:
             max_size=20,
             timeout=60.0
         )
+
+        if self.pool is None:
+            raise RuntimeError("Failed to create connection pool for TimescaleDB.")
 
         # Ensure the timescaledb extension is available in the database
         await self._execute("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;")
@@ -73,97 +71,47 @@ class TimescaleClient:
         Args:
             query: SQL query string with optional placeholders for parameters
             *args: Parameters to be passed to the query
-        
         Returns:
             The result of the query execution, which can be a command status 
             or a list of records depending on the query type.
+        Raises:
+            RuntimeError: If the connection pool is not established.
         """
         if self.pool is None:
-            raise RuntimeError("Database connection pool is not initialized. Call connect() first.")
+            await self.connect()
         async with self.pool.acquire() as connection:
             return await connection.execute(query, *args)
         
-    async def _fetch(self, query: str, *args):
+    async def fetch(self, query: str, *args):
         """
         Fetch all rows from a query with optional parameters.
 
         Args:
             query: SQL query string with optional placeholders for parameters
             *args: Parameters to be passed to the query
-
         Returns:
             A list of records returned by the query.
+        Raises:
+            RuntimeError: If the connection pool could not be established.
         """
         if self.pool is None:
-            raise RuntimeError("Database connection pool is not initialized. Call connect() first.")
+            await self.connect()
         async with self.pool.acquire() as connection:
             return await connection.fetch(query, *args)
         
-    async def _fetchrow(self, query: str, *args):
+    async def fetchrow(self, query: str, *args):
         """
         Fetch a single row from a query with optional parameters.
 
         Args:
             query: SQL query string with optional placeholders for parameters
             *args: Parameters to be passed to the query
-
         Returns:
             A single record returned by the query or None if no rows are found.
+        Raises:
+            RuntimeError: If the connection pool could not be established.
         """
         if self.pool is None:
-            raise RuntimeError("Database connection pool is not initialized. Call connect() first.")
+            await self.connect()
         async with self.pool.acquire() as connection:
             return await connection.fetchrow(query, *args)
-        
-    # --- Domain-specific methods for sensor readings ---
-
-    async def get_sensor_readings(
-        self, sensor_id: str, start_time: datetime, end_time: Optional[datetime] = None
-    ) -> list[SensorReading]:
-        """
-        Read sensor readings from the database for a given sensor ID and time range.
-
-        Args:
-            sensor_id: The ID of the sensor to read from
-            start_time: The timestamp to read the sensor reading for
-            end_time: Optional end time to specify a range for the sensor reading (by default, it will read the latest reading at or before the start_time)
-        Returns:
-            A list of SensorReading objects if found, otherwise an empty list
-        """
-        if end_time:
-            query = """
-                SELECT id, time, data
-                FROM sensor_readings
-                WHERE id = $1 AND time >= $2 AND time <= $3
-            """
-            records = await self._fetch(query, sensor_id, start_time, end_time)
-        else:
-            query = """
-                SELECT id, time, data
-                FROM sensor_readings
-                WHERE id = $1 AND time <= $2
-            """
-            records = await self._fetch(query, sensor_id, start_time)
-        
-        return [SensorReading(id=record['id'], timestamp=record['time'], data=record['data']) for record in records]
-    
-    async def get_latest_sensor_reading(self, sensor_id: str) -> Optional[SensorReading]:
-        """
-        Get the latest sensor reading for a given sensor ID.
-
-        Args:
-            sensor_id: The ID of the sensor to read from
-        Returns:
-            A SensorReading object if found, otherwise None
-        """
-        query = """
-            SELECT id, time, data
-            FROM sensor_readings
-            WHERE id = $1
-            ORDER BY time DESC
-            LIMIT 1
-        """
-        record = await self._fetchrow(query, sensor_id)
-        if record:
-            return SensorReading(id=record['id'], timestamp=record['time'], data=record['data'])
-        return None
