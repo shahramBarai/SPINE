@@ -9,7 +9,7 @@ FUSEKI_BASE_URL = os.getenv("FUSEKI_BASE_URL", "http://localhost:3030")
 FUSEKI_DATASET = os.getenv("FUSEKI_DATASET", "spine")
 
 DATABASE_URL_TIMESCALE = os.getenv(
-    "DATABASE_URL_TIMESCALE", "username:password@localhost:5432/timescaledb"
+    "DATABASE_URL_TIMESCALE", "username:password@localhost:5433/timescale"
 )
 
 # --- Initialize clients ---
@@ -33,7 +33,7 @@ def get_fuseki_client() -> FusekiSparqlClient:
     return fusekiSparqlClient
 
 
-async def get_timescale_client() -> TimescaleClient:
+def get_timescale_client() -> TimescaleClient:
     """
     Get a singleton instance of the TimescaleClient. The connection pool is established on first use.
     
@@ -43,7 +43,6 @@ async def get_timescale_client() -> TimescaleClient:
     global timescaleClient
     if timescaleClient is None:
         timescaleClient = TimescaleClient(database_url=DATABASE_URL_TIMESCALE)
-        await timescaleClient.connect()  # Establish connection pool on first use
     return timescaleClient
 
 __all__ = ["get_fuseki_client", "get_timescale_client", "FusekiSparqlError"]
