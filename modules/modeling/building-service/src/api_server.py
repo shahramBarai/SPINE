@@ -17,6 +17,9 @@ from fuseki_sparql_client import FusekiSparqlClient, FusekiSparqlError
 from ifc_lbd_converter import get_target_file_path, load_json, run_conversion
 from ttl_fuseki_manager import FusekiError, FusekiTTLManager
 
+from utils.sparql_helpers import get_binding_value, get_binding_type, uri_to_id
+
+from api import router
 
 BOT = "https://w3id.org/bot#"
 
@@ -26,24 +29,6 @@ class IfcNodeDto(BaseModel):
 	name: str
 	type: str
 	children: list["IfcNodeDto"] | None = None
-
-
-class SensorDto(BaseModel):
-	id: str
-	name: str
-	kind: str
-	status: str
-	value: float
-	unit: str
-	bound: str
-
-
-class SensorSelectionDto(BaseModel):
-	id: str
-	telemetry_identifier: str
-	latest_value: str | None = None
-	latest_time: str | None = None
-	telemetry_error: str | None = None
 
 
 class TripleDto(BaseModel):
@@ -114,39 +99,13 @@ class SemanticSearchResultDto(BaseModel):
 	graph: GraphDto
 
 
-class ServiceHealthDto(BaseModel):
-	connected: bool
-	container_status: str | None = None
-	health_status: str | None = None
-	error: str | None = None
-
-
-class HealthDto(BaseModel):
-	status: str
-	timescaledb: ServiceHealthDto
-
-
-def _v(binding: dict[str, Any], key: str, default: str = "") -> str:
-	value = binding.get(key)
-	if isinstance(value, dict):
-		return str(value.get("value", default))
-	return default
-
-
-def _binding_type(binding: dict[str, Any], key: str) -> str:
-	value = binding.get(key)
-	if isinstance(value, dict):
-		return str(value.get("type", ""))
-	return ""
-
-
 def _extract_triple(binding: dict[str, Any]) -> tuple[TripleDto | None, bool]:
 	for subject_key, predicate_key, object_key in (("s", "p", "o"), ("subject", "predicate", "object")):
-		subject = _v(binding, subject_key)
-		predicate = _v(binding, predicate_key)
-		obj = _v(binding, object_key)
+		subject = get_binding_value(binding, subject_key)
+		predicate = get_binding_value(binding, predicate_key)
+		obj = get_binding_value(binding, object_key)
 		if subject and predicate and obj:
-			object_type = _binding_type(binding, object_key)
+			object_type = get_binding_type(binding, object_key)
 			object_is_node = object_type in {"uri", "bnode"}
 			return TripleDto(subject=subject, predicate=predicate, object=obj), object_is_node
 
@@ -161,8 +120,8 @@ def _build_graph_from_triples(triples: list[TripleDto], edge_enabled: list[bool]
 		if not include_edge:
 			continue
 
-		from_id = _uri_to_id(triple.subject)
-		to_id = _uri_to_id(triple.object)
+		from_id = uri_to_id(triple.subject)
+		to_id = uri_to_id(triple.object)
 		if not from_id or not to_id:
 			continue
 
@@ -212,36 +171,13 @@ def _node_type(type_uri: str) -> str:
 	return "Element"
 
 
-def _uri_to_id(uri: str) -> str:
-	if not uri:
-		return ""
-	if "#" in uri:
-		return uri.rsplit("#", maxsplit=1)[-1]
-	if "/" in uri:
-		return uri.rsplit("/", maxsplit=1)[-1]
-	return uri
-
-
-def _kind_from_text(text: str) -> tuple[str, str]:
-	lower = text.lower()
-	if "co2" in lower:
-		return "CO2", "ppm"
-	if "humid" in lower:
-		return "Humidity", "%"
-	if "occup" in lower:
-		return "Occupancy", "ppl"
-	if "power" in lower or "watt" in lower:
-		return "Power", "kW"
-	return "Temp", "C"
-
-
 def _short_name(uri: str) -> str:
-	identifier = _uri_to_id(uri)
+	identifier = uri_to_id(uri)
 	return identifier.replace("_", " ")
 
 
 def _edge_label(predicate_uri: str) -> str:
-	return _uri_to_id(predicate_uri)
+	return uri_to_id(predicate_uri)
 
 
 def _graph_node_type(uri: str) -> str:
@@ -261,31 +197,6 @@ def _layout(index: int, total: int) -> tuple[float, float]:
 	radius = 140.0 + (index % 3) * 35.0
 	angle = (index / total) * 6.283185307179586
 	return center_x + radius * math.cos(angle), center_y + radius * math.sin(angle)
-
-
-def _to_sensor(binding: dict[str, Any]) -> SensorDto:
-	sensor_uri = _v(binding, "sensor")
-	label = _v(binding, "label") or _uri_to_id(sensor_uri)
-	observable = _v(binding, "observable")
-	unit = _v(binding, "unit")
-	value_raw = _v(binding, "value")
-	bound_uri = _v(binding, "space")
-
-	fallback_kind, fallback_unit = _kind_from_text(f"{label} {observable}")
-	try:
-		value = float(value_raw) if value_raw else 0.0
-	except ValueError:
-		value = 0.0
-
-	return SensorDto(
-		id=_uri_to_id(sensor_uri),
-		name=label,
-		kind=fallback_kind,
-		status="live",
-		value=value,
-		unit=unit or fallback_unit,
-		bound=_uri_to_id(bound_uri),
-	)
 
 
 def _build_tree(nodes_raw: list[dict[str, str]], parents: dict[str, str]) -> list[IfcNodeDto]:
@@ -376,359 +287,6 @@ def _fuseki_manager() -> FusekiTTLManager:
 		timeout_seconds=float(os.getenv("FUSEKI_TIMEOUT_SECONDS", "600")),
 	)
 
-
-def _normalize_sensor_identifier(sensor_id: str) -> str:
-	if sensor_id.startswith("sensor_"):
-		return sensor_id[len("sensor_"):]
-	if sensor_id.startswith("id_"):
-		return sensor_id[len("id_"):]
-	return sensor_id
-
-
-def _extract_numeric_sensor_id_from_comment(comment: str) -> str | None:
-	match = re.search(r"\bid_(\d+)\b", comment, flags=re.IGNORECASE)
-	if match:
-		return match.group(1)
-
-	match = re.search(r"\b(\d{3,})\b", comment)
-	if match:
-		return match.group(1)
-
-	return None
-
-
-_UUID_RE = re.compile(
-	r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
-	re.IGNORECASE,
-)
-
-
-def _extract_numeric_sensor_id_from_text(text: str) -> str | None:
-	if not text:
-		return None
-
-	match = re.search(r"\bid_(\d+)\b", text, flags=re.IGNORECASE)
-	if match:
-		return match.group(1)
-
-	# Strip UUID segments so their hex digits don't produce false decimal matches
-	cleaned = _UUID_RE.sub("", text)
-	match = re.search(r"(\d{3,})", cleaned)
-	if match:
-		return match.group(1)
-
-	return None
-
-
-def _sparql_escape(text: str) -> str:
-	return text.replace("\\", "\\\\").replace('"', '\\"')
-
-
-def _sensor_lookup_candidates(sensor_identifier: str) -> list[str]:
-	raw = (sensor_identifier or "").strip()
-	if not raw:
-		return []
-
-	normalized = _normalize_sensor_identifier(raw)
-	numeric = _extract_numeric_sensor_id_from_text(raw) or _extract_numeric_sensor_id_from_text(normalized)
-
-	candidates: list[str] = []
-	for candidate in (raw, normalized):
-		if candidate and candidate not in candidates:
-			candidates.append(candidate)
-
-	if numeric:
-		for candidate in (numeric, f"id_{numeric}", f"sensor_{numeric}"):
-			if candidate and candidate not in candidates:
-				candidates.append(candidate)
-
-	return candidates
-
-
-def _resolve_timeseries_sensor_identifier(sensor_id: str) -> tuple[str, str | None]:
-	sensor_token = _sparql_escape(sensor_id or "")
-	comment_query_error: str | None = None
-	normalized_sensor_id = _normalize_sensor_identifier(sensor_id)
-	if re.fullmatch(r"\d{1,64}", normalized_sensor_id):
-		return normalized_sensor_id, None
-
-	comment_query = f"""
-	PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-
-	SELECT ?sensor ?comment
-	WHERE {{
-	  ?sensor rdfs:comment ?comment .
-	  FILTER(STRENDS(LCASE(STR(?sensor)), LCASE("{sensor_token}")))
-	}}
-	LIMIT 10
-	"""
-	query = f"""
-	PREFIX brick: <https://brickschema.org/schema/Brick#>
-	PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-
-	SELECT ?sensor ?comment
-	WHERE {{
-	  ?sensor a ?sensorType .
-	  FILTER(CONTAINS(LCASE(STR(?sensorType)), "sensor"))
-	  OPTIONAL {{ ?sensor rdfs:comment ?comment }}
-	  FILTER(
-	    STRENDS(LCASE(STR(?sensor)), LCASE("{sensor_token}")) ||
-	    CONTAINS(LCASE(STR(?sensor)), LCASE("{sensor_token}")) ||
-	    CONTAINS(LCASE(STR(COALESCE(?comment, ""))), LCASE("{sensor_token}"))
-	  )
-	}}
-	LIMIT 20
-	"""
-
-	try:
-		bindings = _client().select_query(comment_query)
-	except FusekiSparqlError as exc:
-		bindings = []
-		comment_query_error = str(exc)
-
-	if bindings:
-		for row in bindings:
-			comment = _v(row, "comment")
-			resolved = _extract_numeric_sensor_id_from_comment(comment)
-			if resolved:
-				return resolved, None
-
-	try:
-		bindings = _client().select_query(query)
-	except FusekiSparqlError as exc:
-		if re.fullmatch(r"\d{1,64}", normalized_sensor_id):
-			return normalized_sensor_id, str(exc)
-		return "", comment_query_error or str(exc)
-
-	if bindings:
-		for row in bindings:
-			comment = _v(row, "comment")
-			resolved = _extract_numeric_sensor_id_from_comment(comment)
-			if resolved:
-				return resolved, None
-
-		for row in bindings:
-			resolved = _extract_numeric_sensor_id_from_text(_v(row, "sensor"))
-			if resolved:
-				return resolved, "rdfs:comment missing id_<digits>; used numeric token from sensor URI."
-
-	fallback = normalized_sensor_id
-	resolved_fallback = _extract_numeric_sensor_id_from_text(fallback)
-	if resolved_fallback:
-		return resolved_fallback, "rdfs:comment missing id_<digits>; used numeric token from selected sensor id."
-
-	if re.fullmatch(r"\d{1,64}", fallback):
-		return fallback, "rdfs:comment did not contain id_<digits>; used sensor URI suffix as fallback."
-
-	return sensor_id, "Could not resolve numeric sensor_id from rdfs:comment (expected id_<digits>); falling back to selected sensor id."
-
-
-def _extract_sensor_value(raw_message: str) -> str:
-	value = (raw_message or "").strip()
-	if not value:
-		return ""
-
-	try:
-		parsed = json.loads(value)
-	except json.JSONDecodeError:
-		return value
-
-	if isinstance(parsed, dict):
-		for key in ("value", "reading", "sensor_value", "message", "payload", "data", "v"):
-			if key in parsed:
-				picked = parsed[key]
-				if isinstance(picked, (dict, list)):
-					return json.dumps(picked)
-				return str(picked)
-		return json.dumps(parsed)
-
-	if isinstance(parsed, list):
-		return json.dumps(parsed)
-
-	return str(parsed)
-
-
-def _timescale_package_dir() -> Path:
-	# api_server.py -> src -> building-service -> modeling -> modules -> repo root
-	repo_root = Path(__file__).resolve().parents[4]
-	return repo_root / "packages" / "storage" / "timescale"
-
-
-def _timescale_database_url() -> str:
-	explicit = os.getenv("TIMESCALE_DATABASE_URL") or os.getenv("TIMESCALEDB_URL")
-	if explicit:
-		return explicit
-
-	host = os.getenv("TIMESCALEDB_HOST", "localhost")
-	port = os.getenv("TIMESCALEDB_PORT", "5433")
-	db_name = os.getenv("TIMESCALEDB_DB", "timescale")
-	db_user = os.getenv("TIMESCALEDB_USER", "username")
-	db_password = os.getenv("TIMESCALEDB_PASSWORD", "password")
-	return f"postgresql://{db_user}:{db_password}@{host}:{port}/{db_name}"
-
-
-def _timescale_runner_commands(package_dir: Path, sensor_identifier: str) -> tuple[list[list[str]], dict[str, str]]:
-	snippet = (
-		"import { initTimescaleStorage, SensorService } from './src/index.ts';"
-		"const sensorId = process.argv[2];"
-		"const host = process.env.TS_HOST ?? 'localhost';"
-		"const port = process.env.TS_PORT ?? '5433';"
-		"const db = process.env.TS_DB ?? 'timescale';"
-		"const user = process.env.TS_USER ?? 'username';"
-		"const password = process.env.TS_PASSWORD ?? 'password';"
-		"const dbUrl = `postgresql://${user}:${password}@${host}:${port}/${db}`;"
-		"initTimescaleStorage({ databaseUrl: dbUrl });"
-		"const latest = await SensorService.getLatestSensorData(sensorId);"
-		"console.log(JSON.stringify({ latest }));"
-	)
-
-	env = {
-		**os.environ,
-		"TS_HOST": os.getenv("TIMESCALEDB_HOST", "localhost"),
-		"TS_PORT": os.getenv("TIMESCALEDB_PORT", "5433"),
-		"TS_DB": os.getenv("TIMESCALEDB_DB", "timescale"),
-		"TS_USER": os.getenv("TIMESCALEDB_USER", "username"),
-		"TS_PASSWORD": os.getenv("TIMESCALEDB_PASSWORD", "password"),
-	}
-
-	local_tsx_cmd = package_dir / "node_modules" / ".bin" / "tsx.cmd"
-	local_tsx = package_dir / "node_modules" / ".bin" / "tsx"
-
-	commands: list[list[str]] = []
-	if local_tsx_cmd.exists():
-		commands.append([str(local_tsx_cmd), "-e", snippet, sensor_identifier])
-	if local_tsx.exists():
-		commands.append([str(local_tsx), "-e", snippet, sensor_identifier])
-
-	# --yes avoids interactive install prompts that can hang subprocess calls.
-	commands.append(["npx", "--yes", "tsx", "-e", snippet, sensor_identifier])
-	commands.append(["npx.cmd", "--yes", "tsx", "-e", snippet, sensor_identifier])
-
-	return commands, env
-
-
-def _query_latest_sensor_timeseries(sensor_identifier: str) -> tuple[str | None, str | None, str | None]:
-	candidates = _sensor_lookup_candidates(sensor_identifier)
-	if not candidates:
-		return None, None, "Missing sensor identifier for telemetry lookup."
-
-	package_dir = _timescale_package_dir()
-	if not package_dir.exists():
-		return None, None, f"Timescale package not found: {package_dir}"
-
-	env = {
-		**os.environ,
-		"TS_HOST": os.getenv("TIMESCALEDB_HOST", "localhost"),
-		"TS_PORT": os.getenv("TIMESCALEDB_PORT", "5433"),
-		"TS_DB": os.getenv("TIMESCALEDB_DB", "timescale"),
-		"TS_USER": os.getenv("TIMESCALEDB_USER", "username"),
-		"TS_PASSWORD": os.getenv("TIMESCALEDB_PASSWORD", "password"),
-	}
-	lookup_timeout_seconds = float(os.getenv("TIMESCALE_LOOKUP_TIMEOUT_SECONDS", "90"))
-	lookup_timeout_seconds = max(5.0, lookup_timeout_seconds)
-
-	result: subprocess.CompletedProcess[str] | None = None
-	last_error = "npx/tsx not available for Timescale sensor lookup"
-	for candidate in candidates:
-		commands, _ = _timescale_runner_commands(package_dir, candidate)
-		for command in commands:
-			try:
-				attempt = subprocess.run(
-					command,
-					capture_output=True,
-					text=True,
-					timeout=lookup_timeout_seconds,
-					check=False,
-					cwd=str(package_dir),
-					env=env,
-				)
-			except FileNotFoundError:
-				continue
-			except subprocess.TimeoutExpired:
-				last_error = "timescaledb query timed out"
-				continue
-			except OSError as exc:
-				last_error = str(exc)
-				continue
-
-			if attempt.returncode == 0:
-				result = attempt
-				break
-
-			stderr_or_stdout = (attempt.stderr or "").strip() or (attempt.stdout or "").strip()
-			if stderr_or_stdout:
-				last_error = stderr_or_stdout
-
-		if result is not None:
-			break
-
-	if result is None:
-		return None, None, last_error
-
-	output = result.stdout.strip()
-	if not output:
-		return None, None, None
-
-	payload_obj: dict[str, Any] | None = None
-	for line in reversed(output.splitlines()):
-		line = line.strip()
-		if not line:
-			continue
-		try:
-			candidate = json.loads(line)
-		except json.JSONDecodeError:
-			continue
-		if isinstance(candidate, dict) and "latest" in candidate:
-			payload_obj = candidate
-			break
-
-	if payload_obj is None:
-		return None, None, "Unable to parse sensorService output."
-
-	latest = payload_obj.get("latest")
-	if not isinstance(latest, dict):
-		return None, None, None
-
-	latest_value = _extract_sensor_value(json.dumps(latest.get("data", "")))
-	latest_time = str(latest.get("time", "")) or None
-	return latest_value or None, latest_time, None
-
-def _timescaledb_health() -> ServiceHealthDto:
-	container_name = os.getenv("TIMESCALEDB_CONTAINER_NAME", "timescaledb")
-	command = [
-		"docker",
-		"inspect",
-		"--format",
-		"{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}}",
-		container_name,
-	]
-
-	try:
-		result = subprocess.run(command, capture_output=True, text=True, timeout=3, check=False)
-	except FileNotFoundError:
-		return ServiceHealthDto(connected=False, error="docker cli not available")
-	except subprocess.TimeoutExpired:
-		return ServiceHealthDto(connected=False, error="docker inspect timed out")
-	except OSError as exc:
-		return ServiceHealthDto(connected=False, error=str(exc))
-
-	if result.returncode != 0:
-		stderr = result.stderr.strip() or result.stdout.strip() or "docker inspect failed"
-		return ServiceHealthDto(connected=False, error=stderr)
-
-	raw_status = result.stdout.strip()
-	container_status, _, health_status = raw_status.partition("|")
-	container_status = container_status or None
-	health_status = health_status or None
-	connected = container_status == "running" and (health_status in (None, "", "healthy"))
-
-	return ServiceHealthDto(
-		connected=connected,
-		container_status=container_status,
-		health_status=health_status,
-	)
-
-
 app = FastAPI(title="SPINE Building Service API", version="0.1.0")
 
 frontend_origin_env = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
@@ -754,12 +312,7 @@ app.add_middleware(
 	allow_headers=["*"],
 )
 
-
-@app.get("/api/health", response_model=HealthDto)
-def health() -> HealthDto:
-	timescaledb = _timescaledb_health()
-	status = "ok" if timescaledb.connected else "degraded"
-	return HealthDto(status=status, timescaledb=timescaledb)
+app.include_router(router)
 
 
 @app.post("/api/pipeline/load-ifc", response_model=IfcScanResultDto)
@@ -884,66 +437,20 @@ def get_tree() -> list[IfcNodeDto]:
 	parents: dict[str, str] = {}
 
 	for row in bindings:
-		node_uri = _v(row, "node")
-		node_id = _uri_to_id(node_uri)
+		node_uri = get_binding_value(row, "node")
+		node_id = uri_to_id(node_uri)
 		if not node_id:
 			continue
-		label = _v(row, "label") or node_id
-		node_type = _node_type(_v(row, "type"))
+		label = get_binding_value(row, "label") or node_id
+		node_type = _node_type(get_binding_value(row, "type"))
 		nodes_raw.append({"id": node_id, "name": label, "type": node_type})
-		parent_uri = _v(row, "parent")
+		parent_uri = get_binding_value(row, "parent")
 		if parent_uri:
-			parents[node_id] = _uri_to_id(parent_uri)
+			parents[node_id] = uri_to_id(parent_uri)
 
 	unique_nodes = {n["id"]: n for n in nodes_raw}
 	return _build_tree(list(unique_nodes.values()), parents)
 
-
-@app.get("/api/sensors", response_model=list[SensorDto])
-def get_sensors() -> list[SensorDto]:
-	query = """
-	PREFIX brick: <https://brickschema.org/schema/Brick#>
-	PREFIX s223: <http://data.ashrae.org/standard223#>
-	PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-	PREFIX saref: <https://saref.etsi.org/core/>
-
-	SELECT ?sensor ?label ?observable ?unit ?value ?space
-	WHERE {
-	  ?sensor a brick:Sensor .
-	  OPTIONAL { ?sensor rdfs:label ?label }
-	  OPTIONAL { ?sensor brick:measures ?observable }
-	  OPTIONAL { ?sensor <http://qudt.org/schema/qudt/hasUnit> ?unit }
-	  OPTIONAL { ?sensor saref:hasValue ?value }
-	  OPTIONAL { ?sensor s223:isLocatedIn ?space }
-	}
-	ORDER BY ?label
-	"""
-	try:
-		bindings = _client().select_query(query)
-	except FusekiSparqlError as exc:
-		raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-	return [_to_sensor(row) for row in bindings]
-
-
-@app.get("/api/sensors/{sensor_id}/selection", response_model=SensorSelectionDto)
-def get_sensor_selection(sensor_id: str) -> SensorSelectionDto:	
-	telemetry_identifier, resolve_error = _resolve_timeseries_sensor_identifier(sensor_id)
-	if telemetry_identifier:
-		latest_value, latest_time, telemetry_error = _query_latest_sensor_timeseries(telemetry_identifier)
-	else:
-		latest_value, latest_time, telemetry_error = None, None, ""
-
-	if resolve_error:
-		telemetry_error = f"{resolve_error}; {telemetry_error}" if telemetry_error else resolve_error
-
-	return SensorSelectionDto(
-		id=sensor_id,
-		telemetry_identifier=telemetry_identifier,
-		latest_value=latest_value,
-		latest_time=latest_time,
-		telemetry_error=telemetry_error,
-	)
 
 
 @app.get("/api/triples", response_model=list[TripleDto])
@@ -1036,30 +543,4 @@ def semantic_search(request: SemanticSearchRequestDto) -> SemanticSearchResultDt
 
 	graph = _build_graph_from_triples(triples, edge_enabled, focus_id=request.focus_id)
 	return SemanticSearchResultDto(triples=triples, graph=graph)
-
-class FusekiStatusDto(BaseModel):
-	connected: bool
-	url: str
-
-
-@app.get("/api/fuseki/status", response_model=FusekiStatusDto)
-def fuseki_status() -> FusekiStatusDto:
-	manager = _fuseki_manager()
-	return FusekiStatusDto(
-		connected=manager.ping(),
-		url=f"{manager.base_url}/{manager.dataset}",
-	)
-
-
-@app.post("/api/fuseki/connect", response_model=FusekiStatusDto)
-def fuseki_connect() -> FusekiStatusDto:
-	manager = _fuseki_manager()
-	connected = manager.ping()
-	if not connected:
-		raise HTTPException(
-			status_code=503,
-			detail=f"Cannot reach Fuseki dataset at {manager.base_url}/{manager.dataset}. "
-			       "Ensure Fuseki is running and the dataset exists.",
-		)
-	return FusekiStatusDto(connected=True, url=f"{manager.base_url}/{manager.dataset}")
 
