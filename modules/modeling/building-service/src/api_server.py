@@ -41,8 +41,6 @@ class SensorDto(BaseModel):
 class SensorSelectionDto(BaseModel):
 	id: str
 	telemetry_identifier: str
-	location_id: str | None = None
-	location_name: str | None = None
 	latest_value: str | None = None
 	latest_time: str | None = None
 	telemetry_error: str | None = None
@@ -382,7 +380,147 @@ def _fuseki_manager() -> FusekiTTLManager:
 def _normalize_sensor_identifier(sensor_id: str) -> str:
 	if sensor_id.startswith("sensor_"):
 		return sensor_id[len("sensor_"):]
+	if sensor_id.startswith("id_"):
+		return sensor_id[len("id_"):]
 	return sensor_id
+
+
+def _extract_numeric_sensor_id_from_comment(comment: str) -> str | None:
+	match = re.search(r"\bid_(\d+)\b", comment, flags=re.IGNORECASE)
+	if match:
+		return match.group(1)
+
+	match = re.search(r"\b(\d{3,})\b", comment)
+	if match:
+		return match.group(1)
+
+	return None
+
+
+_UUID_RE = re.compile(
+	r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+	re.IGNORECASE,
+)
+
+
+def _extract_numeric_sensor_id_from_text(text: str) -> str | None:
+	if not text:
+		return None
+
+	match = re.search(r"\bid_(\d+)\b", text, flags=re.IGNORECASE)
+	if match:
+		return match.group(1)
+
+	# Strip UUID segments so their hex digits don't produce false decimal matches
+	cleaned = _UUID_RE.sub("", text)
+	match = re.search(r"(\d{3,})", cleaned)
+	if match:
+		return match.group(1)
+
+	return None
+
+
+def _sparql_escape(text: str) -> str:
+	return text.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _sensor_lookup_candidates(sensor_identifier: str) -> list[str]:
+	raw = (sensor_identifier or "").strip()
+	if not raw:
+		return []
+
+	normalized = _normalize_sensor_identifier(raw)
+	numeric = _extract_numeric_sensor_id_from_text(raw) or _extract_numeric_sensor_id_from_text(normalized)
+
+	candidates: list[str] = []
+	for candidate in (raw, normalized):
+		if candidate and candidate not in candidates:
+			candidates.append(candidate)
+
+	if numeric:
+		for candidate in (numeric, f"id_{numeric}", f"sensor_{numeric}"):
+			if candidate and candidate not in candidates:
+				candidates.append(candidate)
+
+	return candidates
+
+
+def _resolve_timeseries_sensor_identifier(sensor_id: str) -> tuple[str, str | None]:
+	sensor_token = _sparql_escape(sensor_id or "")
+	comment_query_error: str | None = None
+	normalized_sensor_id = _normalize_sensor_identifier(sensor_id)
+	if re.fullmatch(r"\d{1,64}", normalized_sensor_id):
+		return normalized_sensor_id, None
+
+	comment_query = f"""
+	PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+	SELECT ?sensor ?comment
+	WHERE {{
+	  ?sensor rdfs:comment ?comment .
+	  FILTER(STRENDS(LCASE(STR(?sensor)), LCASE("{sensor_token}")))
+	}}
+	LIMIT 10
+	"""
+	query = f"""
+	PREFIX brick: <https://brickschema.org/schema/Brick#>
+	PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+	SELECT ?sensor ?comment
+	WHERE {{
+	  ?sensor a ?sensorType .
+	  FILTER(CONTAINS(LCASE(STR(?sensorType)), "sensor"))
+	  OPTIONAL {{ ?sensor rdfs:comment ?comment }}
+	  FILTER(
+	    STRENDS(LCASE(STR(?sensor)), LCASE("{sensor_token}")) ||
+	    CONTAINS(LCASE(STR(?sensor)), LCASE("{sensor_token}")) ||
+	    CONTAINS(LCASE(STR(COALESCE(?comment, ""))), LCASE("{sensor_token}"))
+	  )
+	}}
+	LIMIT 20
+	"""
+
+	try:
+		bindings = _client().select_query(comment_query)
+	except FusekiSparqlError as exc:
+		bindings = []
+		comment_query_error = str(exc)
+
+	if bindings:
+		for row in bindings:
+			comment = _v(row, "comment")
+			resolved = _extract_numeric_sensor_id_from_comment(comment)
+			if resolved:
+				return resolved, None
+
+	try:
+		bindings = _client().select_query(query)
+	except FusekiSparqlError as exc:
+		if re.fullmatch(r"\d{1,64}", normalized_sensor_id):
+			return normalized_sensor_id, str(exc)
+		return "", comment_query_error or str(exc)
+
+	if bindings:
+		for row in bindings:
+			comment = _v(row, "comment")
+			resolved = _extract_numeric_sensor_id_from_comment(comment)
+			if resolved:
+				return resolved, None
+
+		for row in bindings:
+			resolved = _extract_numeric_sensor_id_from_text(_v(row, "sensor"))
+			if resolved:
+				return resolved, "rdfs:comment missing id_<digits>; used numeric token from sensor URI."
+
+	fallback = normalized_sensor_id
+	resolved_fallback = _extract_numeric_sensor_id_from_text(fallback)
+	if resolved_fallback:
+		return resolved_fallback, "rdfs:comment missing id_<digits>; used numeric token from selected sensor id."
+
+	if re.fullmatch(r"\d{1,64}", fallback):
+		return fallback, "rdfs:comment did not contain id_<digits>; used sensor URI suffix as fallback."
+
+	return sensor_id, "Could not resolve numeric sensor_id from rdfs:comment (expected id_<digits>); falling back to selected sensor id."
 
 
 def _extract_sensor_value(raw_message: str) -> str:
@@ -396,9 +534,12 @@ def _extract_sensor_value(raw_message: str) -> str:
 		return value
 
 	if isinstance(parsed, dict):
-		for key in ("value", "reading", "sensor_value", "message", "v"):
+		for key in ("value", "reading", "sensor_value", "message", "payload", "data", "v"):
 			if key in parsed:
-				return str(parsed[key])
+				picked = parsed[key]
+				if isinstance(picked, (dict, list)):
+					return json.dumps(picked)
+				return str(picked)
 		return json.dumps(parsed)
 
 	if isinstance(parsed, list):
@@ -407,98 +548,150 @@ def _extract_sensor_value(raw_message: str) -> str:
 	return str(parsed)
 
 
-def _query_latest_sensor_timeseries(sensor_identifier: str) -> tuple[str | None, str | None, str | None]:
-	if not re.fullmatch(r"[0-9a-fA-F-]{8,64}", sensor_identifier):
-		return None, None, "Invalid sensor identifier format for telemetry lookup."
+def _timescale_package_dir() -> Path:
+	# api_server.py -> src -> building-service -> modeling -> modules -> repo root
+	repo_root = Path(__file__).resolve().parents[4]
+	return repo_root / "packages" / "storage" / "timescale"
 
-	container_name = os.getenv("TIMESCALEDB_CONTAINER_NAME", "timescaledb")
+
+def _timescale_database_url() -> str:
+	explicit = os.getenv("TIMESCALE_DATABASE_URL") or os.getenv("TIMESCALEDB_URL")
+	if explicit:
+		return explicit
+
+	host = os.getenv("TIMESCALEDB_HOST", "localhost")
+	port = os.getenv("TIMESCALEDB_PORT", "5433")
 	db_name = os.getenv("TIMESCALEDB_DB", "timescale")
 	db_user = os.getenv("TIMESCALEDB_USER", "username")
+	db_password = os.getenv("TIMESCALEDB_PASSWORD", "password")
+	return f"postgresql://{db_user}:{db_password}@{host}:{port}/{db_name}"
 
-	sql = (
-		"SELECT json_build_object('message', message, 'sensor_timestamp', sensor_timestamp)::text "
-		"FROM sensor_data "
-		f"WHERE sensor_id = '{sensor_identifier}' "
-		"ORDER BY sensor_timestamp DESC LIMIT 1;"
+
+def _timescale_runner_commands(package_dir: Path, sensor_identifier: str) -> tuple[list[list[str]], dict[str, str]]:
+	snippet = (
+		"import { initTimescaleStorage, SensorService } from './src/index.ts';"
+		"const sensorId = process.argv[2];"
+		"const host = process.env.TS_HOST ?? 'localhost';"
+		"const port = process.env.TS_PORT ?? '5433';"
+		"const db = process.env.TS_DB ?? 'timescale';"
+		"const user = process.env.TS_USER ?? 'username';"
+		"const password = process.env.TS_PASSWORD ?? 'password';"
+		"const dbUrl = `postgresql://${user}:${password}@${host}:${port}/${db}`;"
+		"initTimescaleStorage({ databaseUrl: dbUrl });"
+		"const latest = await SensorService.getLatestSensorData(sensorId);"
+		"console.log(JSON.stringify({ latest }));"
 	)
 
-	command = [
-		"docker",
-		"exec",
-		container_name,
-		"psql",
-		"-U",
-		db_user,
-		"-d",
-		db_name,
-		"-t",
-		"-A",
-		"-c",
-		sql,
-	]
+	env = {
+		**os.environ,
+		"TS_HOST": os.getenv("TIMESCALEDB_HOST", "localhost"),
+		"TS_PORT": os.getenv("TIMESCALEDB_PORT", "5433"),
+		"TS_DB": os.getenv("TIMESCALEDB_DB", "timescale"),
+		"TS_USER": os.getenv("TIMESCALEDB_USER", "username"),
+		"TS_PASSWORD": os.getenv("TIMESCALEDB_PASSWORD", "password"),
+	}
 
-	try:
-		result = subprocess.run(command, capture_output=True, text=True, timeout=5, check=False)
-	except FileNotFoundError:
-		return None, None, "docker cli not available"
-	except subprocess.TimeoutExpired:
-		return None, None, "timescaledb query timed out"
-	except OSError as exc:
-		return None, None, str(exc)
+	local_tsx_cmd = package_dir / "node_modules" / ".bin" / "tsx.cmd"
+	local_tsx = package_dir / "node_modules" / ".bin" / "tsx"
 
-	if result.returncode != 0:
-		error_text = result.stderr.strip() or result.stdout.strip() or "timescaledb query failed"
-		return None, None, error_text
+	commands: list[list[str]] = []
+	if local_tsx_cmd.exists():
+		commands.append([str(local_tsx_cmd), "-e", snippet, sensor_identifier])
+	if local_tsx.exists():
+		commands.append([str(local_tsx), "-e", snippet, sensor_identifier])
 
-	row = result.stdout.strip()
-	if not row:
+	# --yes avoids interactive install prompts that can hang subprocess calls.
+	commands.append(["npx", "--yes", "tsx", "-e", snippet, sensor_identifier])
+	commands.append(["npx.cmd", "--yes", "tsx", "-e", snippet, sensor_identifier])
+
+	return commands, env
+
+
+def _query_latest_sensor_timeseries(sensor_identifier: str) -> tuple[str | None, str | None, str | None]:
+	candidates = _sensor_lookup_candidates(sensor_identifier)
+	if not candidates:
+		return None, None, "Missing sensor identifier for telemetry lookup."
+
+	package_dir = _timescale_package_dir()
+	if not package_dir.exists():
+		return None, None, f"Timescale package not found: {package_dir}"
+
+	env = {
+		**os.environ,
+		"TS_HOST": os.getenv("TIMESCALEDB_HOST", "localhost"),
+		"TS_PORT": os.getenv("TIMESCALEDB_PORT", "5433"),
+		"TS_DB": os.getenv("TIMESCALEDB_DB", "timescale"),
+		"TS_USER": os.getenv("TIMESCALEDB_USER", "username"),
+		"TS_PASSWORD": os.getenv("TIMESCALEDB_PASSWORD", "password"),
+	}
+	lookup_timeout_seconds = float(os.getenv("TIMESCALE_LOOKUP_TIMEOUT_SECONDS", "90"))
+	lookup_timeout_seconds = max(5.0, lookup_timeout_seconds)
+
+	result: subprocess.CompletedProcess[str] | None = None
+	last_error = "npx/tsx not available for Timescale sensor lookup"
+	for candidate in candidates:
+		commands, _ = _timescale_runner_commands(package_dir, candidate)
+		for command in commands:
+			try:
+				attempt = subprocess.run(
+					command,
+					capture_output=True,
+					text=True,
+					timeout=lookup_timeout_seconds,
+					check=False,
+					cwd=str(package_dir),
+					env=env,
+				)
+			except FileNotFoundError:
+				continue
+			except subprocess.TimeoutExpired:
+				last_error = "timescaledb query timed out"
+				continue
+			except OSError as exc:
+				last_error = str(exc)
+				continue
+
+			if attempt.returncode == 0:
+				result = attempt
+				break
+
+			stderr_or_stdout = (attempt.stderr or "").strip() or (attempt.stdout or "").strip()
+			if stderr_or_stdout:
+				last_error = stderr_or_stdout
+
+		if result is not None:
+			break
+
+	if result is None:
+		return None, None, last_error
+
+	output = result.stdout.strip()
+	if not output:
 		return None, None, None
 
-	try:
-		payload = json.loads(row)
-	except json.JSONDecodeError:
-		return row, None, None
+	payload_obj: dict[str, Any] | None = None
+	for line in reversed(output.splitlines()):
+		line = line.strip()
+		if not line:
+			continue
+		try:
+			candidate = json.loads(line)
+		except json.JSONDecodeError:
+			continue
+		if isinstance(candidate, dict) and "latest" in candidate:
+			payload_obj = candidate
+			break
 
-	latest_value = _extract_sensor_value(str(payload.get("message", "")))
-	latest_time = str(payload.get("sensor_timestamp", "")) or None
+	if payload_obj is None:
+		return None, None, "Unable to parse sensorService output."
+
+	latest = payload_obj.get("latest")
+	if not isinstance(latest, dict):
+		return None, None, None
+
+	latest_value = _extract_sensor_value(json.dumps(latest.get("data", "")))
+	latest_time = str(latest.get("time", "")) or None
 	return latest_value or None, latest_time, None
-
-
-def _resolve_sensor_location(sensor_id: str) -> tuple[str | None, str | None]:
-	query = f"""
-	PREFIX brick: <https://brickschema.org/schema/Brick#>
-	PREFIX s223: <http://data.ashrae.org/standard223#>
-	PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-
-	SELECT ?space ?spaceLabel
-	WHERE {{
-	  ?sensor a ?sensorType .
-	  FILTER(CONTAINS(LCASE(STR(?sensorType)), "sensor"))
-	  FILTER(STRENDS(STR(?sensor), "{sensor_id}"))
-	  OPTIONAL {{
-	    {{ ?sensor brick:isPointOf ?space . }}
-	    UNION
-	    {{ ?sensor s223:isLocatedIn ?space . }}
-	    OPTIONAL {{ ?space rdfs:label ?spaceLabel }}
-	  }}
-	}}
-	LIMIT 1
-	"""
-
-	try:
-		bindings = _client().select_query(query)
-	except FusekiSparqlError:
-		return None, None
-
-	if not bindings:
-		return None, None
-
-	row = bindings[0]
-	space_uri = _v(row, "space")
-	space_id = _uri_to_id(space_uri) if space_uri else None
-	space_name = _v(row, "spaceLabel") or space_id
-	return space_id, (space_name if space_name else None)
-
 
 def _timescaledb_health() -> ServiceHealthDto:
 	container_name = os.getenv("TIMESCALEDB_CONTAINER_NAME", "timescaledb")
@@ -734,16 +927,19 @@ def get_sensors() -> list[SensorDto]:
 
 
 @app.get("/api/sensors/{sensor_id}/selection", response_model=SensorSelectionDto)
-def get_sensor_selection(sensor_id: str) -> SensorSelectionDto:
-	location_id, location_name = _resolve_sensor_location(sensor_id)
-	telemetry_identifier = _normalize_sensor_identifier(sensor_id)
-	latest_value, latest_time, telemetry_error = _query_latest_sensor_timeseries(telemetry_identifier)
+def get_sensor_selection(sensor_id: str) -> SensorSelectionDto:	
+	telemetry_identifier, resolve_error = _resolve_timeseries_sensor_identifier(sensor_id)
+	if telemetry_identifier:
+		latest_value, latest_time, telemetry_error = _query_latest_sensor_timeseries(telemetry_identifier)
+	else:
+		latest_value, latest_time, telemetry_error = None, None, ""
+
+	if resolve_error:
+		telemetry_error = f"{resolve_error}; {telemetry_error}" if telemetry_error else resolve_error
 
 	return SensorSelectionDto(
 		id=sensor_id,
 		telemetry_identifier=telemetry_identifier,
-		location_id=location_id,
-		location_name=location_name,
 		latest_value=latest_value,
 		latest_time=latest_time,
 		telemetry_error=telemetry_error,

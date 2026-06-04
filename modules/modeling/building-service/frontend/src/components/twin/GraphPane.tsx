@@ -1028,13 +1028,7 @@ export const GraphPane = ({
                   </div>
                 ))}
                 {selectedNodeIsSensor && (
-                  <>
-                    <div className="border-b border-border/30 pb-1">
-                      <div className="text-[10px] font-mono text-primary">Location (bot:Space)</div>
-                      <div className="break-words font-mono text-[10px] text-muted-foreground">
-                        {sensorSelectionDetails?.location_name ?? sensorSelectionDetails?.location_id ?? "Unavailable"}
-                      </div>
-                    </div>
+                  <>                    
                     <div className="border-b border-border/30 pb-1">
                       <div className="text-[10px] font-mono text-primary">Latest Value</div>
                       <div className="break-words font-mono text-[10px] text-muted-foreground">

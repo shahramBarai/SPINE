@@ -46,5 +46,24 @@ async function getSensorData(id: string, timeRange: { start: Date, end: Date }) 
     return res.rows;
 }
 
+/**
+ * Retrieves the latest sensor reading for a specific sensor.
+ * @param id - The ID of the sensor.
+ * @returns The latest sensor reading or null if not found.
+ * @throws Error if the sensor reading cannot be retrieved.
+ */
+async function getLatestSensorData(id: string) {
+    const queryText = `
+        SELECT * FROM sensor_readings
+        WHERE id = $1
+        ORDER BY time DESC
+        LIMIT 1;
+    `;
 
-export { insertSensorData, getSensorData };
+    const res = await query(queryText, [id]);
+
+    return res.rows.length ? res.rows[0] : null;
+}
+
+
+export { insertSensorData, getSensorData, getLatestSensorData };

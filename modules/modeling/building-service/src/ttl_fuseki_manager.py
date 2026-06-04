@@ -194,6 +194,12 @@ if __name__ == "__main__":
         password=os.getenv("FUSEKI_PASSWORD", "admin123"),
         timeout_seconds=float(os.getenv("FUSEKI_TIMEOUT_SECONDS", "600")),
     )
+
+    # Clear dataset example (uncomment to run):
+    #print("Cleaning Fuseki dataset (CLEAR ALL)...")
+    #print(manager.clear_dataset())
+    #print("Dataset cleaned. Fuseki dataset is now empty.")
+    
     
     # Loading architecture:
     arc_ttl_path = r"C:\Users\yanpe\OneDrive - Metropolia Ammattikorkeakoulu Oy\Research\MD2MV\data\TTL\01ARK\ARK_MET.ttl"
@@ -230,8 +236,3 @@ if __name__ == "__main__":
             print(f"Loading {filename} to Fuseki...")
             print(manager.load_ttl_file(ttl_path=linkset_ttl_path))
             print(f"Loaded {filename} to Fuseki.")
-    
-    # Clear dataset example (uncomment to run):
-    #print("Cleaning Fuseki dataset (CLEAR ALL)...")
-    #print(manager.clear_dataset())
-    #print("Dataset cleaned. Fuseki dataset is now empty.")

@@ -1,15 +1,5 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[9]:
-
-
 import json
 from rdflib import Graph, Literal, Namespace, RDF, RDFS, OWL
-
-
-# In[11]:
-
 
 # Define Namespaces
 BRICK = Namespace("https://brickschema.org/schema/Brick#")
@@ -27,10 +17,6 @@ TYPE_MAPPING = {
     "co2": BRICK.CO2_Sensor,
     "humidity": BRICK.Humidity_Sensor
 }
-
-
-# In[ ]:
-
 
 def define_sensor_instances(json_files_list):
     """
@@ -52,6 +38,7 @@ def define_sensor_instances(json_files_list):
                 
                 sensor_uri = INST[f"sensor_{sensor_uuid}"]
                 vendor_id = sensor.get("vendor_id")
+                sensor_id = sensor.get("id")
                 json_type = sensor.get("type", "").lower()
                 
                 # Assign Brick class based on mapping, default to generic Sensor
@@ -61,8 +48,10 @@ def define_sensor_instances(json_files_list):
                 # Metadata
                 if vendor_id:
                     g.add((sensor_uri, RDFS.label, Literal(vendor_id)))
+                if sensor_id:
+                    g.add((sensor_uri, RDFS.comment, Literal(f"id_{sensor_id}")))
                 if sensor.get("vendor"):
-                    g.add((sensor_uri, RDFS.comment, Literal(sensor.get("vendor"))))
+                    g.add((sensor_uri, RDFS.seeAlso, Literal(sensor.get("vendor"))))
                     
         except Exception as e:
             print(f"Error processing file {file_path}: {e}")
@@ -71,10 +60,6 @@ def define_sensor_instances(json_files_list):
     #g.add((BRICK.hasPoint, OWL.inverseOf, BRICK.isPointOf))
             
     return g
-
-
-# In[13]:
-
 
 def link_sensors_to_bot(sensor_graph, external_ttl_path):
     """
@@ -148,10 +133,6 @@ def link_sensors_to_bot(sensor_graph, external_ttl_path):
                 
     return sensor_graph, stats
 
-
-# In[14]:
-
-
 def print_summary_report(stats):
     """Prints a formatted table of the linking results."""
     total_found = stats["exact_matches"] + stats["fuzzy_matches"]
@@ -168,17 +149,9 @@ def print_summary_report(stats):
     print(f"{'Sensors Without Relations':<30} | {stats['no_matches']}")
     print("="*40 + "\n")
 
-
-# In[15]:
-
-
 def save_graph_to_file(graph, output_filename):
     graph.serialize(destination=output_filename, format="turtle")
     print(f"Final graph saved to {output_filename}")
-
-
-# In[ ]:
-
 
 # --- Execution ---
 if __name__ == "__main__":
