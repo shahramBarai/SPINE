@@ -1,0 +1,10 @@
+**/node_modules/**
+**/dist/**
+**/build/**
+**/coverage/**
+**/.next/**
+**/data/**
+**/log/**
+**/generated/**
+**/.venv/**
+**/pnpm-lock.yaml

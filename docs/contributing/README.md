@@ -14,6 +14,7 @@ Welcome to SPINE! This guide will help you get started with contributing to our 
 ## 📝 How to Contribute
 
 **To contribute:**
+
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/[your_feature_name]`)
 3. Commit your changes (`git commit -m 'Add some feature'`)

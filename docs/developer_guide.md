@@ -21,7 +21,7 @@ This guide contains detailed technical standards and best practices for contribu
 
 SPINE includes VS Code Dev Container configuration for a consistent development environment.
 
-****Note:** Currently, it runs the [webapp](./modules/app/webapp) service and the core modules [messaging](./modules/messaging) and [storage](./modules/storage) to get you started.
+\***\*Note:** Currently, it runs the [webapp](./modules/app/webapp) service and the core modules [messaging](./modules/messaging) and [storage](./modules/storage) to get you started.
 
 1. Install [VS Code](https://code.visualstudio.com/) and [Remote Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 2. Open the project in VS Code
@@ -34,7 +34,7 @@ After the container is built (it will take a few minutes), you need to run the f
 pnpm install
 
 # Generate Prisma clients
-pnpm db:generate 
+pnpm db:generate
 
 # Start the webapp service
 pnpm dev
@@ -44,33 +44,65 @@ You can then access the webapp at `http://localhost:3000`.
 
 ### 2. Manual Development Setup
 
-1. **Using Docker Compose:**
-You can also run each module separately using Docker Compose (check module's README for more details) or using the profiles in the `docker-compose.yml` file.
+1.  **Using Docker Compose:**
+    You can also run each module separately using Docker Compose (check module's README for more details) or using the profiles in the `docker-compose.yml` file.
 
-    ```bash
-    # Core modules (messaging, storage)
-    docker compose up -d
-    
-    # Core + ingress
-    docker compose --profile ingress up -d
+        ```bash
+        # Core modules (messaging, storage)
+        docker compose up -d
 
-    # Core + analytics
-    docker compose --profile analytics up -d
+        # Core + ingress
+        docker compose --profile ingress up -d
 
-    # Core + app
-    docker compose --profile app up -d
+        # Core + analytics
+        docker compose --profile analytics up -d
 
-    # Core + egress
-    docker compose --profile egress up -d
+        # Core + app
+        docker compose --profile app up -d
 
-    # Full platform
-    docker compose --profile full up -d
+        # Core + egress
+        docker compose --profile egress up -d
 
-    # You can also combine profiles (e.g. core + ingress + analytics)
-    docker compose --profile ingress --profile analytics up -d
-    ```
+        # Full platform
+        docker compose --profile full up -d
 
-2. **Running Specific Service Locally:** Also, you can run specific service locally if you want to test it (check service's README file for more details).
+        # You can also combine profiles (e.g. core + ingress + analytics)
+        docker compose --profile ingress --profile analytics up -d
+        ```
+
+2.  **Running Specific Service Locally:** Also, you can run specific service locally if you want to test it (check service's README file for more details).
+
+### 3. Code Formatting & Linting
+
+We use Prettier and ESLint to keep code style consistent across the repository. The Prettier config lives in the repository root (`.prettierrc`). All available lint and format scripts are defined in the root `package.json`.
+
+```bash
+# Check linting across the entire workspace
+pnpm lint
+
+# Auto-fix all linting issues
+pnpm lint:fix
+
+# Check formatting with Prettier
+pnpm format
+
+# Auto-fix all formatting issues
+pnpm format:fix
+
+# Lint/format specific modules
+pnpm lint:app
+pnpm lint:fix:app
+pnpm format:app
+pnpm format:fix:app
+```
+
+Available module shortcuts: `app`, `egress`, `ingress`, `messaging`, `modeling`, `processing`, `storage`, `packages`
+
+Notes:
+
+- All scripts use the root ESLint configuration and `.prettierrc` settings.
+- VS Code is configured to format on-save using Prettier; changes to editor settings require reloading the window or reopening the file.
+- Before committing, run `pnpm lint` and `pnpm format` to ensure consistency.
 
 ## 🗂️ Project Structure
 
@@ -108,7 +140,7 @@ Each service should follow this structure:
 // Variables and functions: camelCase
 const userData = { name: "John" };
 const handleUserCreate = async () => {
-  /* ... */
+    /* ... */
 };
 
 // Constants: UPPER_SNAKE_CASE
@@ -116,13 +148,13 @@ const MAX_RETRY_ATTEMPTS = 3;
 
 // Types and interfaces: PascalCase
 interface UserRequest {
-  email: string;
-  name: string;
+    email: string;
+    name: string;
 }
 
 // Event handlers: prefix with 'handle'
 const handleUserLogin = (event: LoginEvent) => {
-  /* ... */
+    /* ... */
 };
 
 // Boolean variables: descriptive prefixes
@@ -136,26 +168,26 @@ const canEdit = user.role === "admin";
 ```typescript
 // Good: Use early returns
 const validateUser = (user: User): ValidationResult => {
-  if (!user.email) {
-    return { valid: false, error: "Email required" };
-  }
+    if (!user.email) {
+        return { valid: false, error: "Email required" };
+    }
 
-  if (!user.name) {
-    return { valid: false, error: "Name required" };
-  }
+    if (!user.name) {
+        return { valid: false, error: "Name required" };
+    }
 
-  return { valid: true };
+    return { valid: true };
 };
 
 // Good: Async/await over Promises
 const fetchUserData = async (id: string): Promise<User | null> => {
-  try {
-    const user = await userRepository.findById(id);
-    return user;
-  } catch (error) {
-    logger.error("Failed to fetch user", { id, error });
-    return null;
-  }
+    try {
+        const user = await userRepository.findById(id);
+        return user;
+    } catch (error) {
+        logger.error("Failed to fetch user", { id, error });
+        return null;
+    }
 };
 
 // Avoid: Nested callbacks or complex promise chains
@@ -166,26 +198,29 @@ const fetchUserData = async (id: string): Promise<User | null> => {
 ```typescript
 // Use custom error types
 class ValidationError extends Error {
-  constructor(message: string, public field?: string) {
-    super(message);
-    this.name = "ValidationError";
-  }
+    constructor(
+        message: string,
+        public field?: string
+    ) {
+        super(message);
+        this.name = "ValidationError";
+    }
 }
 
 // Handle errors consistently
 const createUser = async (data: CreateUserRequest): Promise<User> => {
-  if (!data.email) {
-    throw new ValidationError("Email is required", "email");
-  }
-
-  try {
-    return await userService.create(data);
-  } catch (error) {
-    if (error instanceof DatabaseError) {
-      throw new Error("Failed to create user");
+    if (!data.email) {
+        throw new ValidationError("Email is required", "email");
     }
-    throw error;
-  }
+
+    try {
+        return await userService.create(data);
+    } catch (error) {
+        if (error instanceof DatabaseError) {
+            throw new Error("Failed to create user");
+        }
+        throw error;
+    }
 };
 ```
 
@@ -196,14 +231,14 @@ const createUser = async (data: CreateUserRequest): Promise<User> => {
 ```tsx
 // Good: Use Server Components by default
 export default async function UsersPage() {
-  const users = await getUsers();
+    const users = await getUsers();
 
-  return (
-    <div>
-      <h1>Users</h1>
-      <UserList users={users} />
-    </div>
-  );
+    return (
+        <div>
+            <h1>Users</h1>
+            <UserList users={users} />
+        </div>
+    );
 }
 
 // Use client components only when necessary
@@ -212,10 +247,10 @@ import { useState } from "react";
 import { useActionState } from "react";
 
 export function InteractiveUserForm() {
-  const [state, formAction] = useActionState(createUser, initialState);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+    const [state, formAction] = useActionState(createUser, initialState);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  return <form action={formAction}>{/* form content */}</form>;
+    return <form action={formAction}>{/* form content */}</form>;
 }
 ```
 
@@ -226,10 +261,10 @@ export function InteractiveUserForm() {
 import { cookies, headers } from "next/headers";
 
 export async function ServerComponent() {
-  const cookieStore = await cookies();
-  const headersList = await headers();
+    const cookieStore = await cookies();
+    const headersList = await headers();
 
-  // Component logic
+    // Component logic
 }
 
 // Use useActionState instead of deprecated useFormState
@@ -237,8 +272,8 @@ export async function ServerComponent() {
 import { useActionState } from "react";
 
 export function FormComponent() {
-  const [state, formAction] = useActionState(serverAction, initialState);
-  // Component logic
+    const [state, formAction] = useActionState(serverAction, initialState);
+    // Component logic
 }
 ```
 
@@ -345,53 +380,53 @@ tests/
 ```typescript
 // Use descriptive test names
 describe("UserService", () => {
-  describe("createUser", () => {
-    it("should create user with valid data", async () => {
-      // Arrange
-      const userData = {
-        email: "test@example.com",
-        name: "Test User",
-      };
+    describe("createUser", () => {
+        it("should create user with valid data", async () => {
+            // Arrange
+            const userData = {
+                email: "test@example.com",
+                name: "Test User"
+            };
 
-      // Act
-      const result = await userService.create(userData);
+            // Act
+            const result = await userService.create(userData);
 
-      // Assert
-      expect(result).toMatchObject({
-        id: expect.any(String),
-        email: userData.email,
-        name: userData.name,
-        createdAt: expect.any(Date),
-      });
+            // Assert
+            expect(result).toMatchObject({
+                id: expect.any(String),
+                email: userData.email,
+                name: userData.name,
+                createdAt: expect.any(Date)
+            });
+        });
+
+        it("should throw ValidationError for invalid email", async () => {
+            // Arrange
+            const invalidData = {
+                email: "invalid-email",
+                name: "Test User"
+            };
+
+            // Act & Assert
+            await expect(userService.create(invalidData)).rejects.toThrow(
+                ValidationError
+            );
+        });
+
+        it("should handle database errors gracefully", async () => {
+            // Arrange
+            jest.spyOn(userRepository, "create").mockRejectedValue(
+                new DatabaseError("Connection failed")
+            );
+
+            const userData = { email: "test@example.com", name: "Test User" };
+
+            // Act & Assert
+            await expect(userService.create(userData)).rejects.toThrow(
+                "Failed to create user"
+            );
+        });
     });
-
-    it("should throw ValidationError for invalid email", async () => {
-      // Arrange
-      const invalidData = {
-        email: "invalid-email",
-        name: "Test User",
-      };
-
-      // Act & Assert
-      await expect(userService.create(invalidData)).rejects.toThrow(
-        ValidationError
-      );
-    });
-
-    it("should handle database errors gracefully", async () => {
-      // Arrange
-      jest
-        .spyOn(userRepository, "create")
-        .mockRejectedValue(new DatabaseError("Connection failed"));
-
-      const userData = { email: "test@example.com", name: "Test User" };
-
-      // Act & Assert
-      await expect(userService.create(userData)).rejects.toThrow(
-        "Failed to create user"
-      );
-    });
-  });
 });
 ```
 
@@ -400,33 +435,33 @@ describe("UserService", () => {
 ```typescript
 // Test API endpoints
 describe("POST /api/users", () => {
-  let app: FastifyInstance;
+    let app: FastifyInstance;
 
-  beforeAll(async () => {
-    app = await createTestApp();
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  it("should create user and return 201", async () => {
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/users",
-      payload: {
-        email: "test@example.com",
-        name: "Test User",
-      },
+    beforeAll(async () => {
+        app = await createTestApp();
     });
 
-    expect(response.statusCode).toBe(201);
-    expect(JSON.parse(response.body)).toMatchObject({
-      id: expect.any(String),
-      email: "test@example.com",
-      name: "Test User",
+    afterAll(async () => {
+        await app.close();
     });
-  });
+
+    it("should create user and return 201", async () => {
+        const response = await app.inject({
+            method: "POST",
+            url: "/api/users",
+            payload: {
+                email: "test@example.com",
+                name: "Test User"
+            }
+        });
+
+        expect(response.statusCode).toBe(201);
+        expect(JSON.parse(response.body)).toMatchObject({
+            id: expect.any(String),
+            email: "test@example.com",
+            name: "Test User"
+        });
+    });
 });
 ```
 
@@ -453,54 +488,54 @@ describe("POST /api/users", () => {
 
 // Use consistent response formats
 interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: {
-    message: string;
-    code?: string;
-    details?: unknown;
-  };
-  meta?: {
-    total?: number;
-    page?: number;
-    limit?: number;
-  };
+    success: boolean;
+    data?: T;
+    error?: {
+        message: string;
+        code?: string;
+        details?: unknown;
+    };
+    meta?: {
+        total?: number;
+        page?: number;
+        limit?: number;
+    };
 }
 
 // Example endpoint implementation
 export const createUser = async (
-  request: FastifyRequest,
-  reply: FastifyReply
+    request: FastifyRequest,
+    reply: FastifyReply
 ) => {
-  try {
-    const userData = request.body as CreateUserRequest;
-    const user = await userService.create(userData);
+    try {
+        const userData = request.body as CreateUserRequest;
+        const user = await userService.create(userData);
 
-    return reply.code(201).send({
-      success: true,
-      data: user,
-    });
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      return reply.code(400).send({
-        success: false,
-        error: {
-          message: error.message,
-          code: "VALIDATION_ERROR",
-        },
-      });
+        return reply.code(201).send({
+            success: true,
+            data: user
+        });
+    } catch (error) {
+        if (error instanceof ValidationError) {
+            return reply.code(400).send({
+                success: false,
+                error: {
+                    message: error.message,
+                    code: "VALIDATION_ERROR"
+                }
+            });
+        }
+
+        // Log unexpected errors
+        request.log.error(error);
+
+        return reply.code(500).send({
+            success: false,
+            error: {
+                message: "Internal server error"
+            }
+        });
     }
-
-    // Log unexpected errors
-    request.log.error(error);
-
-    return reply.code(500).send({
-      success: false,
-      error: {
-        message: "Internal server error",
-      },
-    });
-  }
 };
 ```
 
@@ -509,29 +544,29 @@ export const createUser = async (
 ```typescript
 // Define input/output schemas
 const createUserSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1).max(100),
+    email: z.string().email(),
+    name: z.string().min(1).max(100)
 });
 
 const userOutputSchema = z.object({
-  id: z.string(),
-  email: z.string(),
-  name: z.string(),
-  createdAt: z.date(),
+    id: z.string(),
+    email: z.string(),
+    name: z.string(),
+    createdAt: z.date()
 });
 
 // Create procedures
 export const userRouter = router({
-  create: publicProcedure
-    .input(createUserSchema)
-    .output(userOutputSchema)
-    .mutation(async ({ input }) => {
-      return await userService.create(input);
-    }),
+    create: publicProcedure
+        .input(createUserSchema)
+        .output(userOutputSchema)
+        .mutation(async ({ input }) => {
+            return await userService.create(input);
+        }),
 
-  list: publicProcedure.query(async () => {
-    return await userService.findAll();
-  }),
+    list: publicProcedure.query(async () => {
+        return await userService.findAll();
+    })
 });
 ```
 
@@ -594,30 +629,30 @@ ON sensor_readings (device_id, timestamp DESC);
 ```typescript
 // Use select to limit returned fields
 const users = await prisma.user.findMany({
-  select: {
-    id: true,
-    email: true,
-    name: true,
-  },
+    select: {
+        id: true,
+        email: true,
+        name: true
+    }
 });
 
 // Use pagination for large datasets
 const users = await prisma.user.findMany({
-  skip: page * limit,
-  take: limit,
-  orderBy: { createdAt: "desc" },
+    skip: page * limit,
+    take: limit,
+    orderBy: { createdAt: "desc" }
 });
 
 // Use database transactions for consistency
 await prisma.$transaction(async (tx) => {
-  const user = await tx.user.create({ data: userData });
-  await tx.projectMember.create({
-    data: {
-      userId: user.id,
-      projectId: project.id,
-      role: "OWNER",
-    },
-  });
+    const user = await tx.user.create({ data: userData });
+    await tx.projectMember.create({
+        data: {
+            userId: user.id,
+            projectId: project.id,
+            role: "OWNER"
+        }
+    });
 });
 ```
 
@@ -630,31 +665,31 @@ await prisma.$transaction(async (tx) => {
 import { LRUCache } from "lru-cache";
 
 const userCache = new LRUCache<string, User>({
-  max: 1000,
-  ttl: 5 * 60 * 1000, // 5 minutes
+    max: 1000,
+    ttl: 5 * 60 * 1000 // 5 minutes
 });
 
 export const getUserById = async (id: string): Promise<User | null> => {
-  // Check cache first
-  const cached = userCache.get(id);
-  if (cached) return cached;
+    // Check cache first
+    const cached = userCache.get(id);
+    if (cached) return cached;
 
-  // Fetch from database
-  const user = await prisma.user.findUnique({ where: { id } });
-  if (user) {
-    userCache.set(id, user);
-  }
+    // Fetch from database
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (user) {
+        userCache.set(id, user);
+    }
 
-  return user;
+    return user;
 };
 
 // Use connection pooling
 const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL,
-    },
-  },
+    datasources: {
+        db: {
+            url: process.env.DATABASE_URL
+        }
+    }
 });
 ```
 
@@ -663,22 +698,22 @@ const prisma = new PrismaClient({
 ```tsx
 // Use React.memo for expensive components
 const UserList = React.memo(({ users }: { users: User[] }) => {
-  return (
-    <div>
-      {users.map((user) => (
-        <UserCard key={user.id} user={user} />
-      ))}
-    </div>
-  );
+    return (
+        <div>
+            {users.map((user) => (
+                <UserCard key={user.id} user={user} />
+            ))}
+        </div>
+    );
 });
 
 // Use useMemo for expensive calculations
 const ExpensiveComponent = ({ data }: { data: DataPoint[] }) => {
-  const processedData = useMemo(() => {
-    return data.map((point) => expensiveCalculation(point));
-  }, [data]);
+    const processedData = useMemo(() => {
+        return data.map((point) => expensiveCalculation(point));
+    }, [data]);
 
-  return <Chart data={processedData} />;
+    return <Chart data={processedData} />;
 };
 ```
 
@@ -691,9 +726,9 @@ const ExpensiveComponent = ({ data }: { data: DataPoint[] }) => {
 import { z } from "zod";
 
 const createUserSchema = z.object({
-  email: z.string().email().max(255),
-  name: z.string().min(1).max(100),
-  password: z.string().min(8).max(72),
+    email: z.string().email().max(255),
+    name: z.string().min(1).max(100),
+    password: z.string().min(8).max(72)
 });
 
 // Sanitize user input
@@ -709,22 +744,22 @@ const sanitizedContent = DOMPurify.sanitize(userInput);
 import { getServerSession } from "next-auth";
 
 export const requireAuth = async () => {
-  const session = await getServerSession();
-  if (!session?.user) {
-    throw new Error("Unauthorized");
-  }
-  return session.user;
+    const session = await getServerSession();
+    if (!session?.user) {
+        throw new Error("Unauthorized");
+    }
+    return session.user;
 };
 
 // Implement role-based access control
 export const requireRole = (requiredRole: Role) => {
-  return async (req: Request) => {
-    const user = await requireAuth();
-    if (user.role !== requiredRole) {
-      throw new Error("Forbidden");
-    }
-    return user;
-  };
+    return async (req: Request) => {
+        const user = await requireAuth();
+        if (user.role !== requiredRole) {
+            throw new Error("Forbidden");
+        }
+        return user;
+    };
 };
 ```
 
@@ -733,16 +768,16 @@ export const requireRole = (requiredRole: Role) => {
 ```typescript
 // Never log secrets
 const sensitiveConfig = {
-  databaseUrl: process.env.DATABASE_URL,
-  jwtSecret: process.env.JWT_SECRET,
-  apiKey: process.env.API_KEY,
+    databaseUrl: process.env.DATABASE_URL,
+    jwtSecret: process.env.JWT_SECRET,
+    apiKey: process.env.API_KEY
 };
 
 // Use validation for environment variables
 const envSchema = z.object({
-  DATABASE_URL: z.string().url(),
-  JWT_SECRET: z.string().min(32),
-  NODE_ENV: z.enum(["development", "production", "test"]),
+    DATABASE_URL: z.string().url(),
+    JWT_SECRET: z.string().min(32),
+    NODE_ENV: z.enum(["development", "production", "test"])
 });
 
 export const env = envSchema.parse(process.env);

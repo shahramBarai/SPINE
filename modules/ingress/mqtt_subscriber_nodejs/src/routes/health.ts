@@ -1,5 +1,5 @@
-import { FastifyPluginAsync, FastifyInstance } from "../deps";
-import { KafkaProducer, SchemaManager, MqttService } from "../deps";
+import type { FastifyPluginAsync, FastifyInstance } from "../deps";
+import { kafkaProducer, schemaManager, mqttService } from "../deps";
 
 interface HealthStatus {
     status: "healthy" | "degraded" | "unhealthy";
@@ -19,18 +19,18 @@ const healthRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
             services: {
                 mqtt: null,
                 kafka: null,
-                schema: null,
-            },
+                schema: null
+            }
         };
 
         // Check Kafka connection
-        health.services.kafka = await KafkaProducer.healthCheck();
+        health.services.kafka = await kafkaProducer.healthCheck();
 
         // Check Schema connection
-        health.services.schema = await SchemaManager.healthCheck();
+        health.services.schema = await schemaManager.healthCheck();
 
         // Check MQTT connection
-        const mqttHealthStatus = await MqttService.healthCheck();
+        const mqttHealthStatus = await mqttService.healthCheck();
         health.services.mqtt = mqttHealthStatus;
 
         if (mqttHealthStatus.connectionState.isConnecting) {

@@ -1,4 +1,4 @@
-import { FastifyPluginAsync, FastifyInstance } from "../deps";
+import type { FastifyPluginAsync, FastifyInstance } from "../deps";
 import { kafkaProducer, schemaManager } from "../deps";
 
 interface HealthStatus {
@@ -19,24 +19,28 @@ const healthRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
             services: {
                 mqtt: null,
                 kafka: null,
-                schema: null,
-            },
+                schema: null
+            }
         };
 
         // Check Kafka connection
-        health.services.kafka = kafkaProducer ? await kafkaProducer.healthCheck() : {
-            status: "disabled",
-            timestamp: new Date().toISOString(),
-        };
+        health.services.kafka = kafkaProducer
+            ? await kafkaProducer.healthCheck()
+            : {
+                  status: "disabled",
+                  timestamp: new Date().toISOString()
+              };
 
         // Check Schema connection
-        health.services.schema = schemaManager ? await schemaManager.healthCheck() : {
-            status: "disabled",
-            timestamp: new Date().toISOString(),
-        };
+        health.services.schema = schemaManager
+            ? await schemaManager.healthCheck()
+            : {
+                  status: "disabled",
+                  timestamp: new Date().toISOString()
+              };
 
         // TODO: Add REST connection health check
-        
+
         const statusCode = health.status === "healthy" ? 200 : 503;
         reply.code(statusCode).send(health);
     });

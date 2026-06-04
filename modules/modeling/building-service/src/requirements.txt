@@ -10,6 +10,9 @@ ftfy
 fastapi
 uvicorn
 
+# TimescaleDB client
+asyncpg
+
 # WIP:ML/embedding stack used in notebooks
 torch
 torch-geometric

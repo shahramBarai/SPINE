@@ -1,4 +1,4 @@
-import { KafkaConfig, SchemaRegistryConfig } from "./utils/config";
+import type { KafkaConfig, SchemaRegistryConfig } from "./utils/config";
 import { KafkaProducer } from "./KafkaProducer";
 import { KafkaConsumer } from "./KafkaConsumer";
 import { ServiceSchemaManager } from "./SchemaRegistry";
