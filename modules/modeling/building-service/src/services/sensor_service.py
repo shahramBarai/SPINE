@@ -152,7 +152,7 @@ async def get_sensor_readings(
         query = """
             SELECT id, time, data
             FROM sensor_readings
-            WHERE id = $1 AND time <= $2
+            WHERE id = $1 AND time >= $2
         """
         records = await TimescaleClient.fetch(query, sensor_id, start_time)
     

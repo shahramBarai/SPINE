@@ -12,8 +12,9 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from deps import get_fuseki_client, FusekiSparqlError
+
 from encoding_utils import fix_encoding
-from fuseki_sparql_client import FusekiSparqlClient, FusekiSparqlError
 from ifc_lbd_converter import get_target_file_path, load_json, run_conversion
 from ttl_fuseki_manager import FusekiError, FusekiTTLManager
 
@@ -23,6 +24,8 @@ from api import router
 
 BOT = "https://w3id.org/bot#"
 
+# --- Initialize database clients ---
+FusekiClient = get_fuseki_client()
 
 class IfcNodeDto(BaseModel):
 	id: str
@@ -220,14 +223,6 @@ def _build_tree(nodes_raw: list[dict[str, str]], parents: dict[str, str]) -> lis
 			roots.append(node)
 
 	return roots
-
-
-def _client() -> FusekiSparqlClient:
-	return FusekiSparqlClient(
-		base_url=os.getenv("FUSEKI_BASE_URL", "http://localhost:3030"),
-		dataset=os.getenv("FUSEKI_DATASET", "spine"),
-	)
-
 
 def _source_root() -> Path:
 	return Path(__file__).resolve().parent
@@ -429,7 +424,7 @@ def get_tree() -> list[IfcNodeDto]:
 	}
 	"""
 	try:
-		bindings = _client().select_query(query)
+		bindings = FusekiClient.select_query(query)
 	except FusekiSparqlError as exc:
 		raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -463,7 +458,7 @@ def get_triples(limit: int = Query(default=200, ge=1, le=2000)) -> list[TripleDt
 	LIMIT {limit}
 	"""
 	try:
-		bindings = _client().select_query(query)
+		bindings = FusekiClient.select_query(query)
 	except FusekiSparqlError as exc:
 		raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -491,7 +486,7 @@ def get_graph(
 	"""
 
 	try:
-		bindings = _client().select_query(query)
+		bindings = FusekiClient.select_query(query)
 	except FusekiSparqlError as exc:
 		raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -520,7 +515,7 @@ def semantic_search(request: SemanticSearchRequestDto) -> SemanticSearchResultDt
 		)
 
 	try:
-		bindings = _client().select_query(query_text)
+		bindings = FusekiClient.select_query(query_text)
 	except FusekiSparqlError as exc:
 		raise HTTPException(status_code=502, detail=str(exc)) from exc
 

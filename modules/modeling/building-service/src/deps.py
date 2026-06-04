@@ -1,6 +1,6 @@
 import os
 
-from fuseki_sparql_client import FusekiSparqlClient, FusekiSparqlError
+from db.fuseki_sparql_client import FusekiSparqlClient, FusekiSparqlError
 from db.timescale_client import TimescaleClient
 
 # --- Load configuration from environment variables with defaults ---
