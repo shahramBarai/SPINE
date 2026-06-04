@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import json
 import os
 import math
-import re
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -14,9 +11,7 @@ from pydantic import BaseModel, Field
 
 from deps import get_fuseki_client, FusekiSparqlError
 
-from encoding_utils import fix_encoding
-from ifc_lbd_converter import get_target_file_path, load_json, run_conversion
-from ttl_fuseki_manager import FusekiError, FusekiTTLManager
+from ttl_fuseki_manager import FusekiTTLManager
 
 from utils.sparql_helpers import get_binding_value, get_binding_type, uri_to_id
 
@@ -57,38 +52,6 @@ class GraphEdgeDto(BaseModel):
 class GraphDto(BaseModel):
 	nodes: list[GraphNodeDto]
 	edges: list[GraphEdgeDto]
-
-
-class IfcInputDto(BaseModel):
-	file: str | None = None
-	dir: str | None = None
-
-
-class IfcScanResultDto(BaseModel):
-	count: int
-	files: list[str]
-
-
-class PipelineRequestDto(BaseModel):
-	file: str | None = None
-	dir: str | None = None
-	fuseki_graph: str | None = None
-	fuseki_graph_template: str | None = None
-	fuseki_replace: bool = False
-
-
-class PipelineFileResultDto(BaseModel):
-	source_file: str
-	target_ttl: str
-	converted: bool
-	uploaded: bool = False
-	error: str | None = None
-
-
-class PipelineResultDto(BaseModel):
-	processed: int
-	successful: int
-	results: list[PipelineFileResultDto]
 
 
 class SemanticSearchRequestDto(BaseModel):
@@ -224,49 +187,6 @@ def _build_tree(nodes_raw: list[dict[str, str]], parents: dict[str, str]) -> lis
 
 	return roots
 
-def _source_root() -> Path:
-	return Path(__file__).resolve().parent
-
-
-def _collect_ifc_files(file_arg: str | None, dir_arg: str | None) -> list[Path]:
-	if bool(file_arg) == bool(dir_arg):
-		raise HTTPException(status_code=400, detail="Provide exactly one of 'file' or 'dir'.")
-
-	if file_arg:
-		source_path = Path(file_arg).expanduser().resolve()
-		if not source_path.exists() or not source_path.is_file():
-			raise HTTPException(status_code=400, detail=f"IFC file does not exist: {source_path}")
-		if source_path.suffix.lower() != ".ifc":
-			raise HTTPException(status_code=400, detail="Input file must have .ifc extension.")
-		return [source_path]
-
-	source_dir = Path(dir_arg or "").expanduser().resolve()
-	if not source_dir.exists() or not source_dir.is_dir():
-		raise HTTPException(status_code=400, detail=f"IFC directory does not exist: {source_dir}")
-
-	ifc_files = sorted(source_dir.glob("*.ifc"))
-	if not ifc_files:
-		raise HTTPException(status_code=400, detail=f"No .ifc files found in: {source_dir}")
-
-	return ifc_files
-
-
-def _converter_config() -> tuple[list, dict[str, Any]]:
-	config_path = _source_root() / "config.json"
-	config = load_json(str(config_path))
-	hw_config = config.get("hardware", [])
-	app_config = dict(config.get("ifc2lbd", {}))
-
-	jar_file = app_config.get("jar_file")
-	if jar_file:
-		jar_path = Path(jar_file)
-		if not jar_path.is_absolute():
-			jar_path = (_source_root() / jar_path).resolve()
-		app_config["jar_file"] = str(jar_path)
-
-	return hw_config, app_config
-
-
 def _graph_uri(template: str | None, target_file: Path) -> str | None:
 	if not template:
 		return None
@@ -308,104 +228,6 @@ app.add_middleware(
 )
 
 app.include_router(router)
-
-
-@app.post("/api/pipeline/load-ifc", response_model=IfcScanResultDto)
-def load_ifc(request: IfcInputDto) -> IfcScanResultDto:
-	files = _collect_ifc_files(request.file, request.dir)
-	return IfcScanResultDto(count=len(files), files=[str(p) for p in files])
-
-
-@app.post("/api/pipeline/convert", response_model=PipelineResultDto)
-def convert_to_ttl(request: PipelineRequestDto) -> PipelineResultDto:
-	files = _collect_ifc_files(request.file, request.dir)
-	hw_config, app_config = _converter_config()
-
-	results: list[PipelineFileResultDto] = []
-	successful = 0
-
-	for source_path in files:
-		target_path = get_target_file_path(source_path)
-		converted = run_conversion(source_path, target_path, hw_config, app_config)
-
-		if converted:
-			successful += 1
-			results.append(
-				PipelineFileResultDto(
-					source_file=str(source_path),
-					target_ttl=str(target_path),
-					converted=True,
-				)
-			)
-		else:
-			results.append(
-				PipelineFileResultDto(
-					source_file=str(source_path),
-					target_ttl=str(target_path),
-					converted=False,
-					error="Conversion command failed.",
-				)
-			)
-
-	return PipelineResultDto(processed=len(files), successful=successful, results=results)
-
-
-@app.post("/api/pipeline/sync", response_model=PipelineResultDto)
-def convert_and_sync(request: PipelineRequestDto) -> PipelineResultDto:
-	if request.fuseki_graph and request.fuseki_graph_template:
-		raise HTTPException(status_code=400, detail="Use either fuseki_graph or fuseki_graph_template, not both.")
-
-	files = _collect_ifc_files(request.file, request.dir)
-	hw_config, app_config = _converter_config()
-	manager = _fuseki_manager()
-
-	results: list[PipelineFileResultDto] = []
-	successful = 0
-
-	for source_path in files:
-		target_path = get_target_file_path(source_path)
-		converted = run_conversion(source_path, target_path, hw_config, app_config)
-		if not converted:
-			results.append(
-				PipelineFileResultDto(
-					source_file=str(source_path),
-					target_ttl=str(target_path),
-					converted=False,
-					error="Conversion command failed.",
-				)
-			)
-			continue
-
-		try:
-			fix_encoding(str(target_path))
-			graph_uri = _graph_uri(request.fuseki_graph_template, target_path) or request.fuseki_graph
-			manager.load_ttl_file(
-				ttl_path=str(target_path),
-				graph_uri=graph_uri,
-				replace=request.fuseki_replace,
-			)
-			successful += 1
-			results.append(
-				PipelineFileResultDto(
-					source_file=str(source_path),
-					target_ttl=str(target_path),
-					converted=True,
-					uploaded=True,
-				)
-			)
-		except (FusekiError, OSError) as exc:
-			results.append(
-				PipelineFileResultDto(
-					source_file=str(source_path),
-					target_ttl=str(target_path),
-					converted=True,
-					uploaded=False,
-					error=str(exc),
-				)
-			)
-
-	return PipelineResultDto(processed=len(files), successful=successful, results=results)
-
 
 @app.get("/api/tree", response_model=list[IfcNodeDto])
 def get_tree() -> list[IfcNodeDto]:
@@ -538,4 +360,3 @@ def semantic_search(request: SemanticSearchRequestDto) -> SemanticSearchResultDt
 
 	graph = _build_graph_from_triples(triples, edge_enabled, focus_id=request.focus_id)
 	return SemanticSearchResultDto(triples=triples, graph=graph)
-
