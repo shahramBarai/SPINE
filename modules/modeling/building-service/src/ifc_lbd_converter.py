@@ -19,11 +19,6 @@ def main():
     group.add_argument("-d", "--dir", type=str, help="Path to the source IFC directory")
     args = parser.parse_args()
 
-    # Load configs    
-    config = file_utils.load_json('config.json')
-    hw_config = config.get('hardware', [])
-    app_config = config.get('ifc2lbd', {})
-
     if args.file:
         # SINGLE FILE MODE
         source_path = Path(args.file).resolve()
@@ -32,7 +27,7 @@ def main():
             sys.exit(1)
             
         target_path = file_utils.get_target_file_path(source_path)
-        ok = IfcToLbd.run_conversion(source_path, target_path, hw_config, app_config)
+        ok = IfcToLbd.run_conversion(source_path, target_path)
         if not ok:
             sys.exit(1)
 
@@ -55,7 +50,7 @@ def main():
         success_count = 0
         for source_path in ifc_files:
             target_path = file_utils.get_target_file_path(source_path)
-            ok = IfcToLbd.run_conversion(source_path, target_path, hw_config, app_config)
+            ok = IfcToLbd.run_conversion(source_path, target_path)
             if ok:
                 success_count += 1
 

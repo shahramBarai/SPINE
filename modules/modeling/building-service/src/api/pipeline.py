@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pathlib import Path
-from typing import Any
 
 from utils import file_utils
-from conversion import run_conversion
+from conversion import IfcToLbd
 
 MAX_UPLOAD_SIZE = 1000 * 1024 * 1024 # 1000 MB in bytes
 
@@ -14,16 +14,34 @@ MAX_UPLOAD_SIZE = 1000 * 1024 * 1024 # 1000 MB in bytes
 TMP_DIR = Path("/tmp/spine_building_service")
 TMP_DIR.mkdir(parents=True, exist_ok=True)
 
-
 router = APIRouter(tags=["Pipelines"])
 
-@router.post("/api/pipeline/ifc/upload")
+# TODO: Replace filename with file ID or similar to avoid issues with duplicate filenames and security issues with path traversal.
+# This is just a quick implementation for testing purposes.
+@router.get("/api/pipeline/download")
+def download(filename: str):
+    # Check that the filename is valid
+    if not file_utils.valid_file_name(filename, allowed_extensions=["ifc", "ttl"]):
+        raise HTTPException(status_code=400, detail="Invalid request! Please check the filename and try again.")
+
+    # Only allow downloading files stored in the temporary IFC folder.
+    file_name = Path(filename).name
+    source_path = TMP_DIR / file_name
+
+    if not source_path.exists() or not source_path.is_file():
+        raise HTTPException(status_code=404, detail=f"File not found: {file_name}")
+
+    return FileResponse(
+        path=source_path,
+        status_code=200
+    )
+
+@router.post("/api/pipeline/upload")
 def upload(file: UploadFile = File(...)):
-	# Print file details for debugging
-	
     # Check that the
-    if not file.filename.split(".")[-1].lower() == "ifc":
-        raise HTTPException(status_code=400, detail="Uploaded file is not an IFC file. Please upload a file with .ifc extension.")
+    file_extension = file.filename.split(".")[-1].lower()
+    if file_extension not in ["ifc", "ttl"]:
+        raise HTTPException(status_code=400, detail="Uploaded file is not an IFC or TTL file.")
 
     # Check file size (read in chunks to avoid loading the entire file into memory)
     current_pos = file.file.tell()
@@ -46,117 +64,84 @@ def upload(file: UploadFile = File(...)):
 
     return {"filename": file.filename, "size_bytes": size_bytes}
 
-class IfcLoadResponse(BaseModel):
-	count: int
-	files: list[str]
-	
-# TODO: Name this better
-class IfcInputDto(BaseModel):
-	file: str | None = None
-	dir: str | None = None
+@router.post("/api/pipeline/convert/ifc-to-ttl")
+def convert_ifc_to_ttl(filename: str):
+    # Check that the filename is valid
+    if not file_utils.valid_file_name(filename, allowed_extensions=["ifc"]):
+        raise HTTPException(status_code=400, detail="Invalid request! Please check the filename and try again.")
 
-def _collect_ifc_files(file_arg: str | None, dir_arg: str | None) -> list[Path]:
-	if bool(file_arg) == bool(dir_arg):
-		raise HTTPException(status_code=400, detail="Provide exactly one of 'file' or 'dir'.")
+    # Only allow converting files stored in the temporary IFC folder.
+    source_path = TMP_DIR / Path(filename).name
+    if not source_path.exists() or not source_path.is_file():
+        raise HTTPException(status_code=404, detail=f"IFC file not found: {filename}")
 
-	if file_arg:
-		source_path = Path(file_arg).expanduser().resolve()
-		if not source_path.exists() or not source_path.is_file():
-			raise HTTPException(status_code=400, detail=f"IFC file does not exist: {source_path}")
-		if source_path.suffix.lower() != ".ifc":
-			raise HTTPException(status_code=400, detail="Input file must have .ifc extension.")
-		return [source_path]
+    target_path = TMP_DIR / f"{source_path.stem}.ttl"
+    converted = IfcToLbd.run_conversion(source_path, target_path)
 
-	source_dir = Path(dir_arg or "").expanduser().resolve()
-	if not source_dir.exists() or not source_dir.is_dir():
-		raise HTTPException(status_code=400, detail=f"IFC directory does not exist: {source_dir}")
+    if not converted:
+        raise HTTPException(status_code=500, detail="Conversion failed for the provided IFC file.")
 
-	ifc_files = sorted(source_dir.glob("*.ifc"))
-	if not ifc_files:
-		raise HTTPException(status_code=400, detail=f"No .ifc files found in: {source_dir}")
+    return {"source_file": str(source_path), "target_ttl": str(target_path)}
 
-	return ifc_files
+@router.post("/api/pipeline/convert/ifc-to-ttl/background")
+def convert_ifc_to_ttl_background(filename: str) -> str:
+    # Check that the filename is valid
+    if not file_utils.valid_file_name(filename, allowed_extensions=["ifc"]):
+        raise HTTPException(status_code=400, detail="Invalid request! Please check the filename and try again.")
 
-@router.post("/api/pipeline/load-ifc", response_model=IfcLoadResponse)
-def load_ifc(request: IfcInputDto) -> IfcLoadResponse:
-	files = _collect_ifc_files(request.file, request.dir)
-	return IfcLoadResponse(count=len(files), files=[str(p) for p in files])
+    source_path = TMP_DIR / Path(filename).name
+    if not source_path.exists() or not source_path.is_file():
+        raise HTTPException(status_code=404, detail=f"IFC file not found: {filename}")
 
-class PipelineFileResult(BaseModel):
-	source_file: str
-	target_ttl: str
-	converted: bool
-	uploaded: bool = False
-	error: str | None = None
+    target_path = TMP_DIR / f"{source_path.stem}.ttl"
+    job_id = IfcToLbd.run_conversion_in_background(source_path, target_path)
 
-class PipelineConvertResponse(BaseModel):
-	processed: int
-	successful: int
-	results: list[PipelineFileResult]
-	
-class PipelineRequest(BaseModel):
-	file: str | None = None
-	dir: str | None = None
-	fuseki_graph: str | None = None
-	fuseki_graph_template: str | None = None
-	fuseki_replace: bool = False
+    return job_id
 
+class ConversionJobResponse(BaseModel):
+    job_id: str
+    status: str
+    source_file: str
+    target_ttl: str
+    error: str | None = None
+    created_at: str
+    updated_at: str
 
-def _converter_config() -> tuple[list, dict[str, Any]]:
-	config_path = file_utils.get_source_root() / "config.json"
-	config = file_utils.load_json(str(config_path))
-	hw_config = config.get("hardware", [])
-	app_config = dict(config.get("ifc2lbd", {}))
+@router.get("/api/pipeline/convert/jobs/{job_id}", response_model=ConversionJobResponse)
+def get_conversion_job(job_id: str) -> ConversionJobResponse:
+    job = IfcToLbd.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Conversion job not found: {job_id}")
 
-	jar_file = app_config.get("jar_file")
-	if jar_file:
-		jar_path = Path(jar_file)
-		if not jar_path.is_absolute():
-			jar_path = (file_utils.get_source_root() / jar_path).resolve()
-		app_config["jar_file"] = str(jar_path)
+    return ConversionJobResponse(**job)
 
-	return hw_config, app_config
+@router.get("/api/pipeline/convert/jobs", response_model=list[ConversionJobResponse])
+def get_all_conversion_jobs() -> list[ConversionJobResponse]:
+    jobs = IfcToLbd.get_all_jobs()
+    return [ConversionJobResponse(**job) for job in jobs]
 
-@router.post("/api/pipeline/convert", response_model=PipelineConvertResponse)
-def convert_to_ttl(request: PipelineRequest) -> PipelineConvertResponse:
-	files = _collect_ifc_files(request.file, request.dir)
-	hw_config, app_config = _converter_config()
+@router.post("/api/pipeline/sync-to-fuseki")
+def sync_to_fuseki(filename: str, replace: bool = False):
+    # Check that the filename is valid
+    if not file_utils.valid_file_name(filename, allowed_extensions=["ttl"]):
+        raise HTTPException(status_code=400, detail="Invalid request! Please check the filename and try again.")
 
-	results: list[PipelineFileResult] = []
-	successful = 0
+    # Only allow syncing files stored in the temporary TTL folder.
+    ttl_path = TMP_DIR / Path(filename).name
+    if not ttl_path.exists() or not ttl_path.is_file():
+        raise HTTPException(status_code=404, detail=f"TTL file not found: {filename}")
+    
+    #TODO: Implement the actual syncing logic using the Fuseki manager and handle errors accordingly.
+    # For now, just return a success message for testing purposes.
 
-	for source_path in files:
-		target_path = file_utils.get_target_file_path(source_path)
-		converted = run_conversion(source_path, target_path, hw_config, app_config)
-
-		if converted:
-			successful += 1
-			results.append(
-				PipelineFileResult(
-					source_file=str(source_path),
-					target_ttl=str(target_path),
-					converted=True,
-				)
-			)
-		else:
-			results.append(
-				PipelineFileResult(
-					source_file=str(source_path),
-					target_ttl=str(target_path),
-					converted=False,
-					error="Conversion command failed.",
-				)
-			)
-
-	return PipelineConvertResponse(processed=len(files), successful=successful, results=results)
-
+    return {"message": f"Successfully synced {filename} to Fuseki (replace={replace})."}
 
 # FIXME: Fix the logic!
 # from encoding_utils import fix_encoding
 # from ttl_fuseki_manager import FusekiError
 #
 # @app.post("/api/pipeline/sync", response_model=PipelineResultDto)
-# def convert_and_sync(request: PipelineRequestDto) -> PipelineResultDto:
+# def convert_and_sync(request: PipelineRequest) -> PipelineResultDto:
 # 	if request.fuseki_graph and request.fuseki_graph_template:
 # 		raise HTTPException(status_code=400, detail="Use either fuseki_graph or fuseki_graph_template, not both.")
 

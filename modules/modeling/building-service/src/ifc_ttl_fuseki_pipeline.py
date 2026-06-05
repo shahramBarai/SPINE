@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from encoding_utils import fix_encoding
-from ifc_lbd_converter import get_target_file_path, load_json, run_conversion
+from ifc_lbd_converter import get_target_file_path, run_conversion
 from ttl_fuseki_manager import FusekiError, FusekiTTLManager
 
 
@@ -98,10 +98,6 @@ def main() -> None:
     if args.fuseki_graph and args.fuseki_graph_template:
         parser.error("Use either --fuseki-graph or --fuseki-graph-template, not both.")
 
-    config = load_json("config.json")
-    hw_config = config.get("hardware", [])
-    app_config = config.get("ifc2lbd", {})
-
     source_files = _collect_ifc_files(args.file, args.dir)
     manager = FusekiTTLManager(
         base_url=args.fuseki_base_url,
@@ -118,7 +114,7 @@ def main() -> None:
     for source_path in source_files:
         target_path = get_target_file_path(source_path)
 
-        converted = run_conversion(source_path, target_path, hw_config, app_config)
+        converted = run_conversion(source_path, target_path)
         if not converted:
             continue
 
