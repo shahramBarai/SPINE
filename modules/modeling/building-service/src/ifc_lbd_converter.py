@@ -9,7 +9,7 @@ import argparse
 from pathlib import Path
 
 from utils import file_utils
-from conversion import run_conversion
+from conversion import IfcToLbd
 
 
 def main():
@@ -32,7 +32,7 @@ def main():
             sys.exit(1)
             
         target_path = file_utils.get_target_file_path(source_path)
-        ok = run_conversion(source_path, target_path, hw_config, app_config)
+        ok = IfcToLbd.run_conversion(source_path, target_path, hw_config, app_config)
         if not ok:
             sys.exit(1)
 
@@ -55,7 +55,7 @@ def main():
         success_count = 0
         for source_path in ifc_files:
             target_path = file_utils.get_target_file_path(source_path)
-            ok = run_conversion(source_path, target_path, hw_config, app_config)
+            ok = IfcToLbd.run_conversion(source_path, target_path, hw_config, app_config)
             if ok:
                 success_count += 1
 

@@ -1,3 +1,3 @@
-from .ifc_lbd_converter import run_conversion
+from . import ifc_to_lbd as IfcToLbd
 
-__all__ = ["run_conversion"]
+__all__ = ["IfcToLbd"]
