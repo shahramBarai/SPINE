@@ -10,6 +10,9 @@ ftfy
 fastapi
 uvicorn
 
+# For file uploads
+python-multipart
+
 # TimescaleDB client
 asyncpg
 

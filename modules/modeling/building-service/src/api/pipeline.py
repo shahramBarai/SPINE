@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException
 from pydantic import BaseModel
 from pathlib import Path
 from typing import Any
@@ -8,7 +8,43 @@ from typing import Any
 from utils import file_utils
 from conversion import run_conversion
 
+MAX_UPLOAD_SIZE = 1000 * 1024 * 1024 # 1000 MB in bytes
+
+# TODO: Integrate file storage (MinIO) instead of using local storage.
+TMP_DIR = Path("/tmp/spine_building_service")
+TMP_DIR.mkdir(parents=True, exist_ok=True)
+
+
 router = APIRouter(tags=["Pipelines"])
+
+@router.post("/api/pipeline/ifc/upload")
+def upload(file: UploadFile = File(...)):
+	# Print file details for debugging
+	
+    # Check that the
+    if not file.filename.split(".")[-1].lower() == "ifc":
+        raise HTTPException(status_code=400, detail="Uploaded file is not an IFC file. Please upload a file with .ifc extension.")
+
+    # Check file size (read in chunks to avoid loading the entire file into memory)
+    current_pos = file.file.tell()
+    file.file.seek(0, 2)
+    size_bytes = file.file.tell()
+    file.file.seek(current_pos)
+    if size_bytes > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=400, detail=f"File size exceeds the maximum allowed size of {MAX_UPLOAD_SIZE} bytes.")
+
+    destination = TMP_DIR / Path(file.filename).name
+
+    try:
+        with destination.open("wb") as buffer:
+            while contents := file.file.read(1024 * 1024):  # Read in chunks of 1MB
+                buffer.write(contents)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Something went wrong while uploading the file.")
+    finally:
+        file.file.close()
+
+    return {"filename": file.filename, "size_bytes": size_bytes}
 
 class IfcLoadResponse(BaseModel):
 	count: int
