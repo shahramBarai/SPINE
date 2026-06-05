@@ -1,19 +1,9 @@
 # TODO: Add comments and docstrings to all functions in this file. Check if any of the functions can be moved to a more general utility module if they are not specific to file handling in this context.
 
-import sys
-import json
 from pathlib import Path
 
-def load_json(filepath):
-    try:
-        with open(filepath, 'r') as file:
-            return json.load(file)
-    except FileNotFoundError:
-        print(f"Error: Configuration file '{filepath}' missing.")
-        sys.exit(1)
-
 def get_source_root() -> Path:
-	return Path(__file__).resolve().parent
+	return Path(__file__).resolve().parent.parent
 
 def get_target_file_path(source_file: Path) -> Path:
     """
@@ -48,3 +38,25 @@ def get_target_file_path(source_file: Path) -> Path:
     
     # Create the target file path with the same name but .ttl extension
     return target_dir / f"{source_file.stem}.ttl"
+
+
+def valid_file_name(filename: str, allowed_extensions: list[str]) -> bool:
+    """
+    Checks if the filename has a valid extension and does not contain path traversal characters.
+
+    Args:
+        filename: The name of the file to check
+        allowed_extensions: A list of allowed file extensions (e.g., ["ifc", "ttl"])
+    
+    Returns:
+        True if the filename is valid, False otherwise
+    """
+    # Check for valid extension
+    if not any(filename.lower().endswith(f".{ext}") for ext in allowed_extensions):
+        return False
+    
+    # Check for path traversal characters
+    if ".." in filename or "/" in filename or "\\" in filename:
+        return False
+    
+    return True
