@@ -1,9 +1,27 @@
 # TODO: Add comments and docstrings to all functions in this file. Check if any of the functions can be moved to a more general utility module if they are not specific to file handling in this context.
 
+import json
 from pathlib import Path
 
 def get_source_root() -> Path:
 	return Path(__file__).resolve().parent.parent
+
+def get_hardware_config(path: Path) -> list:
+    """
+    Reads the hardware configuration from the config.json file.
+
+    Returns:
+        A list of hardware configuration options, otherwise an empty list.
+    """
+    if not path.exists():
+        return []
+    
+    try:
+        with open(path, 'r') as file:
+            config = json.load(file)
+            return config.get("hardware", [])
+    except Exception:
+        return []
 
 def get_target_file_path(source_file: Path) -> Path:
     """

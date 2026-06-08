@@ -64,8 +64,20 @@ def upload(file: UploadFile = File(...)):
 
     return {"filename": file.filename, "size_bytes": size_bytes}
 
-@router.post("/api/pipeline/convert/ifc-to-ttl")
-def convert_ifc_to_ttl(filename: str):
+@router.get("/api/pipeline/convert/job", response_model=IfcToLbd.ConversionJob)
+def get_conversion_job(job_id: str) -> IfcToLbd.ConversionJob:
+    job = IfcToLbd.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Conversion job not found: {job_id}")
+
+    return job
+
+@router.get("/api/pipeline/convert/jobs", response_model=list[IfcToLbd.ConversionJob])
+def get_all_conversion_jobs() -> list[IfcToLbd.ConversionJob]:
+    return IfcToLbd.get_all_jobs()
+
+@router.post("/api/pipeline/convert/ifc-to-ttl", response_model=str)
+def convert_ifc_to_ttl(filename: str) -> str:
     # Check that the filename is valid
     if not file_utils.valid_file_name(filename, allowed_extensions=["ifc"]):
         raise HTTPException(status_code=400, detail="Invalid request! Please check the filename and try again.")
@@ -74,52 +86,17 @@ def convert_ifc_to_ttl(filename: str):
     source_path = TMP_DIR / Path(filename).name
     if not source_path.exists() or not source_path.is_file():
         raise HTTPException(status_code=404, detail=f"IFC file not found: {filename}")
-
-    target_path = TMP_DIR / f"{source_path.stem}.ttl"
-    converted = IfcToLbd.run_conversion(source_path, target_path)
-
-    if not converted:
-        raise HTTPException(status_code=500, detail="Conversion failed for the provided IFC file.")
-
-    return {"source_file": str(source_path), "target_ttl": str(target_path)}
-
-@router.post("/api/pipeline/convert/ifc-to-ttl/background")
-def convert_ifc_to_ttl_background(filename: str) -> str:
-    # Check that the filename is valid
-    if not file_utils.valid_file_name(filename, allowed_extensions=["ifc"]):
-        raise HTTPException(status_code=400, detail="Invalid request! Please check the filename and try again.")
-
-    source_path = TMP_DIR / Path(filename).name
-    if not source_path.exists() or not source_path.is_file():
-        raise HTTPException(status_code=404, detail=f"IFC file not found: {filename}")
+    
+    # Check if a conversion job for this file already exists
+    existing_job_id = IfcToLbd.get_job_id(source_path)
+    if existing_job_id:
+        return existing_job_id
 
     target_path = TMP_DIR / f"{source_path.stem}.ttl"
     job_id = IfcToLbd.run_conversion_in_background(source_path, target_path)
 
     return job_id
-
-class ConversionJobResponse(BaseModel):
-    job_id: str
-    status: str
-    source_file: str
-    target_ttl: str
-    error: str | None = None
-    created_at: str
-    updated_at: str
-
-@router.get("/api/pipeline/convert/jobs/{job_id}", response_model=ConversionJobResponse)
-def get_conversion_job(job_id: str) -> ConversionJobResponse:
-    job = IfcToLbd.get_job(job_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail=f"Conversion job not found: {job_id}")
-
-    return ConversionJobResponse(**job)
-
-@router.get("/api/pipeline/convert/jobs", response_model=list[ConversionJobResponse])
-def get_all_conversion_jobs() -> list[ConversionJobResponse]:
-    jobs = IfcToLbd.get_all_jobs()
-    return [ConversionJobResponse(**job) for job in jobs]
-
+    
 @router.post("/api/pipeline/sync-to-fuseki")
 def sync_to_fuseki(filename: str, replace: bool = False):
     # Check that the filename is valid

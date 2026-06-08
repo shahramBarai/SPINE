@@ -9,7 +9,8 @@ import sys
 from pathlib import Path
 
 from encoding_utils import fix_encoding
-from ifc_lbd_converter import get_target_file_path, run_conversion
+from conversion import IfcToLbd
+from utils import file_utils
 from ttl_fuseki_manager import FusekiError, FusekiTTLManager
 
 
@@ -112,9 +113,9 @@ def main() -> None:
 
     success_count = 0
     for source_path in source_files:
-        target_path = get_target_file_path(source_path)
+        target_path = file_utils.get_target_file_path(source_path)
 
-        converted = run_conversion(source_path, target_path)
+        converted = IfcToLbd._run_java_command(source_path, target_path, IfcToLbd.IfcToLbdOptions(level=1, ifcOWL=False))
         if not converted:
             continue
 

@@ -19,6 +19,8 @@ def main():
     group.add_argument("-d", "--dir", type=str, help="Path to the source IFC directory")
     args = parser.parse_args()
 
+    ifcToLbdOptions = IfcToLbd.IfcToLbdOptions(level=1, ifcOWL=False)
+
     if args.file:
         # SINGLE FILE MODE
         source_path = Path(args.file).resolve()
@@ -27,7 +29,7 @@ def main():
             sys.exit(1)
             
         target_path = file_utils.get_target_file_path(source_path)
-        ok = IfcToLbd.run_conversion(source_path, target_path)
+        ok = IfcToLbd._run_java_command(source_path, target_path, ifcToLbdOptions)
         if not ok:
             sys.exit(1)
 
@@ -50,7 +52,7 @@ def main():
         success_count = 0
         for source_path in ifc_files:
             target_path = file_utils.get_target_file_path(source_path)
-            ok = IfcToLbd.run_conversion(source_path, target_path)
+            ok = IfcToLbd._run_java_command(source_path, target_path, ifcToLbdOptions)
             if ok:
                 success_count += 1
 
