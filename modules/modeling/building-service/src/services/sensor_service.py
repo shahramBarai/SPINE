@@ -4,12 +4,12 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Any, Optional
 
-from deps import get_fuseki_client, get_timescale_client
+from deps import get_fuseki_sparql_client, get_timescale_client
 from utils.sparql_helpers import get_binding_value, uri_to_id
 
 
 # --- Initialize database clients ---
-FusekiClient = get_fuseki_client()
+FusekiClient = get_fuseki_sparql_client()
 TimescaleClient = get_timescale_client()
 
 # --- Types and data models ---

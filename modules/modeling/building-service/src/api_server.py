@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from deps import get_fuseki_client, FusekiSparqlError
+from deps import get_fuseki_sparql_client, FusekiSparqlError
 
 from ttl_fuseki_manager import FusekiTTLManager
 
@@ -20,7 +20,7 @@ from api import router
 BOT = "https://w3id.org/bot#"
 
 # --- Initialize database clients ---
-FusekiClient = get_fuseki_client()
+FusekiClient = get_fuseki_sparql_client()
 
 class IfcNodeDto(BaseModel):
 	id: str
