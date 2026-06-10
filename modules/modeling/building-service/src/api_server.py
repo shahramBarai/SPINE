@@ -17,17 +17,8 @@ from utils.sparql_helpers import get_binding_value, get_binding_type, uri_to_id
 
 from api import router
 
-BOT = "https://w3id.org/bot#"
-
 # --- Initialize database clients ---
 FusekiClient = get_fuseki_sparql_client()
-
-class IfcNodeDto(BaseModel):
-	id: str
-	name: str
-	type: str
-	children: list["IfcNodeDto"] | None = None
-
 
 class TripleDto(BaseModel):
 	subject: str
@@ -126,17 +117,6 @@ def _build_graph_from_triples(triples: list[TripleDto], edge_enabled: list[bool]
 
 	return GraphDto(nodes=nodes, edges=edges_raw)
 
-
-def _node_type(type_uri: str) -> str:
-	if type_uri in {f"{BOT}Site", f"{BOT}Building"}:
-		return "Project"
-	if type_uri == f"{BOT}Storey":
-		return "Storey"
-	if type_uri == f"{BOT}Space":
-		return "Space"
-	return "Element"
-
-
 def _short_name(uri: str) -> str:
 	identifier = uri_to_id(uri)
 	return identifier.replace("_", " ")
@@ -163,29 +143,6 @@ def _layout(index: int, total: int) -> tuple[float, float]:
 	radius = 140.0 + (index % 3) * 35.0
 	angle = (index / total) * 6.283185307179586
 	return center_x + radius * math.cos(angle), center_y + radius * math.sin(angle)
-
-
-def _build_tree(nodes_raw: list[dict[str, str]], parents: dict[str, str]) -> list[IfcNodeDto]:
-	by_id: dict[str, IfcNodeDto] = {}
-	for item in nodes_raw:
-		node_id = item["id"]
-		by_id[node_id] = IfcNodeDto(
-			id=node_id,
-			name=item["name"],
-			type=item["type"],
-			children=[],
-		)
-
-	roots: list[IfcNodeDto] = []
-	for node_id, node in by_id.items():
-		parent_id = parents.get(node_id)
-		if parent_id and parent_id in by_id and parent_id != node_id:
-			by_id[parent_id].children = by_id[parent_id].children or []
-			by_id[parent_id].children.append(node)
-		else:
-			roots.append(node)
-
-	return roots
 
 def _graph_uri(template: str | None, target_file: Path) -> str | None:
 	if not template:
@@ -228,47 +185,6 @@ app.add_middleware(
 )
 
 app.include_router(router)
-
-@app.get("/api/tree", response_model=list[IfcNodeDto])
-def get_tree() -> list[IfcNodeDto]:
-	query = """
-	PREFIX bot: <https://w3id.org/bot#>
-	PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-
-	SELECT ?node ?label ?type ?parent
-	WHERE {
-	  ?node a ?type .
-	  FILTER (?type IN (bot:Site, bot:Building, bot:Storey, bot:Space))
-	  OPTIONAL { ?node rdfs:label ?label }
-	  OPTIONAL {
-		?parent (bot:hasBuilding | bot:hasStorey | bot:hasSpace | bot:containsZone) ?node .
-	  }
-	}
-	"""
-	try:
-		bindings = FusekiClient.select_query(query)
-	except FusekiSparqlError as exc:
-		raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-	nodes_raw: list[dict[str, str]] = []
-	parents: dict[str, str] = {}
-
-	for row in bindings:
-		node_uri = get_binding_value(row, "node")
-		node_id = uri_to_id(node_uri)
-		if not node_id:
-			continue
-		label = get_binding_value(row, "label") or node_id
-		node_type = _node_type(get_binding_value(row, "type"))
-		nodes_raw.append({"id": node_id, "name": label, "type": node_type})
-		parent_uri = get_binding_value(row, "parent")
-		if parent_uri:
-			parents[node_id] = uri_to_id(parent_uri)
-
-	unique_nodes = {n["id"]: n for n in nodes_raw}
-	return _build_tree(list(unique_nodes.values()), parents)
-
-
 
 @app.get("/api/triples", response_model=list[TripleDto])
 def get_triples(limit: int = Query(default=200, ge=1, le=2000)) -> list[TripleDto]:
