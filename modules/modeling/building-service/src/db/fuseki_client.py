@@ -33,25 +33,6 @@ class FusekiClient:
         await self.client.aclose()
 
     # --- SPARQL query and update methods ---
-
-    def _normalize_and_check_query_string(self, query: str, allowed_types: list[str]) -> str:
-        """
-        Normalizes the query string and checks if it starts with an allowed SPARQL query type.
-
-        :param query: The raw SPARQL query string.
-        :param allowed_types: A list of allowed SPARQL query types (e.g., ["select", "ask"]).
-        :return: The normalized query string if valid.
-        :raises FusekiSparqlError: If the query is empty or does not start with an allowed type.
-        """
-        query_text = (query or "").strip()
-        if not query_text:
-            raise FusekiSparqlError("SPARQL query is required.")
-
-        if not any(query_text.lower().startswith(qt) for qt in allowed_types):
-            raise FusekiSparqlError(f"Only SPARQL {', '.join(allowed_types).upper()} queries are supported.")
-
-        return query_text
-
     async def sparql_query(self, dataset_name: str, query: str) -> list[Dict[str, Any]]:
         """
         Executes a SPARQL query via HTTP POST. Implements the W3C SPARQL 1.1 Protocol.
@@ -62,16 +43,9 @@ class FusekiClient:
         :param dataset_name: The name of the dataset to query.
         :param query: The SPARQL query string to execute.
         :return: A list of query results (bindings) or None if an error occurs.
-        :raises FusekiSparqlError: If the query is invalid or does not start with an allowed type.
         :raises httpx.HTTPStatusError: If the server returns an error status code.
         :raises httpx.RequestError: If there is a network error while making the request.
         """
-
-        # Check if the query is valid and starts with an allowed SPARQL query type
-        query_text = self._normalize_and_check_query_string(
-            query,
-            allowed_types=["select", "ask", "construct", "describe"]
-        )
         endpoint = f"/{dataset_name}/query"
         
         # We specify the content type for SPARQL queries and accept JSON results
@@ -80,7 +54,7 @@ class FusekiClient:
             "Accept": "application/sparql-results+json"
         }
 
-        response = await self.client.post(endpoint, content=query_text, headers=headers)
+        response = await self.client.post(endpoint, content=query, headers=headers)
         response.raise_for_status()
         
         try:
@@ -97,18 +71,12 @@ class FusekiClient:
         :raises httpx.HTTPStatusError: If the server returns an error status code.
         :raises httpx.RequestError: If there is a network error while making the request.
         """
-        # Check if the update string is valid and starts with an allowed SPARQL update type
-        query_text = self._normalize_and_check_query_string(
-            query,
-            allowed_types=["insert", "delete", "drop"]
-        )
-
         endpoint = f"/{dataset_name}/update"
         headers = {
             "Content-Type": "application/sparql-update"
         }
 
-        response = await self.client.post(endpoint, content=query_text, headers=headers)
+        response = await self.client.post(endpoint, content=query, headers=headers)
         response.raise_for_status()
 
     # --- Graph Store Protocol methods for direct graph manipulation ---
