@@ -7,8 +7,8 @@ from db.timescale_client import TimescaleClient
 # --- Load configuration from environment variables with defaults ---
 
 FUSEKI_BASE_URL = os.getenv("FUSEKI_BASE_URL", "http://localhost:3030")
-FUSEKI_USERNAME = os.getenv("FUSEKI_USERNAME", "username")
-FUSEKI_PASSWORD = os.getenv("FUSEKI_PASSWORD", "password")
+FUSEKI_USERNAME = os.getenv("FUSEKI_USERNAME", "admin")
+FUSEKI_PASSWORD = os.getenv("FUSEKI_PASSWORD", "admin123")
 FUSEKI_DATASET = os.getenv("FUSEKI_DATASET", "spine")
 
 DATABASE_URL_TIMESCALE = os.getenv(
