@@ -106,7 +106,11 @@ def get_sensor_location(sensor_id: str) -> tuple[str | None, str | None]:
     WHERE {{
         ?sensor a ?sensorType .
         FILTER(CONTAINS(LCASE(STR(?sensorType)), "sensor"))
-        FILTER(STRENDS(STR(?sensor), "{sensor_id}"))
+        OPTIONAL {{ ?sensor rdfs:comment ?sensorComment }}
+        FILTER(
+            STRENDS(STR(?sensor), "{sensor_id}")
+            || LCASE(STR(?sensorComment)) = LCASE(CONCAT("id_", "{sensor_id}"))
+        )
         OPTIONAL {{
         {{ ?sensor brick:isPointOf ?space . }}
         UNION
@@ -129,32 +133,50 @@ def get_sensor_location(sensor_id: str) -> tuple[str | None, str | None]:
 
 
 async def get_sensor_readings(
-    sensor_id: str, start_time: datetime, end_time: Optional[datetime] = None
+    sensor_id: str, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None
 ) -> list[SensorReading]:
     """
     Read sensor readings from the database for a given sensor ID and time range.
 
     Args:
         sensor_id: The ID of the sensor to read from
-        start_time: The timestamp to read the sensor reading for
-        end_time: Optional end time to specify a range for the sensor reading (by default, it will read the latest reading at or before the start_time)
+        start_time: Optional lower time bound for the readings
+        end_time: Optional upper time bound for the readings
     Returns:
         A list of SensorReading objects if found, otherwise an empty list
     """
-    if end_time:
+    if start_time and end_time:
         query = """
             SELECT id, time, data
             FROM sensor_readings
             WHERE id = $1 AND time >= $2 AND time <= $3
+            ORDER BY time ASC
         """
         records = await TimescaleClient.fetch(query, sensor_id, start_time, end_time)
-    else:
+    elif start_time:
         query = """
             SELECT id, time, data
             FROM sensor_readings
             WHERE id = $1 AND time >= $2
+            ORDER BY time ASC
         """
         records = await TimescaleClient.fetch(query, sensor_id, start_time)
+    elif end_time:
+        query = """
+            SELECT id, time, data
+            FROM sensor_readings
+            WHERE id = $1 AND time <= $2
+            ORDER BY time ASC
+        """
+        records = await TimescaleClient.fetch(query, sensor_id, end_time)
+    else:
+        query = """
+            SELECT id, time, data
+            FROM sensor_readings
+            WHERE id = $1
+            ORDER BY time ASC
+        """
+        records = await TimescaleClient.fetch(query, sensor_id)
     
     return [SensorReading(id=record['id'], timestamp=record['time'], data=record['data']) for record in records]
 

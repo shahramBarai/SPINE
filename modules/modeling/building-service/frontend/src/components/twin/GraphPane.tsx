@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Crosshair, GitBranch, GripHorizontal, Maximize2, Minimize2, Pause, Play, Search, RotateCcw, RefreshCw, X } from "lucide-react";
 import { useGraphQuery } from "@/hooks/use-twin-data";
-import { type GraphData, type EntityProperty, type SensorSelectionDetails, fetchEntityProperties, fetchSensorSelectionDetails } from "@/lib/twin-api";
+import { type GraphData, type EntityProperty, type SensorSelectionDetails, fetchEntityProperties, fetchSensorSelectionDetails, fetchSensorReadings, createSensorLiveStream } from "@/lib/twin-api";
 import { type Triple } from "@/lib/twin-data";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type NodeState = {
   id: string;
@@ -19,6 +21,7 @@ type LayoutPosition = { x: number; y: number };
 type LayoutEdge = { from_id: string; to_id: string };
 type LayoutNode = { id: string };
 type PanelPosition = { x: number; y: number };
+type HistoryPoint = { timestamp: string; value: number | null };
 
 const VIEW_WIDTH = 700;
 const VIEW_HEIGHT = 420;
@@ -31,10 +34,31 @@ const CENTER_GRAVITY = 0.0007;
 const splitCamelCase = (value: string): string => value.replace(/([a-z])([A-Z])/g, "$1 $2");
 
 const RDF_TYPE_PREDICATE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
+const RDFS_COMMENT_PREDICATE = "http://www.w3.org/2000/01/rdf-schema#comment";
 
 const isRdfTypePredicate = (predicate: string): boolean => {
   const lower = predicate.trim().toLowerCase();
   return lower === RDF_TYPE_PREDICATE || lower === "rdf:type" || lower.endsWith("#type") || lower.endsWith("/type");
+};
+
+const isRdfsCommentPredicate = (predicate: string): boolean => {
+  const lower = predicate.trim().toLowerCase();
+  return lower === RDFS_COMMENT_PREDICATE || lower === "rdfs:comment" || lower.endsWith("#comment") || lower.endsWith("/comment");
+};
+
+const uriEndsWithId = (uri: string, id: string): boolean =>
+  uri.endsWith(`#${id}`) || uri.endsWith(`/${id}`);
+
+const sensorIdFromCommentValue = (value: string): string | null => {
+  const normalized = value.trim().replace(/^"+|"+$/g, "");
+  const idIndex = normalized.indexOf("id_");
+  if (idIndex < 0) {
+    return null;
+  }
+
+  const tail = normalized.slice(idIndex + 3).trim();
+  const match = tail.match(/^([A-Za-z0-9_-]+)/);
+  return match?.[1] ?? null;
 };
 
 const typeDisplay = (value: string): string => (value?.trim() ? value : "Unknown");
@@ -279,6 +303,12 @@ export const GraphPane = ({
   const [loadingProperties, setLoadingProperties] = useState(false);
   const [sensorSelectionDetails, setSensorSelectionDetails] = useState<SensorSelectionDetails | null>(null);
   const [loadingSensorSelectionDetails, setLoadingSensorSelectionDetails] = useState(false);
+  const [liveLatestValue, setLiveLatestValue] = useState<string | null>(null);
+  const [liveLatestTime, setLiveLatestTime] = useState<string | null>(null);
+  const [liveStreamConnected, setLiveStreamConnected] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyPoints, setHistoryPoints] = useState<HistoryPoint[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string | null>(null);
   const [selectionPanelPosition, setSelectionPanelPosition] = useState<PanelPosition>({ x: 12, y: 208 });
   const [panelVisible, setPanelVisible] = useState(false);
@@ -494,6 +524,28 @@ export const GraphPane = ({
     return idLooksLikeSensor || typeLooksLikeSensor || labelLooksLikeSensor;
   }, [selectedId, selectedNode?.label, selectedNode?.type]);
 
+  const selectedSensorTelemetryId = useMemo(() => {
+    if (!selectedId || !selectedNodeIsSensor || !semanticTriples) {
+      return selectedId;
+    }
+
+    for (const triple of semanticTriples) {
+      if (!isRdfsCommentPredicate(triple.predicate)) {
+        continue;
+      }
+      if (!uriEndsWithId(triple.subject, selectedId)) {
+        continue;
+      }
+
+      const parsed = sensorIdFromCommentValue(triple.object);
+      if (parsed) {
+        return parsed;
+      }
+    }
+
+    return selectedId;
+  }, [selectedId, selectedNodeIsSensor, semanticTriples]);
+
   const selectedEdge = useMemo(() => {
     if (!selectedEdgeKey) {
       return null;
@@ -561,13 +613,18 @@ export const GraphPane = ({
     if (!selectedId || !selectedNodeIsSensor) {
       setSensorSelectionDetails(null);
       setLoadingSensorSelectionDetails(false);
+      setLiveLatestValue(null);
+      setLiveLatestTime(null);
+      setLiveStreamConnected(false);
+      setHistoryOpen(false);
+      setHistoryPoints([]);
       return;
     }
 
     let cancelled = false;
     setLoadingSensorSelectionDetails(true);
 
-    fetchSensorSelectionDetails(selectedId)
+    fetchSensorSelectionDetails(selectedSensorTelemetryId ?? selectedId)
       .then((details) => {
         if (!cancelled) {
           setSensorSelectionDetails(details);
@@ -587,7 +644,90 @@ export const GraphPane = ({
     return () => {
       cancelled = true;
     };
-  }, [selectedId, selectedNodeIsSensor]);
+  }, [selectedId, selectedNodeIsSensor, selectedSensorTelemetryId]);
+
+  useEffect(() => {
+    if (!selectedId || !selectedNodeIsSensor) {
+      return;
+    }
+
+    const telemetryId = selectedSensorTelemetryId ?? selectedId;
+    const source = createSensorLiveStream(telemetryId);
+
+    source.addEventListener("open", () => {
+      setLiveStreamConnected(true);
+    });
+
+    source.addEventListener("sensor_update", (event) => {
+      const message = JSON.parse((event as MessageEvent).data) as {
+        latest_value?: string | null;
+        latest_time?: string | null;
+      };
+
+      if (message.latest_value !== undefined) {
+        setLiveLatestValue(message.latest_value ?? null);
+      }
+      if (message.latest_time !== undefined) {
+        setLiveLatestTime(message.latest_time ?? null);
+      }
+    });
+
+    source.addEventListener("error", () => {
+      setLiveStreamConnected(false);
+    });
+
+    return () => {
+      source.close();
+      setLiveStreamConnected(false);
+    };
+  }, [selectedId, selectedNodeIsSensor, selectedSensorTelemetryId]);
+
+  useEffect(() => {
+    if (!historyOpen || !selectedId || !selectedNodeIsSensor) {
+      return;
+    }
+
+    let cancelled = false;
+    const telemetryId = selectedSensorTelemetryId ?? selectedId;
+
+    setLoadingHistory(true);
+    fetchSensorReadings(telemetryId)
+      .then((rows) => {
+        if (cancelled) {
+          return;
+        }
+
+        const points = rows
+          .map((row) => {
+            const rawValue = row.data && typeof row.data === "object" ? (row.data as Record<string, unknown>).value : undefined;
+            const value = typeof rawValue === "number" ? rawValue : Number(rawValue ?? NaN);
+            return {
+              timestamp: row.timestamp,
+              value: Number.isFinite(value) ? value : null,
+            };
+          })
+          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+        setHistoryPoints(points);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHistoryPoints([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingHistory(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [historyOpen, selectedId, selectedNodeIsSensor, selectedSensorTelemetryId]);
+
+  const displayedLatestValue = liveLatestValue ?? sensorSelectionDetails?.latest_value ?? null;
+  const displayedLatestTime = liveLatestTime ?? sensorSelectionDetails?.latest_time ?? null;
 
   useEffect(() => {
     const onPointerMove = (event: PointerEvent) => {
@@ -1032,14 +1172,29 @@ export const GraphPane = ({
                     <div className="border-b border-border/30 pb-1">
                       <div className="text-[10px] font-mono text-primary">Latest Value</div>
                       <div className="break-words font-mono text-[10px] text-muted-foreground">
-                        {sensorSelectionDetails?.latest_value ?? "Unavailable"}
+                        {displayedLatestValue ?? "Unavailable"}
                       </div>
                     </div>
                     <div className="border-b border-border/30 pb-1">
                       <div className="text-[10px] font-mono text-primary">Latest Time</div>
                       <div className="break-words font-mono text-[10px] text-muted-foreground">
-                        {sensorSelectionDetails?.latest_time ?? "Unavailable"}
+                        {displayedLatestTime ?? "Unavailable"}
                       </div>
+                    </div>
+                    <div className="border-b border-border/30 pb-1">
+                      <div className="text-[10px] font-mono text-primary">Realtime Source</div>
+                      <div className="break-words font-mono text-[10px] text-muted-foreground">
+                        {liveStreamConnected ? "Kafka stream connected" : "Kafka stream disconnected"}
+                      </div>
+                    </div>
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        className="rounded border border-border/60 px-2 py-1 text-[10px] font-mono text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                        onClick={() => setHistoryOpen(true)}
+                      >
+                        History Data
+                      </button>
                     </div>
                   </>
                 )}
@@ -1073,6 +1228,46 @@ export const GraphPane = ({
           </div>
         </div>
       )}
+
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Sensor History (TimescaleDB)</DialogTitle>
+            <DialogDescription>
+              Full history for sensor {selectedSensorTelemetryId ?? selectedId ?? "-"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="h-72 w-full rounded border border-border/60 bg-background/40 p-2">
+            {loadingHistory ? (
+              <div className="flex h-full items-center justify-center text-xs font-mono text-muted-foreground">
+                Loading history data...
+              </div>
+            ) : historyPoints.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-xs font-mono text-muted-foreground">
+                No history data available.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={historyPoints}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.4)" />
+                  <XAxis
+                    dataKey="timestamp"
+                    tickFormatter={(value: string) => new Date(value).toLocaleTimeString()}
+                    minTickGap={24}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                  />
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                  <Tooltip
+                    labelFormatter={(value: string) => new Date(value).toLocaleString()}
+                    formatter={(value: number | null) => [value ?? "-", "Value"]}
+                  />
+                  <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="absolute inset-0 grid-bg">
         <svg

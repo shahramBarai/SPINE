@@ -18,6 +18,7 @@ python-multipart
 
 # TimescaleDB client
 asyncpg
+aiokafka
 
 # WIP:ML/embedding stack used in notebooks
 torch

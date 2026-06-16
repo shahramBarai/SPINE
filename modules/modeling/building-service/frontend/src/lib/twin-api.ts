@@ -203,6 +203,19 @@ export type SensorSelectionDetails = {
     telemetry_error: string | null;
 };
 
+export type SensorReading = {
+    id: string;
+    timestamp: string;
+    data: Record<string, unknown> | null;
+};
+
+export type SensorLiveUpdate = {
+    sensor_id: string;
+    latest_value: string | null;
+    latest_time: string | null;
+    source: string;
+};
+
 export type SemanticSearchRequest = {
     query: string;
     limit?: number;
@@ -880,6 +893,27 @@ export const fetchSensorSelectionDetails = async (
     fetchJson<SensorSelectionDetails>(
         `/sensors/${encodeURIComponent(sensorId)}/selection`
     );
+
+export const fetchSensorReadings = async (
+    sensorId: string,
+    startTimeIso?: string,
+    endTimeIso?: string
+): Promise<SensorReading[]> => {
+    const params = new URLSearchParams();
+    if (startTimeIso) {
+        params.set("start_time", startTimeIso);
+    }
+    if (endTimeIso) {
+        params.set("end_time", endTimeIso);
+    }
+
+    return fetchJson<SensorReading[]>(
+        `/sensors/${encodeURIComponent(sensorId)}/readings?${params.toString()}`
+    );
+};
+
+export const createSensorLiveStream = (sensorId: string): EventSource =>
+    new EventSource(`${apiBase}/sensors/${encodeURIComponent(sensorId)}/stream`);
 
 export const fetchTriples = async (): Promise<Triple[]> =>
     fetchJson<Triple[]>("/triples");
