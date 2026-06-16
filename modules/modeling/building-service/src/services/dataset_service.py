@@ -28,7 +28,6 @@ async def get_datasets_info() -> list[DatasetInfo]:
     """
     result = await FusekiClient.get_datasets()
 
-    print(f"Retrieved datasets: {result}")
     return [DatasetInfo(name=ds["ds.name"], state=ds["ds.state"], services=[
         GraphServicesSummary(
             type=service["srv.type"],
@@ -144,3 +143,44 @@ async def get_tree(dataset_name: str) -> list[IfcNode]:
             roots.append(node)
 
     return roots
+
+async def execute_sparql_query(dataset_name: str, query: str):
+    """
+    Executes a SPARQL query against the specified dataset.
+
+    Note: Only supports SELECT, ASK, and CONSTRUCT queries.
+
+    :param dataset_name: The name of the dataset to query.
+    :param query: The SPARQL query string to execute.
+    :return: The result of the SPARQL query execution.
+    :raises httpx.HTTPStatusError: If the server returns an error status code.
+    :raises httpx.RequestError: If there is a network error while making the request.
+    """
+    return await FusekiClient.sparql_query(dataset_name, query)
+
+
+async def upload_ttl_to_fuseki(dataset_name: str, ttl_content: bytes, graph_uri: Optional[str],):
+    """
+    Uploads TTL content to the specified dataset and graph in Fuseki.
+
+    :param dataset_name: The name of the dataset to upload to.
+    :param ttl_content: The TTL content to upload as bytes.
+    :param graph_uri: The URI of the graph to upload to. If None, the default graph is targeted.
+    :return: A message indicating the result of the upload operation.
+    :raises httpx.HTTPStatusError: If the server returns an error status code.
+    :raises httpx.RequestError: If there is a network error while making the request.
+    """
+    await FusekiClient.graph_upload_ttl(dataset_name, ttl_content, graph_uri)
+
+async def delete_graph(dataset_name: str, graph_uri: Optional[str]):
+    """
+    Deletes a graph from the specified dataset in Fuseki.
+
+    :param dataset_name: The name of the dataset to delete from.
+    :param graph_uri: The URI of the graph to delete. If None, the default graph is targeted.
+    :return: A message indicating the result of the delete operation.
+    :raises httpx.HTTPStatusError: If the server returns an error status code.
+    :raises httpx.RequestError: If there is a network error while making the request.
+    """
+    query = f"DROP GRAPH <{graph_uri}>" if graph_uri else "DROP DEFAULT"
+    await FusekiClient.sparql_update(dataset_name, query)
