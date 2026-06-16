@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
+import httpx
 from pydantic import BaseModel
 from pathlib import Path
+from typing import Optional
 
 from utils import file_utils
 from conversion import IfcToLbd
+from services import DatasetService
 
 MAX_UPLOAD_SIZE = 1000 * 1024 * 1024 # 1000 MB in bytes
 
@@ -98,7 +101,7 @@ def convert_ifc_to_ttl(filename: str) -> str:
     return job_id
     
 @router.post("/api/pipeline/sync-to-fuseki")
-def sync_to_fuseki(filename: str, replace: bool = False):
+async def sync_to_fuseki(filename: str, dataset_name: str, graph_uri: Optional[str] = None, replace: bool = False):
     # Check that the filename is valid
     if not file_utils.valid_file_name(filename, allowed_extensions=["ttl"]):
         raise HTTPException(status_code=400, detail="Invalid request! Please check the filename and try again.")
@@ -108,8 +111,36 @@ def sync_to_fuseki(filename: str, replace: bool = False):
     if not ttl_path.exists() or not ttl_path.is_file():
         raise HTTPException(status_code=404, detail=f"TTL file not found: {filename}")
     
-    #TODO: Implement the actual syncing logic using the Fuseki manager and handle errors accordingly.
-    # For now, just return a success message for testing purposes.
+    error_message = None
+
+    try:
+        # 1. Validate that the graph exists
+        graphs = await DatasetService.list_graphs(dataset_name)
+        target_graph = graph_uri or "default"
+        existing_graph: DatasetService.GraphInfoResponse | None = None
+        for g in graphs:
+            if g.graph_uri == target_graph:
+                existing_graph = g
+                break
+        # 2. If the graph exists, not empty, and replace is False, return an error to avoid accidental data loss
+        # 2.1 If the graph exists and replace is True, proceed to delete the existing graph before uploading the new data
+        if existing_graph and existing_graph.triple_count > 0 and not replace:
+            raise HTTPException(status_code=400, detail=f"Graph '{target_graph}' already exists in dataset '{dataset_name}'. Use replace=true to overwrite it.")
+        elif existing_graph and replace:
+            await DatasetService.delete_graph(dataset_name, graph_uri)
+        # 3. Upload the new TTL data to Fuseki after validation 
+        # (graph with the same name should not exist at this point or should be empty)
+        data = open(ttl_path, "rb").read()
+        await DatasetService.upload_ttl_to_fuseki(dataset_name=dataset_name, ttl_content=data, graph_uri=graph_uri)
+        #TODO: Add data backup and restore mechanism in case the upload fails after deletion of the existing graph, to avoid data loss.
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=exc.response.status_code, detail=str(exc)) from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail="Network error while connecting to Fuseki") from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Failed to sync TTL file to Fuseki") from exc
 
     return {"message": f"Successfully synced {filename} to Fuseki (replace={replace})."}
 
