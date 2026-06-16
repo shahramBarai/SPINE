@@ -8,7 +8,7 @@ trimesh
 plotly
 ftfy
 fastapi
-uvicorn
+uvicorn[standard]
 
 # For async HTTP requests
 httpx

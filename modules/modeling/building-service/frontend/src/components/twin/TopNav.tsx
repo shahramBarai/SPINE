@@ -44,7 +44,6 @@ export const TopNav = ({
         retry: false
     });
 
-    console.log("API Health Data:", fusekiStatusQuery.data); // Debug log for API health data
     const fusekiConnected = fusekiStatusQuery.data?.fusekidb.connected ?? false;
 
     const convertMutation = useMutation({

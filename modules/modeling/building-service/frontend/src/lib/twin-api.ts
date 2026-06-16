@@ -13,6 +13,8 @@ const apiBase =
         ""
     ) || "http://localhost:8000/api";
 
+const websocketBase = "ws://localhost:8000/ws";
+
 const sleep = (ms: number): Promise<void> =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -882,16 +884,16 @@ const detectSparqlForm = (query: string): "select" | "construct" | "other" => {
 };
 
 export const fetchProjectTree = async (): Promise<IfcNode[]> =>
-    fetchJson<IfcNode[]>("/tree");
+    fetchJson<IfcNode[]>("/dataset/spine/tree");
 
 export const fetchSensors = async (): Promise<Sensor[]> =>
     fetchJson<Sensor[]>("/sensors");
 
-export const fetchSensorSelectionDetails = async (
+export const fetchSensorInformation = async (
     sensorId: string
 ): Promise<SensorSelectionDetails> =>
     fetchJson<SensorSelectionDetails>(
-        `/sensors/${encodeURIComponent(sensorId)}/selection`
+        `/sensors/${encodeURIComponent(sensorId)}/info`
     );
 
 export const fetchSensorReadings = async (
@@ -912,8 +914,8 @@ export const fetchSensorReadings = async (
     );
 };
 
-export const createSensorLiveStream = (sensorId: string): EventSource =>
-    new EventSource(`${apiBase}/sensors/${encodeURIComponent(sensorId)}/stream`);
+export const createSensorLiveStream = (sensorId: string): WebSocket =>
+    new WebSocket(`${websocketBase}/sensor/${encodeURIComponent(sensorId)}`);
 
 export const fetchTriples = async (): Promise<Triple[]> =>
     fetchJson<Triple[]>("/triples");

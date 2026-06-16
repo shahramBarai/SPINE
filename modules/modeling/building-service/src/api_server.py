@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import math
 from pathlib import Path
@@ -9,6 +10,8 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from contextlib import asynccontextmanager
+from db.sensor_connection_client import kafka_background_consumer
 from deps import get_fuseki_sparql_client, FusekiSparqlError
 
 from ttl_fuseki_manager import FusekiTTLManager
@@ -159,7 +162,19 @@ def _fuseki_manager() -> FusekiTTLManager:
 		timeout_seconds=float(os.getenv("FUSEKI_TIMEOUT_SECONDS", "600")),
 	)
 
-app = FastAPI(title="SPINE Building Service API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start the background Kafka worker safely
+    consumer_task = asyncio.create_task(kafka_background_consumer())
+    yield
+    # Shutdown: Cancel background worker gracefully when server stops
+    consumer_task.cancel()
+    try:
+        await consumer_task
+    except asyncio.CancelledError:
+        pass
+
+app = FastAPI(title="SPINE Building Service API", version="0.1.0", lifespan=lifespan)
 
 frontend_origin_env = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 frontend_origins = [o.strip() for o in frontend_origin_env.split(",") if o.strip()]

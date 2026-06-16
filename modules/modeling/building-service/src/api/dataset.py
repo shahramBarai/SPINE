@@ -43,18 +43,17 @@ async def list_graphs(dataset_name: str) -> list[DatasetService.GraphInfoRespons
         raise HTTPException(status_code=502, detail="Failed to retrieve graph data from Fuseki")
 
 @router.get("/dataset/{dataset_name}/tree", response_model=list[DatasetService.IfcNode])
-async def get_graph_tree(dataset_name: str, graph_uri: str) -> list[DatasetService.IfcNode]:
+async def get_graph_tree(dataset_name: str) -> list[DatasetService.IfcNode]:
     """
     Endpoint to retrieve a tree structure of nodes from the specified dataset.
 
     **Arguments**:
         dataset_name: The name of the dataset to query.
-        graph_uri: The URI of the graph to query.
     **Returns**:
         A tree structure of nodes.
     """
     try:
-        return await DatasetService.get_tree(dataset_name, graph_uri)
+        return await DatasetService.get_tree(dataset_name)
     except Exception as exc:
         print(f"Error retrieving graph tree: {exc}")
         raise HTTPException(status_code=502, detail="Failed to retrieve graph tree from Fuseki") from exc
