@@ -1,5 +1,5 @@
 """
-api/ - HTTP routes and endpoints.
+routers/ - HTTP routes and endpoints.
 """
 
 from fastapi import APIRouter
