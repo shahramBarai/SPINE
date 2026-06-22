@@ -2,7 +2,6 @@ from typing import Optional
 
 from pydantic import BaseModel
 from deps import get_fuseki_client
-from fastapi import HTTPException
 from utils import sparql_helpers
 
 # --- Initialize database clients ---
