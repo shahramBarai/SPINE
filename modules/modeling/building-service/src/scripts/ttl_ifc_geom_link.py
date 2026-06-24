@@ -20,7 +20,7 @@ from itertools import combinations
 from pprint import pprint
 import plotly.graph_objects as go
 from collections import defaultdict, Counter
-from graph_manager import init_graph, save_graph, BRICK, BOT, PROPS, S223, FSO, INST
+from scripts.graph_manager import init_graph, save_graph, BRICK, BOT, PROPS, S223, FSO, INST
 from ttl_ifc_system_link import pair_ifc_and_ttl
 
 # --------------------------------------------------

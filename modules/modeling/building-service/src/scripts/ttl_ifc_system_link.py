@@ -12,7 +12,7 @@ import json
 from rdflib import Graph, Literal, Namespace, RDF, RDFS, OWL
 import uuid
 from pathlib import Path
-from graph_manager import BRICK, BOT, INST, PROPS, S223, init_graph, save_graph
+from scripts.graph_manager import BRICK, BOT, INST, PROPS, S223, init_graph, save_graph
 
 
 def add_system_instances(graph, ifc_model):

@@ -10,7 +10,7 @@ from difflib import SequenceMatcher
 from pprint import pprint
 import ifcopenshell
 from pathlib import Path
-from graph_manager import init_graph, save_graph, BRICK, BOT, PROPS, S223
+from scripts.graph_manager import init_graph, save_graph, BRICK, BOT, PROPS, S223
 
 
 # Helper to populate dictionary
