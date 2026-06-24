@@ -8,10 +8,10 @@ import os
 import sys
 from pathlib import Path
 
-from encoding_utils import fix_encoding
+from utils import encoding_utils
 from conversion import IfcToLbd
 from utils import file_utils
-from ttl_fuseki_manager import FusekiError, FusekiTTLManager
+from db.fuseki_client import FusekiClient
 
 
 def _collect_ifc_files(file_arg: str | None, dir_arg: str | None) -> list[Path]:
@@ -100,12 +100,16 @@ def main() -> None:
         parser.error("Use either --fuseki-graph or --fuseki-graph-template, not both.")
 
     source_files = _collect_ifc_files(args.file, args.dir)
-    manager = FusekiTTLManager(
-        base_url=args.fuseki_base_url,
-        dataset=args.fuseki_dataset,
-        username=args.fuseki_username,
-        password=args.fuseki_password,
-        timeout_seconds=args.fuseki_timeout,
+
+    FUSEKI_BASE_URL = args.fuseki_base_url
+    FUSEKI_USERNAME = args.fuseki_username
+    FUSEKI_PASSWORD = args.fuseki_password
+    FUSEKI_DATASET = args.fuseki_dataset
+
+    fusekiClient = FusekiClient(
+        base_url=FUSEKI_BASE_URL,
+        username=FUSEKI_USERNAME,
+        password=FUSEKI_PASSWORD,
     )
 
     print(f"Found {len(source_files)} file(s) to process.")
@@ -121,19 +125,26 @@ def main() -> None:
 
         try:
             print(f"Checking and fixing encoding for {target_path.name}...")
-            fix_encoding(str(target_path))
+            encoding_utils.fix_encoding(str(target_path))
 
             graph_uri = _build_graph_uri(args.fuseki_graph_template, target_path) or args.fuseki_graph
             upload_mode = "replace" if args.fuseki_replace else "append"
             print(f"Uploading corrected {target_path.name} to Fuseki ({upload_mode})...")
-            manager.load_ttl_file(
-                ttl_path=str(target_path),
+            if not os.path.isfile(target_path):
+                raise FileNotFoundError(f"TTL file not found: {target_path}")
+
+            with open(target_path, "rb") as ttl_file:
+                payload = ttl_file.read()
+
+            fusekiClient.graph_upload_ttl(
+                dataset_name=FUSEKI_DATASET, 
                 graph_uri=graph_uri,
-                replace=args.fuseki_replace,
+                payload=payload,
+                replace=args.fuseki_replace
             )
             print(f"Successfully uploaded corrected {target_path.name}")
             success_count += 1
-        except (OSError, FusekiError) as exc:
+        except (OSError, Exception) as exc:
             print(f"Post-conversion step failed for {target_path.name}: {exc}")
 
     print(f"Completed {success_count}/{len(source_files)} file(s) successfully.")
