@@ -9,44 +9,50 @@ from __future__ import annotations
 from fastapi import APIRouter
 from pydantic import BaseModel
 from enum import StrEnum
+from deps import get_fuseki_client, get_timescale_client
 
 router = APIRouter(tags=["Health Check"])
 
+# --- Initialize database clients ---
+FusekiClient = get_fuseki_client()
+TimescaleClient = get_timescale_client()
+
+# --- Data Models ---
 class HealthStatus(StrEnum):
-	HEALTHY = "healthy"
-	DEGRADED = "degraded"
-	UNHEALTHY = "unhealthy"
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNHEALTHY = "unhealthy"
 
 class ServiceStatus(BaseModel):
-	connected: bool
-	health_status: HealthStatus
-	error: str | None = None
+    connected: bool
+    health_status: HealthStatus
+    error: str | None = None
 
 class HealthResponse(BaseModel):
-	status: HealthStatus
-	fusekidb: ServiceStatus
-	timescaledb: ServiceStatus
+    status: HealthStatus
+    fusekidb: ServiceStatus
+    timescaledb: ServiceStatus
 
 @router.get("/api/health", response_model=HealthResponse)
-def health() -> HealthResponse:
+async def health() -> HealthResponse:
 
-    # TODO: Implement actual health check logic for TimescaleDB and FusekiDB
-	timescaledb = ServiceStatus(
-        connected=True,  # Placeholder for actual health check logic
-        health_status=HealthStatus.HEALTHY,  # Placeholder for actual health status
-        error=None  # Placeholder for actual error message if any
-    )
-	
-    # TODO: Implement actual health check logic for FusekiDB
-	fusekidb = ServiceStatus(
-        connected=True,  # Placeholder for actual health check logic
-        health_status=HealthStatus.HEALTHY,  # Placeholder for actual health status
-        error=None  # Placeholder for actual error message if any
+    timescaledb_connected, timescaledb_error = await TimescaleClient.ping()
+    timescaledb = ServiceStatus(
+        connected=timescaledb_connected,
+        health_status=HealthStatus.HEALTHY if timescaledb_connected else HealthStatus.UNHEALTHY,
+        error=timescaledb_error
     )
 
-	status = HealthStatus.HEALTHY if timescaledb.connected and fusekidb.connected else HealthStatus.DEGRADED
-	return HealthResponse(
-		status=status,
-		timescaledb=timescaledb,
-		fusekidb=fusekidb
-	)
+    fuseki_connected, fuseki_error = await FusekiClient.ping()
+    fusekidb = ServiceStatus(
+        connected=fuseki_connected,
+        health_status=HealthStatus.HEALTHY if fuseki_connected else HealthStatus.UNHEALTHY,
+        error=fuseki_error
+    )
+
+    status = HealthStatus.HEALTHY if timescaledb.connected and fusekidb.connected else HealthStatus.DEGRADED
+    return HealthResponse(
+        status=status,
+        timescaledb=timescaledb,
+        fusekidb=fusekidb
+    )

@@ -115,3 +115,19 @@ class TimescaleClient:
             await self.connect()
         async with self.pool.acquire() as connection:
             return await connection.fetchrow(query, *args)
+        
+    async def ping(self) -> tuple[bool, Optional[str]]:
+        """
+        Check the health of the TimescaleDB connection by executing a simple query.
+
+        Returns:
+            A tuple containing a boolean indicating if the connection is healthy and an optional error message.
+        """
+        try:
+            result = await self.fetchrow("SELECT 1;")
+            if result is not None:
+                return True, None
+            else:
+                return False, "No response from database."
+        except Exception as e:
+            return False, f"Unexpected error: {str(e)}"

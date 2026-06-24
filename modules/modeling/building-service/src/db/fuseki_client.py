@@ -150,3 +150,19 @@ class FusekiClient:
         response = await self.client.get(f"/$/stats/{dataset_name}")
         response.raise_for_status()
         return response.json()
+    
+    async def ping(self) -> tuple[bool, str | None]:
+        """
+        Checks if the Fuseki server is reachable by sending a simple GET request to the root endpoint.
+
+        :return: A tuple containing a boolean indicating connectivity and an optional error message if the ping fails.
+        """
+        try:
+            response = await self.client.get("/")
+            return response.status_code == 200, None
+        except httpx.RequestError as exc:
+            return False, f"Request error: {str(exc)}"
+        except httpx.HTTPStatusError as exc:
+            return False, f"HTTP error: {str(exc)}"
+        except Exception as exc:
+            return False, f"Unexpected error: {str(exc)}"
