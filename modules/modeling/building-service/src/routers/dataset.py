@@ -1,7 +1,7 @@
 import httpx
 
 from fastapi import APIRouter, HTTPException, Query
-from services import DatasetService
+from services import DatasetService, BuildingGraphService, SemanticSearchService
 from typing import Optional
 from pydantic import BaseModel, Field
 
@@ -18,7 +18,7 @@ async def get_dataset_info() -> list[DatasetService.DatasetInfo]:
         A list of dataset information.
     """
     try:
-        return await DatasetService.get_datasets_info()
+        return await DatasetService.read_datasets()
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=str(exc)) from exc
     except httpx.RequestError as exc:
@@ -37,7 +37,7 @@ async def list_graphs(dataset_name: str) -> list[DatasetService.GraphInfoRespons
         A list of graph information available in the dataset.
     """
     try:
-        return await DatasetService.list_graphs(dataset_name)
+        return await DatasetService.read_list_graphs(dataset_name)
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=str(exc)) from exc
     except httpx.RequestError as exc:
@@ -45,8 +45,8 @@ async def list_graphs(dataset_name: str) -> list[DatasetService.GraphInfoRespons
     except Exception:
         raise HTTPException(status_code=502, detail="Failed to retrieve graph data from Fuseki")
 
-@router.get("/dataset/{dataset_name}/tree", response_model=list[DatasetService.IfcNode])
-async def get_graph_tree(dataset_name: str) -> list[DatasetService.IfcNode]:
+@router.get("/dataset/{dataset_name}/tree", response_model=list[BuildingGraphService.IfcNode])
+async def get_graph_tree(dataset_name: str) -> list[BuildingGraphService.IfcNode]:
     """
     Endpoint to retrieve a tree structure of nodes from the specified dataset.
 
@@ -56,7 +56,7 @@ async def get_graph_tree(dataset_name: str) -> list[DatasetService.IfcNode]:
         A tree structure of nodes.
     """
     try:
-        return await DatasetService.get_tree(dataset_name)
+        return await BuildingGraphService.get_tree(dataset_name)
     except Exception as exc:
         print(f"Error retrieving graph tree: {exc}")
         raise HTTPException(status_code=502, detail="Failed to retrieve graph tree from Fuseki") from exc
@@ -84,7 +84,7 @@ async def execute_sparql_query(dataset_name: str, query: str):
         )
 
     try:
-        return await DatasetService.execute_sparql_query(dataset_name, query)
+        return await SemanticSearchService.execute_sparql_query(dataset_name, query)
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=str(exc)) from exc
     except httpx.RequestError as exc:
@@ -115,7 +115,7 @@ def semantic_search(dataset_name: str, request: SemanticSearchRequest) -> Semant
         )
 
     try:
-        bindings = DatasetService.execute_sparql_query(dataset_name, query_text)
+        bindings = SemanticSearchService.execute_sparql_query(dataset_name, query_text)
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=str(exc)) from exc
     except httpx.RequestError as exc:
@@ -156,7 +156,7 @@ async def delete_graph(dataset_name: str, graph_uri: Optional[str] = None):
     """
     try:
         # 1. Validate that the graph exists before attempting deletion
-        graphs = await DatasetService.list_graphs(dataset_name)
+        graphs = await DatasetService.read_list_graphs(dataset_name)
         target_graph = graph_uri or "default"
         # 2. Proceed to delete the graph only if it exists
         if target_graph in [g.graph_uri for g in graphs]:
@@ -194,7 +194,7 @@ async def get_graph(
     """
 
     try:
-        bindings = await DatasetService.execute_sparql_query("spine", query)
+        bindings = await SemanticSearchService.execute_sparql_query("spine", query)
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=str(exc)) from exc
     except httpx.RequestError as exc:
@@ -214,7 +214,7 @@ async def get_graph(
     return sparql_helpers.build_graph_from_triples(triples, edge_enabled, focus_id=focus_id)
 
 @router.get("/api/triples", response_model=list[sparql_helpers.TripleDto])
-def get_triples(limit: int = Query(default=200, ge=1, le=2000)) -> list[sparql_helpers.TripleDto]:
+async def get_triples(limit: int = Query(default=200, ge=1, le=2000)) -> list[sparql_helpers.TripleDto]:
     query = f"""
     SELECT ?s ?p ?o
     WHERE {{
@@ -223,7 +223,7 @@ def get_triples(limit: int = Query(default=200, ge=1, le=2000)) -> list[sparql_h
     LIMIT {limit}
     """
     try:
-        bindings = DatasetService.execute_sparql_query("spine", query)
+        bindings = await SemanticSearchService.execute_sparql_query("spine", query)
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=str(exc)) from exc
     except httpx.RequestError as exc:

@@ -110,12 +110,10 @@ async def sync_to_fuseki(filename: str, dataset_name: str, graph_uri: Optional[s
     ttl_path = TMP_DIR / Path(filename).name
     if not ttl_path.exists() or not ttl_path.is_file():
         raise HTTPException(status_code=404, detail=f"TTL file not found: {filename}")
-    
-    error_message = None
 
     try:
         # 1. Validate that the graph exists
-        graphs = await DatasetService.list_graphs(dataset_name)
+        graphs = await DatasetService.read_list_graphs(dataset_name)
         target_graph = graph_uri or "default"
         existing_graph: DatasetService.GraphInfoResponse | None = None
         for g in graphs:

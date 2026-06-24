@@ -15,9 +15,9 @@ from services import SensorService
 router = APIRouter(tags=["Sensors"])
 
 @router.get("/api/sensors", response_model=list[SensorService.SensorSummary])
-def get_sensors() -> list[SensorService.SensorSummary]:
+def get_sensors(dataset_name: str) -> list[SensorService.SensorSummary]:
     try:
-        sensors = SensorService.get_sensors()
+        sensors = SensorService.read_sensors(dataset_name=dataset_name)
     except FusekiSparqlError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -32,7 +32,7 @@ class SensorInfoResponse(BaseModel):
     telemetry_error: str | None
 
 @router.get("/api/sensors/{sensor_id}/info", response_model=SensorInfoResponse)
-async def get_sensor_information(sensor_id: str) -> SensorInfoResponse:
+async def get_sensor_information(dataset_name: str, sensor_id: str) -> SensorInfoResponse:
     """
     Retrieve the latest sensor reading and location information for a given sensor ID.
 
@@ -42,8 +42,8 @@ async def get_sensor_information(sensor_id: str) -> SensorInfoResponse:
         A SensorInfoResponse object containing the sensor's location and latest reading information
     """
     try:
-        location_id, location_name = SensorService.get_sensor_location(sensor_id)
-        latest_reading = await SensorService.get_latest_sensor_reading(sensor_id)
+        location_id, location_name = await SensorService.read_sensor_location(dataset_name=dataset_name, sensor_id=sensor_id)
+        latest_reading = await SensorService.read_latest_sensor_reading(sensor_id)
     except FusekiSparqlError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     
@@ -79,7 +79,7 @@ async def get_sensor_readings(sensor_id: str, start_time: Optional[datetime] = N
         A list of SensorReading objects if found, otherwise an empty list
     """
     try:
-        readings = await SensorService.get_sensor_readings(sensor_id, start_time, end_time)
+        readings = await SensorService.read_sensor_readings(sensor_id, start_time, end_time)
     except FusekiSparqlError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     

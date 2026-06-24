@@ -1,7 +1,6 @@
 import os
 
-from db.fuseki_sparql_client import FusekiSparqlClient, FusekiSparqlError
-from db.fuseki_client import FusekiClient
+from db.fuseki_client import FusekiClient, FusekiSparqlError
 from db.timescale_client import TimescaleClient
 
 # --- Load configuration from environment variables with defaults ---
@@ -17,24 +16,8 @@ DATABASE_URL_TIMESCALE = os.getenv(
 
 # --- Initialize clients ---
 
-fusekiSparqlClient: FusekiSparqlClient | None = None
 fusekiClient: FusekiClient | None = None
 timescaleClient: TimescaleClient | None = None
-
-
-def get_fuseki_sparql_client() -> FusekiSparqlClient:
-    """
-    Get a singleton instance of the FusekiSparqlClient. The client is initialized on first use.
-
-    Returns:
-        An instance of FusekiSparqlClient connected to the configured Fuseki endpoint and dataset
-    """
-    global fusekiSparqlClient
-    if fusekiSparqlClient is None:
-        fusekiSparqlClient = FusekiSparqlClient(
-            base_url=FUSEKI_BASE_URL, dataset=FUSEKI_DATASET
-        )
-    return fusekiSparqlClient
 
 def get_fuseki_client() -> FusekiClient:
     """
@@ -64,4 +47,4 @@ def get_timescale_client() -> TimescaleClient:
         timescaleClient = TimescaleClient(database_url=DATABASE_URL_TIMESCALE)
     return timescaleClient
 
-__all__ = ["get_fuseki_sparql_client", "get_timescale_client", "FusekiSparqlError"]
+__all__ = ["get_fuseki_client", "get_timescale_client", "FusekiSparqlError"]

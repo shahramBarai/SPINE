@@ -8,12 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from contextlib import asynccontextmanager
 from db.sensor_connection_client import kafka_background_consumer
-from deps import get_fuseki_sparql_client
 
 from routers import router
-
-# --- Initialize database clients ---
-FusekiClient = get_fuseki_sparql_client()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

@@ -4,15 +4,15 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Any, Optional
 
-from deps import get_fuseki_sparql_client, get_timescale_client
+from deps import get_fuseki_client, get_timescale_client
 from utils.sparql_helpers import get_binding_value, uri_to_id
 
 
 # --- Initialize database clients ---
-FusekiClient = get_fuseki_sparql_client()
+FusekiClient = get_fuseki_client()
 TimescaleClient = get_timescale_client()
 
-# --- Types and data models ---
+# --- Data models ---
 class SensorSummary(BaseModel):
     id: str
     name: str
@@ -67,11 +67,11 @@ def _to_sensor(binding: dict[str, Any]) -> SensorSummary:
     )
 
 
-# --- Main service functions (use CRUD style naming) ---
+# --- Service Functions (use CRUD style naming) ---
 
 # TODO: This function curretly return all sensors in the triplestore, regardless of their location.
 # we should add support for filtering by location (building/zone/room).
-def get_sensors() -> list[SensorSummary]:
+async def read_sensors(dataset_name: str) -> list[SensorSummary]:
     """Fetches a list of sensors from the Fuseki triplestore and returns them as SensorResponse objects."""
 
     query = """
@@ -92,11 +92,11 @@ def get_sensors() -> list[SensorSummary]:
     ORDER BY ?label
     """
 
-    bindings = FusekiClient.select_query(query)
+    bindings = await FusekiClient.sparql_query(dataset_name=dataset_name, query=query)
     return [_to_sensor(row) for row in bindings]
 
 
-def get_sensor_location(sensor_id: str) -> tuple[str | None, str | None]:
+async def read_sensor_location(dataset_name: str, sensor_id: str) -> tuple[str | None, str | None]:
     query = f"""
     PREFIX brick: <https://brickschema.org/schema/Brick#>
     PREFIX s223: <http://data.ashrae.org/standard223#>
@@ -120,9 +120,10 @@ def get_sensor_location(sensor_id: str) -> tuple[str | None, str | None]:
     }}
     LIMIT 1
     """
-
-    bindings = FusekiClient.select_query(query)
-    if not bindings:
+    try:
+        bindings = await FusekiClient.sparql_query(dataset_name=dataset_name, query=query)
+    except Exception as e:
+        print(f"Error occurred while fetching sensor location: {e}")
         return None, None
 
     row = bindings[0]
@@ -132,7 +133,7 @@ def get_sensor_location(sensor_id: str) -> tuple[str | None, str | None]:
     return space_id, (space_name if space_name else None)
 
 
-async def get_sensor_readings(
+async def read_sensor_readings(
     sensor_id: str, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None
 ) -> list[SensorReading]:
     """
@@ -181,7 +182,7 @@ async def get_sensor_readings(
     return [SensorReading(id=record['id'], timestamp=record['time'], data=record['data']) for record in records]
 
 
-async def get_latest_sensor_reading(sensor_id: str) -> Optional[SensorReading]:
+async def read_latest_sensor_reading(sensor_id: str) -> Optional[SensorReading]:
     """
     Get the latest sensor reading for a given sensor ID.
 
