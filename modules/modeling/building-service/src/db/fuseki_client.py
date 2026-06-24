@@ -102,13 +102,14 @@ class FusekiClient:
         
         return response.text
     
-    async def graph_upload_ttl(self, dataset_name: str, payload: bytes, graph_uri: Optional[str] = None):
+    async def graph_upload_ttl(self, dataset_name: str, payload: bytes, graph_uri: Optional[str] = None, replace: Optional[bool] = False):
         """
-        Uploads RDF data in Turtle format to a specified graph.
+        Uploads RDF data in Turtle format to a specified graph. Supports both appending and replacing graph content.
 
         :param dataset_name: The name of the dataset containing the graph.
         :param graph_uri: The URI of the graph to upload to. If None, the default graph is targeted.
         :param payload: The RDF data in Turtle format as bytes.
+        :param replace: If True, replaces the existing graph content. If False, appends to the graph.
         :raises httpx.HTTPStatusError: If the server returns an error status code.
         :raises httpx.RequestError: If there is a network error while making the request.
         """
@@ -117,8 +118,10 @@ class FusekiClient:
         headers = {
             "Content-Type": "text/turtle"
         }
-        
-        response = await self.client.post(endpoint, headers=headers, params=params, content=payload)
+        if replace:
+            response = await self.client.put(endpoint, headers=headers, params=params, content=payload)
+        else:
+            response = await self.client.post(endpoint, headers=headers, params=params, content=payload)
         response.raise_for_status()
     
     # --- Additional utility methods for operational stats and dataset management ---
