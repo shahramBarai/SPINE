@@ -1,7 +1,5 @@
-import { getPrisma } from "../../prisma/client";
+import { prisma } from "../../prisma/client";
 import { UserRole } from "../../generated/client";
-
-const prisma = getPrisma();
 
 /* -------------------------------- CREATE -------------------------------- */
 /**

@@ -1,8 +1,6 @@
-import { getPrisma } from "../../prisma/client";
+import { prisma } from "../../prisma/client";
 import { EntityType, MemberRole } from "../../generated/client";
 import { getAllUsers } from "./userService";
-
-const prisma = getPrisma();
 
 /* -------------------------------- CREATE -------------------------------- */
 
