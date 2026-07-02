@@ -7,7 +7,9 @@ import {
     X
 } from "lucide-react";
 import { cn } from "utils/index";
-import { IfcFileTreeSection } from "./IfcFileTreeSection";
+import { IfcSectionTree } from "./IFCSectionTree";
+import { useDigitalTwin } from "hooks/useDigitalTwin";
+import { TtlSectionTree } from "./TTLSectionTree";
 
 type LoadedFile = File;
 export const getFileKey = (file: LoadedFile): string =>
@@ -26,38 +28,18 @@ export const LINKSET_NODE = {
 } as const;
 export const SENSOR_NODE = { id: "sensor-node", name: "Sensor" } as const;
 
-interface ProjectTreeSectionProps {
-    projectId: string;
-    selectedId: string | null;
-    onSelect: (id: string) => void;
-}
-
-export const ProjectTreeSection = ({
-    projectId,
-    selectedId,
-    onSelect
-}: ProjectTreeSectionProps) => {
+export const ProjectTreeSection = () => {
     const [projectTreeExpanded, setProjectTreeExpanded] = useState(true);
     const [disciplineExpandedById, setDisciplineExpandedById] = useState<
         Record<string, boolean>
     >({});
 
-    const { data, isLoading, error } = {
-        data: { id: projectId, name: "Sample Project" },
-        isLoading: false,
-        error: null
-    }; // api.projects.getProjectById.useQuery({ projectId });
+    const { projectInfo, focusObjectId, setFocusObjectId } = useDigitalTwin();
 
-    if (isLoading) {
-        // FIXME: Add a proper loading skeleton
-        return <div className="px-1.5 pb-2 space-y-1">Loading...</div>;
-    }
-
-    if (error || !data) {
-        // FIXME: Add a proper error state
+    if (!projectInfo) {
         return (
-            <div className="px-1.5 pb-2 space-y-1">
-                Error loading project tree.
+            <div className="flex items-center justify-center py-1 font-mono text-muted-foreground">
+                <span className="text-xs">No project selected</span>
             </div>
         );
     }
@@ -76,7 +58,7 @@ export const ProjectTreeSection = ({
                         )}
                     />
                     <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    <span className="truncate">{data.name}</span>
+                    <span className="truncate">{projectInfo.name}</span>
                 </div>
             </button>
 
@@ -87,8 +69,7 @@ export const ProjectTreeSection = ({
                             <DisciplineSection
                                 key={discipline.id}
                                 discipline={discipline}
-                                onSelect={onSelect}
-                                selectedId={selectedId}
+                                projectId={projectInfo.id}
                             />
                         );
                     })}
@@ -104,11 +85,11 @@ export const ProjectTreeSection = ({
                                             ...p,
                                             [node.id]: !nodeExpanded
                                         }));
-                                        onSelect(node.id);
+                                        setFocusObjectId(node.id);
                                     }}
                                     className={cn(
                                         "w-full flex items-center rounded-md text-xs transition-colors border-l-2",
-                                        selectedId === node.id
+                                        focusObjectId === node.id
                                             ? "bg-primary/15 text-primary border-primary"
                                             : "hover:bg-accent/60 border-transparent text-foreground/80"
                                     )}
@@ -142,25 +123,24 @@ export const ProjectTreeSection = ({
 
 const DisciplineSection = ({
     discipline,
-    onSelect,
-    selectedId
+    projectId
 }: {
     discipline: { id: string; name: string };
-    onSelect: (id: string) => void;
-    selectedId: string | null;
+    projectId: string;
 }) => {
     const [sectionExpanded, setSectionExpanded] = useState<boolean>(false);
+    const { focusObjectId, setFocusObjectId } = useDigitalTwin();
 
     return (
         <div key={discipline.id} className="rounded-md">
             <button
                 onClick={() => {
                     setSectionExpanded((prev) => !prev);
-                    onSelect(discipline.id);
+                    setFocusObjectId(discipline.id);
                 }}
                 className={cn(
                     "w-full flex items-center rounded-md text-xs transition-colors border-l-2",
-                    selectedId === discipline.id
+                    focusObjectId === discipline.id
                         ? "bg-primary/15 text-primary border-primary"
                         : "hover:bg-accent/60 border-transparent text-foreground/80"
                 )}
@@ -178,20 +158,15 @@ const DisciplineSection = ({
             </button>
 
             {sectionExpanded && (
-                <div className="pl-8 pr-1 space-y-0.5">
-                    <IfcFileTreeSection
+                <div className="pl-8 pr-1">
+                    <IfcSectionTree
                         discipline={discipline}
-                        ifcVisibilityByFile={{}}
-                        floorOptionsBySelectionId={new Map()}
-                        selectedFloorKeys={[]}
-                        setSelectedFloorKeys={() => {}}
-                        getIfcSelectionId={() => ""}
-                        selectedId={selectedId}
-                        onSelect={onSelect}
-                        onIfcFileRemoved={() => {}}
-                        onIfcVisibilityChange={() => {}}
+                        projectId={projectId}
                     />
-                    {renderTtlLine(discipline.id, discipline.name)}
+                    <TtlSectionTree
+                        discipline={discipline}
+                        projectId={projectId}
+                    />
                 </div>
             )}
         </div>

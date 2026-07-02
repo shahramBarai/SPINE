@@ -1,32 +1,24 @@
 import { Activity, WifiOff } from "lucide-react";
 import { Button } from "components/basics/Button";
 import { Input } from "components/basics/input";
-import {
-    Search,
-    FileCode2,
-    CloudUpload,
-    Loader2,
-    ChevronDown
-} from "lucide-react";
+import { Search, FileCode2, CloudUpload, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useDigitalTwin } from "hooks/useDigitalTwin";
 import { cn } from "utils/index";
 import { toast } from "react-toastify";
+import { Logo } from "./Logo";
+import { ProjectSelector } from "./ProjectSelector";
+import ThemeButton from "components/complex/navigation/ThemButton";
 
 type ActionKey = "ttl" | "fuseki";
 
 const PROJECT_OPTIONS = ["Metropolia Myllypuro Campus", "SmartLab"] as const;
 
-export const TopNav = ({
-    liveMode,
-    project,
-    onProjectChange
-}: {
-    liveMode: boolean;
-    project: string;
-    onProjectChange: (project: string) => void;
-}) => {
+const TopNav = ({ liveMode }: { liveMode: boolean }) => {
     const [inputPath, setInputPath] = useState("");
     const [openProj, setOpenProj] = useState(false);
+
+    const { projectInfo, setProjectInfo } = useDigitalTwin();
 
     // FIXME:
     const fusekiConnected = true;
@@ -130,55 +122,9 @@ export const TopNav = ({
 
     return (
         <header className="h-14 shrink-0 border-b border-border/60 glass-strong flex items-center px-4 gap-4 z-30 relative">
-            {/* Logo */}
-            <div className="flex items-center gap-2.5 pr-4 border-r border-border/60 h-full">
-                <img
-                    src="/md2mv-logo.png"
-                    alt="MD2MV logo"
-                    className="h-8 w-8 rounded object-cover"
-                />
-                <div className="leading-tight">
-                    <div className="font-semibold tracking-tight text-sm">
-                        MD<span className="text-primary">2MV</span>
-                    </div>
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-mono">
-                        Command Center
-                    </div>
-                </div>
-            </div>
+            <Logo />
 
-            {/* Project selector */}
-            {/* <div className="relative">
-                <button
-                    onClick={() => setOpenProj(!openProj)}
-                    className="flex items-center gap-2 h-9 px-3 rounded-md bg-secondary/60 hover:bg-secondary border border-border/60 text-sm transition-colors"
-                >
-                    <span className="text-muted-foreground text-xs">
-                        Project
-                    </span>
-                    <span className="font-medium">{project}</span>
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
-                {openProj && (
-                    <div className="absolute top-full mt-1 left-0 w-64 glass-strong rounded-md shadow-elevated p-1 animate-fade-in">
-                        {PROJECT_OPTIONS.map((p) => (
-                            <button
-                                key={p}
-                                onClick={() => {
-                                    onProjectChange(p);
-                                    setOpenProj(false);
-                                }}
-                                className={cn(
-                                    "w-full text-left px-3 py-2 rounded text-sm hover:bg-accent transition-colors",
-                                    p === project && "text-primary"
-                                )}
-                            >
-                                {p}
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div> */}
+            <ProjectSelector />
 
             {/* Center actions */}
             {/* <div className="flex-1 flex justify-center">
@@ -208,7 +154,7 @@ export const TopNav = ({
             </div> */}
 
             {/* Search + status */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-1 items-center gap-3 justify-end">
                 {/* <div className="relative w-72">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
@@ -221,6 +167,8 @@ export const TopNav = ({
                         ⌘K
                     </kbd>
                 </div> */}
+
+                <ThemeButton />
 
                 <div
                     className={cn(
@@ -283,3 +231,5 @@ export const TopNav = ({
         </header>
     );
 };
+
+export { TopNav };

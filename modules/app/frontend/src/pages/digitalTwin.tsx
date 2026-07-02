@@ -1,28 +1,21 @@
-import { TopNav } from "components/feature/twin/TopNav";
 import { LeftSidebar } from "components/feature/twin/LeftSidebar";
-import { useState } from "react";
+import { TopNav } from "components/feature/twin/TopNav/index";
+import { DigitalTwinProvider } from "hooks/useDigitalTwin";
 
 const DigitalTwin = () => {
-    const [selectedProject, setSelectedProject] = useState<string>(
-        "Metropolia Myllypuro Campus"
-    );
     const liveMode = true; // TODO: Determine live mode based on environment or user settings
+
     return (
-        <div className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden font-sans">
-            <h1 className="sr-only">MD2MV — Digital Twin Command Center</h1>
+        <DigitalTwinProvider>
+            <div className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden font-sans">
+                <h1 className="sr-only">MD2MV — Digital Twin Command Center</h1>
 
-            <TopNav
-                liveMode={liveMode}
-                project={selectedProject}
-                onProjectChange={(projectName) =>
-                    setSelectedProject(projectName)
-                }
-            />
+                <TopNav liveMode={liveMode} />
 
-            <div className="flex-1 flex min-h-0">
-                <LeftSidebar />
+                <div className="flex-1 flex min-h-0">
+                    <LeftSidebar projectId="projectId" />
 
-                {/* <main className="flex-1 flex flex-col min-w-0 min-h-0">
+                    {/* <main className="flex-1 flex flex-col min-w-0 min-h-0">
                     <div className="flex-1 min-h-0 p-2">
                         <ResizablePanelGroup
                             direction="vertical"
@@ -194,8 +187,9 @@ const DigitalTwin = () => {
                         </ResizablePanelGroup>
                     </div>
                 </main> */}
+                </div>
             </div>
-        </div>
+        </DigitalTwinProvider>
     );
 };
 

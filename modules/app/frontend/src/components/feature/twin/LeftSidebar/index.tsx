@@ -43,11 +43,8 @@ const SectionHeader = ({
     </div>
 );
 
-export const LeftSidebar = ({ projectId }: { projectId: string }) => {
+export const LeftSidebar = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
-    const [selectedComponentId, setSelectedComponentId] = useState<
-        string | null
-    >(null);
 
     return (
         <aside
@@ -83,24 +80,7 @@ export const LeftSidebar = ({ projectId }: { projectId: string }) => {
                     label="Project Tree"
                     collapsed={isCollapsed}
                 />
-                <ProjectTreeSection
-                    projectId={projectId}
-                    selectedId={selectedComponentId}
-                    onSelect={(id) => {
-                        if (id !== selectedComponentId) {
-                            console.log("Selected", id);
-                            setSelectedComponentId(id);
-                        }
-                    }}
-                    loadedIfcByDiscipline={{}}
-                    ifcVisibilityByFile={{}}
-                    onIfcFileRemoved={() => {}}
-                    onIfcVisibilityChange={() => {}}
-                    floorOptionsBySelectionId={new Map()}
-                    selectedFloorKeys={[]}
-                    setSelectedFloorKeys={() => {}}
-                    renderTtlLine={() => null}
-                />
+                <ProjectTreeSection />
 
                 <SectionHeader
                     icon={Radio}
