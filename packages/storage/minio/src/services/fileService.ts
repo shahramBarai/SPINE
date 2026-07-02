@@ -1,7 +1,5 @@
 import { type BucketItemStat } from "minio";
-import { getMinioClient, type BUCKET_NAMES } from "../db/minio";
-
-const minioClient = getMinioClient();
+import { minioClient, type BUCKET_NAMES } from "../db/minio";
 
 /* -------------------------------- INTERFACES -------------------------------- */
 
