@@ -3,11 +3,15 @@ import { router, createContext } from "./trpc";
 import cors from "cors";
 import { userRouter } from "./routers/user";
 import { authRouter } from "./routers/auth";
+import { fileStorageRouter } from "./routers/fileStorage";
+import { digitalTwinRouter } from "./routers/digitalTwin";
 import * as config from "./config";
 
 export const appRouter = router({
     user: userRouter,
-    auth: authRouter
+    auth: authRouter,
+    fileStorage: fileStorageRouter,
+    digitalTwin: digitalTwinRouter
 });
 export type AppRouter = typeof appRouter;
 
