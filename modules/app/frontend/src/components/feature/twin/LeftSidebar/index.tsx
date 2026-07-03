@@ -80,7 +80,7 @@ export const LeftSidebar = () => {
                     label="Project Tree"
                     collapsed={isCollapsed}
                 />
-                <ProjectTreeSection />
+                <ProjectTreeSection className="px-1.5" />
 
                 <SectionHeader
                     icon={Radio}

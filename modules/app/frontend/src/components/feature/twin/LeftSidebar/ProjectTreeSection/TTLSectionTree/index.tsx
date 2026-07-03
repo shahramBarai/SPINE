@@ -2,6 +2,7 @@ import { CloudSync, DatabaseX, Loader, X } from "lucide-react";
 import { TreeHeader } from "../TreeHeader";
 import { api } from "utils/trpc";
 import { UploadFileButton } from "../UploadFileButton";
+import { cn } from "utils/index";
 
 const TtlSectionButtons = ({
     projectId,
@@ -61,10 +62,12 @@ const TtlSectionButtons = ({
 
 function TtlSectionTree({
     discipline,
-    projectId
+    projectId,
+    className
 }: {
     discipline: { id: string; name: string };
     projectId: string;
+    className?: string;
 }) {
     // --- Backend tRPC calls ---
     const {
@@ -80,7 +83,12 @@ function TtlSectionTree({
     // --- Render Section ---
     if (isLoading) {
         return (
-            <div className="rounded-b-md flex items-center justify-center py-2 text-sm">
+            <div
+                className={cn(
+                    "rounded-b-md flex items-center justify-center py-2 text-sm",
+                    className
+                )}
+            >
                 <Loader className="w-4 h-4 mr-1 animate-spin" />
                 <span className="text-[10px] text-muted-foreground">
                     Loading...
@@ -91,7 +99,12 @@ function TtlSectionTree({
 
     if (!ttlFiles || isError) {
         return (
-            <div className="rounded-b-md flex items-center justify-center py-2 text-sm bg-muted">
+            <div
+                className={cn(
+                    "rounded-b-md flex items-center justify-center py-2 text-sm bg-muted",
+                    className
+                )}
+            >
                 <DatabaseX className="w-4 h-4 mr-1 text-danger" />
                 <span className="text-[10px] text-danger">
                     Error loading files.
@@ -100,9 +113,16 @@ function TtlSectionTree({
         );
     }
 
+    const treeHeaderLabel = (
+        <div className="text-[11px] text-foreground font-mono truncate">
+            TTL ({ttlFiles.length})
+        </div>
+    );
+
     return (
         <TreeHeader
-            label={`TTL (${ttlFiles.length})`}
+            className={className}
+            label={treeHeaderLabel}
             button={
                 <TtlSectionButtons
                     projectId={projectId}
@@ -110,7 +130,7 @@ function TtlSectionTree({
                 />
             }
         >
-            <div className="flex flex-col ml-5">
+            <div className="ml-12 mr-1 mb-1 flex flex-col">
                 {ttlFiles.length === 0 ? (
                     <div className="flex items-center justify-center py-1 text-sm">
                         <span className="text-[10px] text-muted-foreground">

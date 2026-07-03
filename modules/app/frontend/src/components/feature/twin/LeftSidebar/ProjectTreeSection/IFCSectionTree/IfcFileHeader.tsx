@@ -11,13 +11,15 @@ interface IfcFileHeaderProps {
     projectId: string;
     fileName: string;
     fileId: string;
+    className?: string;
 }
 
 function IfcFileHeader({
     disciplineId,
     projectId,
     fileName,
-    fileId
+    fileId,
+    className
 }: IfcFileHeaderProps) {
     const [floorsExpanded, setFloorsExpanded] = useState<boolean>(false);
 
@@ -34,7 +36,7 @@ function IfcFileHeader({
                 fileId,
                 fileName
             });
-            await utils.fileStorage.getProjectIfcFilesInfo.invalidate({
+            await utils.fileStorage.getProjectFilesInfo.invalidate({
                 projectId,
                 discipline: disciplineId
             });
@@ -50,8 +52,9 @@ function IfcFileHeader({
     return (
         <div
             className={cn(
-                "ml-5 mr-1 mb-1 rounded border border-border/40 bg-background/20",
-                !isVisible && "opacity-50"
+                "rounded border border-border/40 bg-background/20",
+                !isVisible && "opacity-50",
+                className
             )}
         >
             <Fragment key={`${disciplineId}-${fileId}-${fileName}`}>

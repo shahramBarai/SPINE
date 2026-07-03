@@ -27,12 +27,13 @@ type DigitalTwinContextValue = {
     setFocusObjectId: Dispatch<SetStateAction<string | null>>;
     selectedIds: string[];
     setSelectedIds: Dispatch<SetStateAction<string[]>>;
-    loadedIfcByDiscipline: Record<string, File[]>;
-    setLoadedIfcByDiscipline: Dispatch<SetStateAction<Record<string, File[]>>>;
     ifcFilesVisibility: string[];
     setIfcFilesVisibility: Dispatch<SetStateAction<string[]>>;
     selectedFloorKeys: string[];
     setSelectedFloorKeys: Dispatch<SetStateAction<string[]>>;
+    // Not used for now:
+    loadedIfcByDiscipline: Record<string, File[]>;
+    setLoadedIfcByDiscipline: Dispatch<SetStateAction<Record<string, File[]>>>;
     floorOptions: DigitalTwinFloorOption[];
     setFloorOptions: Dispatch<SetStateAction<DigitalTwinFloorOption[]>>;
     selectedComponentInfo: SharedDictionary | null;

@@ -50,8 +50,6 @@ function parseIfcFloorOptions(ifcText: string): FloorInfo[] {
             (value) => value[1] || ""
         );
 
-        console.log("Quoted values for IFCBUILDINGSTOREY:", quotedValues);
-
         const candidateName =
             quotedValues.find((value) => value && value !== "$") || "";
 
