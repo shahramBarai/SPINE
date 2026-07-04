@@ -23,7 +23,7 @@ function FloorItemsSection({
         data: floorItems = [],
         isLoading,
         isError
-    } = api.fileStorage.getProjectIfcFileFloors.useQuery({
+    } = api.digitalTwin.getIfcFloorOptions.useQuery({
         projectId,
         discipline: disciplineId,
         fileId,

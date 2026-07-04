@@ -26,7 +26,7 @@ function IfcFileHeader({
     const { ifcFilesVisibility, setIfcFilesVisibility } = useDigitalTwin();
 
     const utils = api.useUtils();
-    const deleteFileMutation = api.fileStorage.deleteProjectFile.useMutation();
+    const deleteFileMutation = api.digitalTwin.deleteProjectFile.useMutation();
 
     const handleDeleteFile = async () => {
         try {
@@ -36,7 +36,7 @@ function IfcFileHeader({
                 fileId,
                 fileName
             });
-            await utils.fileStorage.getProjectFilesInfo.invalidate({
+            await utils.digitalTwin.getProjectFilesInfo.invalidate({
                 projectId,
                 discipline: disciplineId
             });

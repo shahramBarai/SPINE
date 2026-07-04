@@ -13,7 +13,7 @@ const TtlSectionButtons = ({
 }) => {
     const utils = api.useUtils();
     const getUploadUrlMutation =
-        api.fileStorage.getPresignedUploadUrl.useMutation();
+        api.digitalTwin.getPresignedUploadUrl.useMutation();
 
     // Function to get the pre-signed upload URL for a given file name
     const getUploadUrlString = async (fileName: string): Promise<string> => {
@@ -27,7 +27,7 @@ const TtlSectionButtons = ({
 
     // Function to handle actions after a successful upload
     const onUploadSuccess = () => {
-        utils.fileStorage.getProjectFilesInfo.invalidate({
+        utils.digitalTwin.getProjectFilesInfo.invalidate({
             projectId,
             discipline: discipline.id,
             fileTypes: ["ttl"]
@@ -74,7 +74,7 @@ function TtlSectionTree({
         data: ttlFiles,
         isLoading,
         isError
-    } = api.fileStorage.getProjectFilesInfo.useQuery({
+    } = api.digitalTwin.getProjectFilesInfo.useQuery({
         projectId: projectId,
         discipline: discipline.id,
         fileTypes: ["ttl"]
