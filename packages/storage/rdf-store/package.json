@@ -1,0 +1,23 @@
+{
+    "name": "@spine/storage-rdf-store",
+    "version": "1.0.0",
+    "description": "RDF storage services for SPINE",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "type-check": "tsc --noEmit",
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@spine/shared": "workspace:*",
+        "zod": "^4.4.3"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "dotenv": "catalog:",
+        "tsx": "^3.14.0"
+    }
+}

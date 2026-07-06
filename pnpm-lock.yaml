@@ -806,6 +806,28 @@ importers:
         specifier: 7.4.0
         version: 7.4.0
 
+  packages/storage/rdf-store:
+    dependencies:
+      '@spine/shared':
+        specifier: workspace:*
+        version: link:../../shared
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.0
+      dotenv:
+        specifier: 'catalog:'
+        version: 17.4.2
+      tsx:
+        specifier: ^3.14.0
+        version: 3.14.0
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
   packages/storage/timescale:
     dependencies:
       '@spine/shared':

@@ -21,10 +21,6 @@ if (!user || !password || !host || !port) {
     throw new Error(ErrorMessages);
 }
 
-console.log(
-    `Connecting to MinIO at ${host}:${port} with user ${user} and database ${dbName}`
-);
-
 /** Runtime array of all bucket names available in the platform. */
 const BUCKET_NAME_LIST = [
     "sensor-data",
