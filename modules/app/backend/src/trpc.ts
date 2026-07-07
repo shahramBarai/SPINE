@@ -59,7 +59,7 @@ const router = t.router;
 const publicProcedure = t.procedure.use(loggerMiddleware);
 
 // Protected procedure that requires authentication
-const protectedProcedure = t.procedure.use(({ ctx, next }) => {
+const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
     if (!ctx.session.data || !ctx.session.data.user) {
         throw new TRPCError({
             code: "UNAUTHORIZED",
