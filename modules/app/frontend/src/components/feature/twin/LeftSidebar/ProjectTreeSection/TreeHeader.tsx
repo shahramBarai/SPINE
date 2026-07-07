@@ -24,7 +24,7 @@ function TreeHeader({
 
     return (
         <>
-            <button
+            <div
                 className={cn(
                     "flex items-center px-1 w-full",
                     disable ? "opacity-50" : "cursor-pointer hover:bg-accent",
@@ -49,7 +49,7 @@ function TreeHeader({
                     {label}
                 </div>
                 {button}
-            </button>
+            </div>
             {sectionExpanded && children}
         </>
     );

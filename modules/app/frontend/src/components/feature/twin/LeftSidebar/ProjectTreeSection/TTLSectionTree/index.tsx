@@ -1,9 +1,9 @@
-import { CloudSync, DatabaseX, Loader } from "lucide-react";
+import { DatabaseX, Loader } from "lucide-react";
 import { TreeHeader } from "../TreeHeader";
 import { api } from "utils/trpc";
 import { UploadFileButton } from "../UploadFileButton";
 import { cn } from "utils/index";
-import { DeleteFileButton } from "../DeleteFileButton";
+import { TtlFileHeader } from "./TtlFileHeader";
 
 const TtlSectionButtons = ({
     projectId,
@@ -43,20 +43,6 @@ const TtlSectionButtons = ({
                 getUploadUrlString={getUploadUrlString}
                 onUploadSuccess={onUploadSuccess}
             />
-            <button
-                onClick={() => {
-                    // FIXME: Implement TTL sync logic
-                    console.log("Sync TTL for", discipline.name);
-                }}
-                className="group h-6 px-2 rounded flex items-center text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
-                aria-label={`Sync ${discipline.name} TTL to Fuseki`}
-                title="Sync to Fuseki"
-            >
-                <CloudSync className="h-3.5 w-3.5" />
-                <span className="pl-1 max-w-0 overflow-hidden whitespace-nowrap opacity-0 text-[10px] font-medium transition-all duration-150 group-hover:max-w-24 group-hover:opacity-100">
-                    Sync to Fuseki
-                </span>
-            </button>
         </div>
     );
 };
@@ -139,25 +125,15 @@ function TtlSectionTree({
                         </span>
                     </div>
                 ) : (
-                    ttlFiles.map((file) => {
-                        return (
-                            <div
-                                key={file.fileId}
-                                className="border rounded flex items-center gap-1 px-2 py-1 text-[10px] font-mono"
-                                title={file.fileName}
-                            >
-                                <div className="flex-1 truncate text-muted-foreground">
-                                    {file.fileName}
-                                </div>
-                                <DeleteFileButton
-                                    projectId={projectId}
-                                    disciplineId={discipline.id}
-                                    fileId={file.fileId}
-                                    fileName={file.fileName}
-                                />
-                            </div>
-                        );
-                    })
+                    ttlFiles.map((file) => (
+                        <TtlFileHeader
+                            key={file.fileId}
+                            projectId={projectId}
+                            disciplineId={discipline.id}
+                            fileId={file.fileId}
+                            fileName={file.fileName}
+                        />
+                    ))
                 )}
             </div>
         </TreeHeader>

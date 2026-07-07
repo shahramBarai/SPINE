@@ -66,6 +66,7 @@ function ProjectTreeSection({ className }: { className?: string }) {
                 {DISCIPLINES.map((discipline) => {
                     return (
                         <TreeHeader
+                            key={discipline.id}
                             className={cn(
                                 "pl-5 border-l-3",
                                 focusObjectId === discipline.id

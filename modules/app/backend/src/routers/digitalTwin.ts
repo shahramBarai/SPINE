@@ -5,7 +5,20 @@ import {
     type BUCKET_NAMES,
     BucketService
 } from "@spine/storage-minio";
+import { DatasetService, BuildingGraphService } from "@spine/storage-rdf-store";
 import { Readable } from "stream";
+
+// The workspace runs a single Fuseki dataset (see modules/storage/docker-compose.dev.yml);
+// individual TTL files are kept isolated from each other via their own named graph.
+const FUSEKI_DATASET_NAME = "spine";
+
+function buildTtlGraphUri(
+    projectId: string,
+    discipline: string,
+    fileId: string
+): string {
+    return `urn:spine:${projectId}:${discipline}:${fileId}`;
+}
 
 interface FileInfo {
     discipline: string;
@@ -228,5 +241,64 @@ export const digitalTwinRouter = router({
             const ifcText = await readStreamToText(fileStream);
 
             return parseIfcFloorOptions(ifcText);
+        }),
+
+    syncTtlToFuseki: publicProcedure
+        .input(
+            z.object({
+                projectId: z.string(),
+                discipline: z.string(),
+                fileId: z.string(),
+                fileName: z.string()
+            })
+        )
+        .mutation(async ({ input }) => {
+            const bucketName: BUCKET_NAMES = "project-files";
+            const objectName = `${input.projectId}/${input.discipline}/${input.fileId}_${input.fileName}`;
+
+            const fileStream = await BucketService.readFile(
+                bucketName,
+                objectName
+            );
+            if (!fileStream) {
+                throw new Error(`TTL file not found: ${input.fileName}`);
+            }
+
+            const ttlContent = await readStreamToText(fileStream);
+            const graphUri = buildTtlGraphUri(
+                input.projectId,
+                input.discipline,
+                input.fileId
+            );
+
+            await DatasetService.uploadTtlToFuseki(
+                FUSEKI_DATASET_NAME,
+                Buffer.from(ttlContent, "utf-8"),
+                graphUri,
+                true // replace: re-syncing a file should not duplicate its triples
+            );
+
+            return { graphUri };
+        }),
+
+    getGraphTree: publicProcedure
+        .input(
+            z.object({
+                projectId: z.string(),
+                discipline: z.string(),
+                fileId: z.string()
+            })
+        )
+        .query(async ({ input }) => {
+            const graphUri = buildTtlGraphUri(
+                input.projectId,
+                input.discipline,
+                input.fileId
+            );
+
+            return await BuildingGraphService.get_tree(
+                FUSEKI_DATASET_NAME,
+                graphUri
+            );
         })
 });

@@ -74,14 +74,21 @@ async function read_list_graphs(datasetName: string) {
  * @param datasetName - The name of the dataset to upload to.
  * @param ttlContent - The TTL content to upload as bytes.
  * @param graphUri - The URI of the graph to upload to. If omitted, the default graph is targeted.
+ * @param replace - If true, replaces the existing graph content instead of appending to it.
  * @throws FusekiSparqlError If the server returns an error status code or there's a network error.
  */
 async function uploadTtlToFuseki(
     datasetName: string,
     ttlContent: Buffer | Uint8Array,
-    graphUri?: string
+    graphUri?: string,
+    replace: boolean = false
 ): Promise<void> {
-    await fusekiClient.graph_upload_ttl(datasetName, ttlContent, graphUri);
+    await fusekiClient.graph_upload_ttl(
+        datasetName,
+        ttlContent,
+        graphUri,
+        replace
+    );
 }
 
 /**

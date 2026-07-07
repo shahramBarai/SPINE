@@ -1,9 +1,10 @@
 import { api } from "utils/trpc";
-import { Loader, DatabaseX, FileCode2 } from "lucide-react";
+import { Loader, DatabaseX } from "lucide-react";
 import { UploadFileButton } from "../UploadFileButton";
 import { TreeHeader } from "../TreeHeader";
 import { cn } from "utils/index";
 import { DeleteFileButton } from "../DeleteFileButton";
+import { ConvertToTtlButton } from "./ConvertToTtlButton";
 
 const IfcSectionButtons = ({
     discipline,
@@ -43,20 +44,6 @@ const IfcSectionButtons = ({
                 getUploadUrlString={getUploadUrlString}
                 onUploadSuccess={onUploadSuccess}
             />
-            <button
-                onClick={() => {
-                    // TODO: Wire up with future IFC Provider (TTL Conversion trigger)
-                    console.log("Convert IFC to TTL for", discipline.id);
-                }}
-                className="group h-6 px-2 rounded flex items-center text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
-                aria-label="Convert to TTL"
-                title="Convert to TTL"
-            >
-                <FileCode2 className="h-3.5 w-3.5" />
-                <span className="pl-1 max-w-0 overflow-hidden whitespace-nowrap opacity-0 text-[10px] font-medium transition-all duration-150 group-hover:max-w-24 group-hover:opacity-100">
-                    Convert to TTL
-                </span>
-            </button>
         </div>
     );
 };
@@ -149,6 +136,12 @@ function IfcSectionTree({
                                 <div className="flex-1 truncate text-muted-foreground">
                                     {file.fileName}
                                 </div>
+                                <ConvertToTtlButton
+                                    projectId={projectId}
+                                    disciplineId={discipline.id}
+                                    fileId={file.fileId}
+                                    fileName={file.fileName}
+                                />
                                 <DeleteFileButton
                                     projectId={projectId}
                                     disciplineId={discipline.id}
