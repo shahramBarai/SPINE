@@ -35,6 +35,7 @@ model Entity {
     name     String
     description String?
     type     EntityType
+    isPublic Boolean  @default(false)
 
     members  EntityMember[]
     sensors  SensorData[]
@@ -52,6 +53,7 @@ enum EntityType {
     CAMPUS
     BUILDING
     LAB
+    PROJECT
 }
 
 model EntityMember {

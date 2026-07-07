@@ -1,5 +1,5 @@
 import { prisma } from "../../prisma/client";
-import { EntityType, MemberRole } from "../../generated/client";
+import { EntityType, MemberRole } from "../../prisma/types";
 import { getAllUsers } from "./userService";
 
 /* -------------------------------- CREATE -------------------------------- */
@@ -18,6 +18,7 @@ async function createEntity(data: {
     name: string;
     type: EntityType;
     description?: string;
+    isPublic?: boolean;
     members?: { userId: string; role: MemberRole }[];
 }) {
     // Validate that all member users exist if members are provided
@@ -37,6 +38,7 @@ async function createEntity(data: {
             name: data.name,
             description: data.description,
             type: data.type,
+            isPublic: data.isPublic ?? false,
             members: data.members
                 ? {
                       create: data.members
@@ -48,6 +50,7 @@ async function createEntity(data: {
             name: true,
             description: true,
             type: true,
+            isPublic: true,
             createdAt: true,
             updatedAt: true
         }
@@ -166,6 +169,33 @@ async function getEntitiesByUserId(userId: string) {
         }
     });
     return entities;
+}
+
+/**
+ * Get PROJECT entities visible to a user: entities marked public, plus any
+ * the user is a member of. Anonymous callers (no userId) only see public ones.
+ * @param userId - The id of the user, if authenticated
+ * @returns An array of visible project entities
+ */
+async function getVisibleProjects(userId?: string) {
+    const projects = await prisma.entity.findMany({
+        where: {
+            type: EntityType.PROJECT,
+            OR: [
+                { isPublic: true },
+                ...(userId ? [{ members: { some: { userId } } }] : [])
+            ]
+        },
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            isPublic: true,
+            createdAt: true,
+            updatedAt: true
+        }
+    });
+    return projects;
 }
 
 /**
@@ -321,6 +351,7 @@ export {
     getAllEntities,
     getEntityById,
     getEntitiesByUserId,
+    getVisibleProjects,
     getMembers,
     getMember,
     updateEntity,

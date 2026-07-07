@@ -1,5 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/client";
+import { PrismaClient } from "../generated/prisma/client";
 import { env } from "@spine/shared";
 
 let prisma: PrismaClient;

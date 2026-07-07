@@ -17,6 +17,17 @@ async function read_datasets() {
 }
 
 /**
+ * Creates a new dataset on the Fuseki server. Idempotent: succeeds without
+ * changes if a dataset with this name already exists.
+ *
+ * @param datasetName - The name of the dataset to create.
+ * @throws FusekiSparqlError If the server returns an error status code or there's a network error.
+ */
+async function createDataset(datasetName: string): Promise<void> {
+    await fusekiClient.create_dataset(datasetName);
+}
+
+/**
  * Retrieves a list of graph URIs from the Fuseki dataset.
  *
  * @param datasetName - The name of the dataset to query.
@@ -109,4 +120,10 @@ async function deleteGraph(
 /* ------------------------------------------------------- */
 /* ---- Export the service functions for external use ---- */
 /* ------------------------------------------------------- */
-export { read_datasets, read_list_graphs, uploadTtlToFuseki, deleteGraph };
+export {
+    read_datasets,
+    createDataset,
+    read_list_graphs,
+    uploadTtlToFuseki,
+    deleteGraph
+};

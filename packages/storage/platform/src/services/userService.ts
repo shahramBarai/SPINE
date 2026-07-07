@@ -1,5 +1,5 @@
 import { prisma } from "../../prisma/client";
-import { UserRole } from "../../generated/client";
+import { UserRole } from "../../prisma/types";
 
 /* -------------------------------- CREATE -------------------------------- */
 /**

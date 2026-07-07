@@ -255,6 +255,42 @@ class FusekiClient {
     // --- Additional utility methods for operational stats and dataset management ---
 
     /**
+     * Creates a new dataset on the Fuseki server. Idempotent: if a dataset with
+     * this name already exists, the call succeeds without modifying it.
+     *
+     * @param dataset_name The name of the dataset to create.
+     * @param dbType The backing storage type for the dataset. Defaults to "tdb2" (persistent).
+     * @throws FusekiSparqlError if the request fails for a reason other than the dataset already existing.
+     */
+    async create_dataset(
+        dataset_name: string,
+        dbType: "tdb2" | "mem" = "tdb2"
+    ): Promise<void> {
+        const headers: HeadersInit = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: this.getAuthHeader()
+        };
+
+        const body = new URLSearchParams({
+            dbName: dataset_name,
+            dbType
+        });
+
+        const response = await this.request(`${this.baseUrl}/$/datasets`, {
+            method: "POST",
+            headers,
+            body: body.toString()
+        });
+
+        // A 409 means the dataset already exists - creation is idempotent.
+        if (response.status === 409) {
+            return;
+        }
+
+        await this.raiseForStatus(response);
+    }
+
+    /**
      * Retrieves a list of dataset names available on the Fuseki server.
      *
      * @return A list of dataset information dictionaries.

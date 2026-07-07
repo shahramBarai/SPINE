@@ -1,23 +1,16 @@
 import z from "zod";
-import { publicProcedure, router } from "../trpc";
+import { publicProcedure, protectedProcedure, router } from "../trpc";
 import {
     PresignedService,
     type BUCKET_NAMES,
     BucketService
 } from "@spine/storage-minio";
 import { DatasetService, BuildingGraphService } from "@spine/storage-rdf-store";
+import { EntityService } from "@spine/storage-platform";
 import { Readable } from "stream";
 
-// The workspace runs a single Fuseki dataset (see modules/storage/docker-compose.dev.yml);
-// individual TTL files are kept isolated from each other via their own named graph.
-const FUSEKI_DATASET_NAME = "spine";
-
-function buildTtlGraphUri(
-    projectId: string,
-    discipline: string,
-    fileId: string
-): string {
-    return `urn:spine:${projectId}:${discipline}:${fileId}`;
+function buildTtlGraphUri(discipline: string, fileId: string): string {
+    return `urn:spine:${discipline}:${fileId}`;
 }
 
 interface FileInfo {
@@ -84,14 +77,43 @@ function parseIfcFloorOptions(ifcText: string): FloorInfo[] {
 // -----------------------------------------------------------------------------
 
 export const digitalTwinRouter = router({
-    getProjects: publicProcedure.query(async () => {
-        // TODO: Implement logic to fetch projects from the database or any other source
-        const projects = [
-            { id: "1", name: "Metropolia Myllypuro Campus" },
-            { id: "2", name: "SmartLab" }
-        ];
-        return projects;
+    // Projects visible to the caller: public projects, plus (if logged in)
+    // any project they are a member of.
+    getProjects: publicProcedure.query(async ({ ctx }) => {
+        return await EntityService.getVisibleProjects(
+            ctx.session.data?.user?.id
+        );
     }),
+
+    // Creates a project and its dedicated Fuseki dataset together. If dataset
+    // provisioning fails, the project row is rolled back so a project never
+    // exists without its Fuseki storage.
+    createProject: protectedProcedure
+        .input(
+            z.object({
+                name: z.string().min(1),
+                description: z.string().optional(),
+                isPublic: z.boolean().optional()
+            })
+        )
+        .mutation(async ({ ctx, input }) => {
+            const project = await EntityService.createEntity({
+                name: input.name,
+                description: input.description,
+                type: "PROJECT",
+                isPublic: input.isPublic ?? false,
+                members: [{ userId: ctx.user.id, role: "OWNER" }]
+            });
+
+            try {
+                await DatasetService.createDataset(project.id);
+            } catch (error) {
+                await EntityService.deleteEntity(project.id);
+                throw error;
+            }
+
+            return project;
+        }),
 
     getProjectFilesInfo: publicProcedure
         .input(
@@ -265,14 +287,10 @@ export const digitalTwinRouter = router({
             }
 
             const ttlContent = await readStreamToText(fileStream);
-            const graphUri = buildTtlGraphUri(
-                input.projectId,
-                input.discipline,
-                input.fileId
-            );
+            const graphUri = buildTtlGraphUri(input.discipline, input.fileId);
 
             await DatasetService.uploadTtlToFuseki(
-                FUSEKI_DATASET_NAME,
+                input.projectId,
                 Buffer.from(ttlContent, "utf-8"),
                 graphUri,
                 true // replace: re-syncing a file should not duplicate its triples
@@ -290,14 +308,10 @@ export const digitalTwinRouter = router({
             })
         )
         .query(async ({ input }) => {
-            const graphUri = buildTtlGraphUri(
-                input.projectId,
-                input.discipline,
-                input.fileId
-            );
+            const graphUri = buildTtlGraphUri(input.discipline, input.fileId);
 
             return await BuildingGraphService.get_tree(
-                FUSEKI_DATASET_NAME,
+                input.projectId,
                 graphUri
             );
         })
