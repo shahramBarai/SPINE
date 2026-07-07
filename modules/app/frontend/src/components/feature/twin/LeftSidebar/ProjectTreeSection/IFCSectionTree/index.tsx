@@ -1,9 +1,9 @@
-import { IfcFileHeader } from "./IfcFileHeader";
 import { api } from "utils/trpc";
 import { Loader, DatabaseX, FileCode2 } from "lucide-react";
 import { UploadFileButton } from "../UploadFileButton";
 import { TreeHeader } from "../TreeHeader";
 import { cn } from "utils/index";
+import { DeleteFileButton } from "../DeleteFileButton";
 
 const IfcSectionButtons = ({
     discipline,
@@ -131,31 +131,35 @@ function IfcSectionTree({
                 />
             }
         >
-            {ifcFiles.length === 0 ? (
-                <div
-                    className={cn(
-                        "flex items-center justify-center py-1 text-sm",
-                        className
-                    )}
-                >
-                    <span className="text-[10px] text-muted-foreground">
-                        No files found.
-                    </span>
-                </div>
-            ) : (
-                ifcFiles.map((file) => {
-                    return (
-                        <IfcFileHeader
-                            key={file.fileId}
-                            disciplineId={discipline.id}
-                            projectId={projectId}
-                            fileName={file.fileName}
-                            fileId={file.fileId}
-                            className="ml-12 mr-1 mb-1"
-                        />
-                    );
-                })
-            )}
+            <div className="ml-12 mr-1 mb-1 flex flex-col">
+                {ifcFiles.length === 0 ? (
+                    <div className="flex items-center justify-center py-1 text-sm">
+                        <span className="text-[10px] text-muted-foreground">
+                            No files found.
+                        </span>
+                    </div>
+                ) : (
+                    ifcFiles.map((file) => {
+                        return (
+                            <div
+                                key={file.fileId}
+                                className="border rounded flex items-center gap-1 px-2 py-1 text-[10px] font-mono"
+                                title={file.fileName}
+                            >
+                                <div className="flex-1 truncate text-muted-foreground">
+                                    {file.fileName}
+                                </div>
+                                <DeleteFileButton
+                                    projectId={projectId}
+                                    disciplineId={discipline.id}
+                                    fileId={file.fileId}
+                                    fileName={file.fileName}
+                                />
+                            </div>
+                        );
+                    })
+                )}
+            </div>
         </TreeHeader>
     );
 }

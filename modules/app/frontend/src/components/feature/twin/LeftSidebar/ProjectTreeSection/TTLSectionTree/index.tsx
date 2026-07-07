@@ -1,8 +1,9 @@
-import { CloudSync, DatabaseX, Loader, X } from "lucide-react";
+import { CloudSync, DatabaseX, Loader } from "lucide-react";
 import { TreeHeader } from "../TreeHeader";
 import { api } from "utils/trpc";
 import { UploadFileButton } from "../UploadFileButton";
 import { cn } from "utils/index";
+import { DeleteFileButton } from "../DeleteFileButton";
 
 const TtlSectionButtons = ({
     projectId,
@@ -148,19 +149,12 @@ function TtlSectionTree({
                                 <div className="flex-1 truncate text-muted-foreground">
                                     {file.fileName}
                                 </div>
-                                <button
-                                    onClick={() => {
-                                        // FIXME: Implement TTL file removal logic
-                                        console.log(
-                                            "Remove TTL file:",
-                                            file.fileName
-                                        );
-                                    }}
-                                    className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-accent transition-colors"
-                                    aria-label={`Remove ${file.fileName}`}
-                                >
-                                    <X className="h-3 w-3" />
-                                </button>
+                                <DeleteFileButton
+                                    projectId={projectId}
+                                    disciplineId={discipline.id}
+                                    fileId={file.fileId}
+                                    fileName={file.fileName}
+                                />
                             </div>
                         );
                     })
