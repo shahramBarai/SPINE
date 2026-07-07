@@ -28,11 +28,25 @@ const loggerMiddleware = t.middleware(async ({ path, type, next }) => {
     const status = result.ok ? "✅ SUCCESS" : "❌ ERROR";
 
     console.log(
-        `[tRPC] ${new Date().toISOString()} | ${type} | path: ${path} | ${status} | duration: ${durationMs}ms`
+        `${new Date().toISOString()} | ${type} | path: ${path} | ${status} | duration: ${durationMs}ms`
     );
 
     if (!result.ok) {
-        console.error(`  ↳ Error Details:`, result.error);
+        console.error(
+            `  ↳ Error Details: Code: ${result.error.code}, Message: ${result.error.message}`
+        );
+        if (result.error.stack) {
+            const location = result.error.stack
+                ?.split("\n")
+                .slice(1)
+                .filter((line) => line.includes("/src/"))
+                .map((line) => line.trim());
+
+            if (location) {
+                console.error(`  ↳ Location:`);
+                location.forEach((line) => console.error(`\t - ${line}`));
+            }
+        }
     }
 
     return result;
