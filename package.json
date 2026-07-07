@@ -11,7 +11,8 @@
             "@spine/ingress": "workspace:*",
             "@spine/storage-platform": "workspace:*",
             "@spine/storage-minio": "workspace:*",
-            "@spine/storage-timescale": "workspace:*"
+            "@spine/storage-timescale": "workspace:*",
+            "@spine/storage-rdf-store": "workspace:*"
         }
     },
     "scripts": {

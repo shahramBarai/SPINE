@@ -50,6 +50,7 @@ overrides:
   '@spine/storage-platform': workspace:*
   '@spine/storage-minio': workspace:*
   '@spine/storage-timescale': workspace:*
+  '@spine/storage-rdf-store': workspace:*
 
 importers:
 
@@ -88,6 +89,9 @@ importers:
       '@spine/storage-platform':
         specifier: workspace:*
         version: link:../../../packages/storage/platform
+      '@spine/storage-rdf-store':
+        specifier: workspace:*
+        version: link:../../../packages/storage/rdf-store
       '@trpc/server':
         specifier: ^11.7.1
         version: 11.7.1(typescript@6.0.3)
