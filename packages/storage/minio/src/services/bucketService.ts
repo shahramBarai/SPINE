@@ -174,6 +174,12 @@ async function listFiles({
     recursive = false,
     maxKeys
 }: ListFilesOptions): Promise<BucketItem[]> {
+    const bucketExists = await minioClient.bucketExists(bucketName);
+
+    if (!bucketExists) {
+        throw new Error(`Bucket "${bucketName}" does not exist.`);
+    }
+
     const files: BucketItem[] = [];
     const stream = minioClient.listObjectsV2(bucketName, prefix, recursive);
 
@@ -181,14 +187,13 @@ async function listFiles({
         let count = 0;
 
         stream.on("data", (obj) => {
-            if (maxKeys && count >= maxKeys) {
+            if (maxKeys !== undefined && count >= maxKeys) {
                 stream.destroy();
                 resolve(files);
                 return;
             }
 
             files.push(obj);
-
             count++;
         });
 
