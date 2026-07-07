@@ -21,6 +21,9 @@ interface WorkspaceEnv {
     SCHEMA_REGISTRY_URL: string;
     SCHEMA_REGISTRY_USERNAME?: string;
     SCHEMA_REGISTRY_PASSWORD?: string;
+    FRONTEND_URL: string;
+    BACKEND_URL: string;
+    SECRET_COOKIE_PASSWORD: string;
 }
 
 function requiredEnv(name: keyof WorkspaceEnv): string {
@@ -56,7 +59,10 @@ const env: WorkspaceEnv = {
     SCHEMA_REGISTRY_USERNAME:
         process.env.SCHEMA_REGISTRY_USERNAME?.trim() || undefined,
     SCHEMA_REGISTRY_PASSWORD:
-        process.env.SCHEMA_REGISTRY_PASSWORD?.trim() || undefined
+        process.env.SCHEMA_REGISTRY_PASSWORD?.trim() || undefined,
+    FRONTEND_URL: requiredEnv("FRONTEND_URL"),
+    BACKEND_URL: requiredEnv("BACKEND_URL"),
+    SECRET_COOKIE_PASSWORD: requiredEnv("SECRET_COOKIE_PASSWORD")
 };
 
 export type { WorkspaceEnv };

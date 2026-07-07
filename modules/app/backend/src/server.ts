@@ -4,7 +4,7 @@ import cors from "cors";
 import { userRouter } from "./routers/user";
 import { authRouter } from "./routers/auth";
 import { digitalTwinRouter } from "./routers/digitalTwin";
-import * as config from "./config";
+import { env } from "@spine/shared";
 
 export const appRouter = router({
     user: userRouter,
@@ -16,7 +16,7 @@ export type AppRouter = typeof appRouter;
 // create server
 const server = createHTTPServer({
     middleware: cors({
-        origin: config.FRONTEND_URL,
+        origin: env.FRONTEND_URL,
         credentials: true
     }),
     router: appRouter,
@@ -24,6 +24,7 @@ const server = createHTTPServer({
 });
 
 // start server
-server.listen(Number(config.PORT), () => {
-    console.log(`Server is running on port ${config.PORT}`);
+const port = env.BACKEND_URL.split(":")[2] || "4000";
+server.listen(Number(port), () => {
+    console.log(`Server is running on port ${port}`);
 });

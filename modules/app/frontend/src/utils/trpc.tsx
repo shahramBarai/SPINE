@@ -2,7 +2,7 @@ import { createTRPCReact } from "@trpc/react-query";
 import type { AppRouter } from "@server/server";
 import React, { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchLink, loggerLink } from "@trpc/client";
+import { httpBatchLink } from "@trpc/client";
 
 const api = createTRPCReact<AppRouter>();
 
@@ -25,13 +25,6 @@ function ApiProvider({ children }: { children: React.ReactNode }) {
                             //   authorization: getAuthCookie(),
                         };
                     }
-                }),
-                loggerLink({
-                    enabled: (opts) =>
-                        (process.env.NODE_ENV === "development" &&
-                            typeof window !== "undefined") ||
-                        (opts.direction === "down" &&
-                            opts.result instanceof Error)
                 })
             ]
         })

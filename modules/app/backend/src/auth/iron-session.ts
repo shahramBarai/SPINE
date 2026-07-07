@@ -1,15 +1,15 @@
 import { getIronSession } from "iron-session";
 import type { IronSessionData, SessionOptions } from "iron-session";
 import { IncomingMessage, ServerResponse } from "http";
-import * as config from "../config";
+import { env } from "@spine/shared";
 
 export const sessionOptions: SessionOptions = {
     password:
-        config.SECRET_COOKIE_PASSWORD ||
+        env.SECRET_COOKIE_PASSWORD ||
         "complex_password_at_least_32_characters_long",
     cookieName: "webapp_auth_session",
     cookieOptions: {
-        secure: config.NODE_ENV === "prod" ? true : false,
+        secure: env.NODE_ENV === "prod" ? true : false,
         sameSite: "lax",
         httpOnly: true
     }

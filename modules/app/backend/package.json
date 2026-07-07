@@ -6,6 +6,7 @@
         "start": "node dist/index.js"
     },
     "dependencies": {
+        "@spine/shared": "workspace:*",
         "@spine/storage-platform": "workspace:*",
         "@spine/storage-minio": "workspace:*",
         "@spine/storage-rdf-store": "workspace:*",

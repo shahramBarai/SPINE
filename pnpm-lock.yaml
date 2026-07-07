@@ -83,6 +83,9 @@ importers:
 
   modules/app/backend:
     dependencies:
+      '@spine/shared':
+        specifier: workspace:*
+        version: link:../../../packages/shared
       '@spine/storage-minio':
         specifier: workspace:*
         version: link:../../../packages/storage/minio
@@ -150,6 +153,9 @@ importers:
       '@radix-ui/react-switch':
         specifier: ^1.2.2
         version: 1.2.6(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@spine/shared':
+        specifier: workspace:*
+        version: link:../../../packages/shared
       '@tanstack/react-query':
         specifier: ^5.101.1
         version: 5.101.1(react@19.2.7)
@@ -803,12 +809,6 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
-
-  packages/storage/platform/generated:
-    dependencies:
-      '@prisma/client-runtime-utils':
-        specifier: 7.4.0
-        version: 7.4.0
 
   packages/storage/rdf-store:
     dependencies:

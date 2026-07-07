@@ -4,7 +4,7 @@ import { router, publicProcedure } from "../trpc";
 import { hashPassword, verifyPassword } from "../auth/password";
 import { type UserSession } from "../auth/iron-session";
 import { UserService } from "@spine/storage-platform";
-import * as config from "../config";
+import { env } from "@spine/shared";
 
 // User input validation schemas
 const signUpSchema = z.object({
@@ -147,7 +147,7 @@ export const authRouter = router({
         .input(devSignInSchema)
         .mutation(async ({ ctx, input }) => {
             // Only allow in development mode
-            if (config.NODE_ENV !== "dev") {
+            if (env.NODE_ENV !== "dev") {
                 throw new TRPCError({
                     code: "FORBIDDEN",
                     message: "Dev sign-in only available in development mode"
