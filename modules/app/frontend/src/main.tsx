@@ -10,6 +10,7 @@ import { NotFound } from "pages/404";
 import { ApiProvider } from "utils/trpc";
 import { AuthPage } from "pages/auth";
 import { DigitalTwin } from "pages/digitalTwin";
+import { ProjectsPage } from "pages/projects";
 
 import { ToastContainer } from "react-toastify";
 
@@ -35,7 +36,19 @@ createRoot(document.getElementById("root")!).render(
                                 </AppLayout>
                             }
                         />
+                        <Route
+                            path="/projects"
+                            element={
+                                <AppLayout>
+                                    <ProjectsPage />
+                                </AppLayout>
+                            }
+                        />
                         <Route path="/digital-twin" element={<DigitalTwin />} />
+                        <Route
+                            path="/digital-twin/:projectId"
+                            element={<DigitalTwin />}
+                        />
                         {/* 404 Route */}
                         <Route path="*" element={<NotFound />} />
                     </Routes>

@@ -27,6 +27,8 @@ function UploadFileButton({
         const file = event.target.files?.[0];
         if (!file) return;
 
+        toast.info(`Uploading ${file.name}...`, { autoClose: 2000 });
+
         // Optional safety boundary checks
         if (
             allowedFileTypes &&

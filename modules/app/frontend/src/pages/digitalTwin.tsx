@@ -1,19 +1,43 @@
+import { useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { LeftSidebar } from "components/feature/twin/LeftSidebar";
 import { TopNav } from "components/feature/twin/TopNav/index";
-import { DigitalTwinProvider } from "hooks/useDigitalTwin";
+import { DigitalTwinProvider, useDigitalTwin } from "hooks/useDigitalTwin";
+import { api } from "utils/trpc";
+
+// Pre-selects the project named in the /digital-twin/:projectId route, once
+// it shows up in the caller's visible-projects list (public or a member of).
+function ProjectRouteSync() {
+    const { projectId } = useParams<{ projectId?: string }>();
+    const { projectInfo, setProjectInfo } = useDigitalTwin();
+    const { data: projects } = api.digitalTwin.getProjects.useQuery();
+
+    useEffect(() => {
+        if (!projectId || projectInfo?.id === projectId) {
+            return;
+        }
+        const project = projects?.find((p) => p.id === projectId);
+        if (project) {
+            setProjectInfo({ id: project.id, name: project.name });
+        }
+    }, [projectId, projectInfo?.id, projects, setProjectInfo]);
+
+    return null;
+}
 
 const DigitalTwin = () => {
     const liveMode = true; // TODO: Determine live mode based on environment or user settings
 
     return (
         <DigitalTwinProvider>
+            <ProjectRouteSync />
             <div className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden font-sans">
                 <h1 className="sr-only">MD2MV — Digital Twin Command Center</h1>
 
                 <TopNav liveMode={liveMode} />
 
                 <div className="flex-1 flex min-h-0">
-                    <LeftSidebar projectId="projectId" />
+                    <LeftSidebar />
 
                     {/* <main className="flex-1 flex flex-col min-w-0 min-h-0">
                     <div className="flex-1 min-h-0 p-2">

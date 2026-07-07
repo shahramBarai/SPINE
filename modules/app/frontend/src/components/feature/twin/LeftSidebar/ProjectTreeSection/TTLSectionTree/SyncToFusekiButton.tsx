@@ -47,7 +47,9 @@ function SyncToFusekiButton({
             }}
             className={cn(
                 "h-5 w-5 rounded flex items-center justify-center text-muted-foreground",
-                "hover:cursor-pointer hover:text-primary hover:bg-primary/10 transition-all"
+                syncMutation.isPending
+                    ? "hover:cursor-not-allowed text-primary"
+                    : "hover:cursor-pointer hover:text-primary hover:bg-primary/10 transition-all"
             )}
             disabled={syncMutation.isPending}
             aria-label={`Sync ${fileName} to Fuseki`}
