@@ -113,6 +113,216 @@ async function get_tree(
 }
 
 /* ------------------------------------------------------- */
+/* --------------- Relationship Graph --------------------- */
+/* ------------------------------------------------------- */
+
+type RelationshipNode = { id: string; label: string; type: string };
+type RelationshipEdge = { from_id: string; to_id: string; label: string };
+type RelationshipGraph = { nodes: RelationshipNode[]; edges: RelationshipEdge[] };
+type RelationshipGraphFilters = {
+    includeNodeTypes?: string[];
+    includePredicates?: string[];
+};
+
+function sparqlStringLiteral(value: string): string {
+    const escaped = value
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r");
+    return `"${escaped}"`;
+}
+
+function includeListLiteral(values: string[]): string {
+    return values.map(sparqlStringLiteral).join(", ");
+}
+
+// Filters a triple's own predicate by short local name - a plain FILTER is
+// safe here since a triple pattern binds ?predicate to exactly one value
+// per row (no multiplicity to worry about).
+function predicateIncludeClause(includePredicates?: string[]): string {
+    if (!includePredicates || includePredicates.length === 0) {
+        return "";
+    }
+    return `
+                    BIND(REPLACE(STR(?predicate), "^.*[#/]", "") AS ?predicateName)
+                    FILTER(?predicateName IN (${includeListLiteral(includePredicates)}))`;
+}
+
+// Gates ?node by "has at least one rdf:type whose short name is allow-
+// listed", via FILTER EXISTS - a boolean check rather than an extra SELECT
+// variable, so it can't multiply result rows for a multi-typed node the way
+// an extra OPTIONAL ?type binding would, and (unlike OPTIONAL+FILTER) can
+// actually reject a row rather than just leave a variable unbound.
+function nodeTypeIncludeClause(includeNodeTypes?: string[]): string {
+    if (!includeNodeTypes || includeNodeTypes.length === 0) {
+        return "";
+    }
+    return `
+                    FILTER EXISTS {
+                        ?node a ?filterNodeType .
+                        BIND(REPLACE(STR(?filterNodeType), "^.*[#/]", "") AS ?filterNodeTypeName)
+                        FILTER(?filterNodeTypeName IN (${includeListLiteral(includeNodeTypes)}))
+                    }`;
+}
+
+const resolveFocusQueryResultSchema = z.array(
+    z.object({ node: z.object({ type: z.string(), value: z.string() }) })
+);
+
+// The rest of the app (get_tree, the Fuseki tree sidebar, focusObjectId)
+// identifies nodes by their short local name (e.g. "building_<uuid>"), not
+// their full URI - so focusId is looked up here by matching that name
+// against the end of a node's URI, scoped to the one graph being queried
+// (kept cheap by staying within a single graph rather than scanning the
+// whole dataset).
+async function resolve_focus_uri(
+    datasetName: string,
+    graphUri: string,
+    focusId: string
+): Promise<string> {
+    const query = `
+        SELECT ?node WHERE {
+            GRAPH <${graphUri}> {
+                ?node ?p ?o .
+                FILTER(
+                    STRENDS(STR(?node), ${sparqlStringLiteral(`/${focusId}`)}) ||
+                    STRENDS(STR(?node), ${sparqlStringLiteral(`#${focusId}`)})
+                )
+            }
+        }
+        LIMIT 1
+    `;
+
+    const rows = await fusekiClient.sparql_query(
+        datasetName,
+        query,
+        resolveFocusQueryResultSchema
+    );
+
+    const resolved = rows[0]?.node.value;
+    if (!resolved) {
+        throw new Error(`Focus node not found: ${focusId}`);
+    }
+    return resolved;
+}
+
+const neighborQueryResultSchema = z.array(
+    z.object({
+        node: z.object({ type: z.string(), value: z.string() }),
+        label: z.object({ type: z.string(), value: z.string() }).optional(),
+        type: z.object({ type: z.string(), value: z.string() }).optional(),
+        predicate: z
+            .object({ type: z.string(), value: z.string() })
+            .optional(),
+        direction: z.object({ type: z.string(), value: z.string() }).optional()
+    })
+);
+
+/**
+ * Retrieves the focus node plus its direct neighbors (one hop out) from a
+ * single named graph - deliberately simple, mirroring get_tree's shape of
+ * "one query, then a small pass in JS", rather than a multi-hop traversal.
+ *
+ * @param datasetName The name of the dataset to query.
+ * @param graphUri The named graph to search (as with get_tree, exactly one).
+ * @param focusId The node to center the graph on - its short local id (matching get_tree/focusObjectId).
+ * @param filters Optional include-only allow-lists (by short local name) for neighbor node types and/or the predicates connecting them. The focus node itself is never filtered out.
+ * @throws Error if focusId can't be resolved to a node in this graph.
+ * @throws FusekiSparqlError If the server returns an error status code or there's a network error.
+ */
+async function get_relationship_graph(
+    datasetName: string,
+    graphUri: string,
+    focusId: string,
+    filters?: RelationshipGraphFilters
+): Promise<RelationshipGraph> {
+    const focusUri = await resolve_focus_uri(datasetName, graphUri, focusId);
+    const predicateFilter = predicateIncludeClause(filters?.includePredicates);
+    const nodeTypeFilter = nodeTypeIncludeClause(filters?.includeNodeTypes);
+
+    const query = `
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+        SELECT ?node ?label ?type ?predicate ?direction WHERE {
+            GRAPH <${graphUri}> {
+                {
+                    BIND(<${focusUri}> AS ?node)
+                }
+                UNION
+                {
+                    <${focusUri}> ?predicate ?node .
+                    FILTER(isIRI(?node) && ?predicate != rdf:type)
+                    BIND("out" AS ?direction)
+                    ${predicateFilter}
+                    ${nodeTypeFilter}
+                }
+                UNION
+                {
+                    ?node ?predicate <${focusUri}> .
+                    FILTER(isIRI(?node) && ?predicate != rdf:type)
+                    BIND("in" AS ?direction)
+                    ${predicateFilter}
+                    ${nodeTypeFilter}
+                }
+                OPTIONAL { ?node rdfs:label ?label }
+                OPTIONAL { ?node a ?type }
+            }
+        }
+    `;
+
+    const rows = await fusekiClient.sparql_query(
+        datasetName,
+        query,
+        neighborQueryResultSchema
+    );
+
+    const nodesById = new Map<string, RelationshipNode>();
+    const edgesByKey = new Map<string, RelationshipEdge>();
+
+    for (const row of rows) {
+        const id = uri_to_id(row.node.value);
+        const existing = nodesById.get(id);
+        nodesById.set(id, {
+            id,
+            label: row.label?.value ?? existing?.label ?? id,
+            type: row.type ? uri_to_id(row.type.value) : (existing?.type ?? "")
+        });
+
+        if (row.predicate && row.direction) {
+            const edge: RelationshipEdge =
+                row.direction.value === "out"
+                    ? {
+                          from_id: uri_to_id(focusUri),
+                          to_id: id,
+                          label: uri_to_id(row.predicate.value)
+                      }
+                    : {
+                          from_id: id,
+                          to_id: uri_to_id(focusUri),
+                          label: uri_to_id(row.predicate.value)
+                      };
+            edgesByKey.set(
+                `${edge.from_id}|${edge.label}|${edge.to_id}`,
+                edge
+            );
+        }
+    }
+
+    return {
+        nodes: Array.from(nodesById.values()),
+        edges: Array.from(edgesByKey.values())
+    };
+}
+
+/* ------------------------------------------------------- */
 /* ---- Export the service functions for external use ---- */
 /* ------------------------------------------------------- */
-export { get_tree };
+export { get_tree, get_relationship_graph };
+export type {
+    RelationshipNode,
+    RelationshipEdge,
+    RelationshipGraph,
+    RelationshipGraphFilters
+};
