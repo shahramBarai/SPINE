@@ -26,7 +26,7 @@ function GraphCanvas({
 }) {
     const [physicsEnabled, setPhysicsEnabled] = useState(true);
 
-    const { focusObjectId, setFocusObjectId } = useDigitalTwin();
+    const { selectedObjectId, setSelectedObjectId } = useDigitalTwin();
 
     const { nodes, setNodes, draggedNodeIdRef, restoreDefaultLayout } =
         useGraphNodes({
@@ -37,7 +37,7 @@ function GraphCanvas({
         nodes,
         setNodes,
         draggedNodeIdRef,
-        onBackgroundClick: () => setFocusObjectId(null)
+        onBackgroundClick: () => setSelectedObjectId(null)
     });
 
     const nodeTypeUniverse = useMemo(
@@ -102,8 +102,8 @@ function GraphCanvas({
                 nodes={nodes}
                 onFitToScreen={() => viewport.fitToScreen()}
                 onFocusSelection={() =>
-                    focusObjectId
-                        ? viewport.focusOnNode(focusObjectId)
+                    selectedObjectId
+                        ? viewport.focusOnNode(selectedObjectId)
                         : viewport.fitToScreen()
                 }
                 physicsEnabled={physicsEnabled}
@@ -154,10 +154,10 @@ function GraphCanvas({
                         }
 
                         const selected =
-                            focusObjectId === null
+                            selectedObjectId === null
                                 ? null
-                                : a.id === focusObjectId ||
-                                  b.id === focusObjectId;
+                                : a.id === selectedObjectId ||
+                                  b.id === selectedObjectId;
 
                         const key = edgeKey(
                             i,
@@ -222,16 +222,16 @@ function GraphCanvas({
                         }
 
                         const selected =
-                            focusObjectId === null
+                            selectedObjectId === null
                                 ? null
-                                : node.id === focusObjectId;
+                                : node.id === selectedObjectId;
                         const { fill, stroke } = colorForNodeType(node.type);
 
                         return (
                             <g
                                 key={node.id}
                                 className="cursor-pointer"
-                                onClick={() => setFocusObjectId(node.id)}
+                                onClick={() => setSelectedObjectId(node.id)}
                                 onPointerDown={viewport.onNodePointerDown(
                                     node.id
                                 )}

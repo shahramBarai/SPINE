@@ -37,14 +37,14 @@ function GraphToolbar({
     className?: string;
 }) {
     const [searchText, setSearchText] = useState("");
-    const { setFocusObjectId } = useDigitalTwin();
+    const { setSelectedObjectId } = useDigitalTwin();
 
-    // Debounced against searchText, so typing doesn't thrash focusObjectId
+    // Debounced against searchText, so typing doesn't thrash selectedObjectId
     // on every keystroke - only once the user pauses.
     const searchMatchId = useGraphSearch({ nodes, searchText });
     useEffect(() => {
-        setFocusObjectId(searchMatchId);
-    }, [searchMatchId, setFocusObjectId]);
+        setSelectedObjectId(searchMatchId);
+    }, [searchMatchId, setSelectedObjectId]);
 
     const handleResetView = () => {
         onResetView();

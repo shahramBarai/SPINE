@@ -37,6 +37,7 @@ function GraphPane({
     onToggleMaximize?: () => void;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
+    const { focusId } = useDigitalTwin();
 
     // Just for testing, until we have a backend call to get the graph data.
     // TODO: fill in the discipline/fileId this focus node's TTL was synced
@@ -45,7 +46,12 @@ function GraphPane({
     const projectId = "cmrb11dts00011psx69wamscr";
     const discipline = "disc-ark";
     const fileId = "eb66529f-5f25-463a-984e-92112a30b6fa";
-    const focuseId = "building_28cb49f1-9b69-4870-aca3-d3f3628a7f64";
+    const DEFAULT_FOCUS_ID = "building_28cb49f1-9b69-4870-aca3-d3f3628a7f64";
+
+    // focusId starts null until the user explicitly confirms one (see
+    // SelectionPanel's "set as focus" button) - fall back to the test
+    // default until then, so this keeps working standalone.
+    const effectiveFocusId = focusId ?? DEFAULT_FOCUS_ID;
 
     const {
         data: graphData,
@@ -55,7 +61,7 @@ function GraphPane({
         projectId: projectId,
         discipline: discipline,
         fileId: fileId,
-        focusId: focuseId
+        focusId: effectiveFocusId
     });
 
     if (isLoading) {
@@ -113,7 +119,7 @@ function GraphPane({
                 )}
             </button>
 
-            <GraphCanvas graphData={graphData} centerNodeId={focuseId} />
+            <GraphCanvas graphData={graphData} centerNodeId={effectiveFocusId} />
 
             <GraphLegend nodes={graphData.nodes} />
 

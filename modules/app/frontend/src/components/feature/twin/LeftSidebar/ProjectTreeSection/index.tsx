@@ -36,7 +36,7 @@ const HeaderLabel = ({ discipline }: { discipline: Discipline }) => (
 );
 
 function ProjectTreeSection({ className }: { className?: string }) {
-    const { projectInfo, focusObjectId } = useDigitalTwin();
+    const { projectInfo, selectedObjectId } = useDigitalTwin();
 
     if (!projectInfo) {
         return (
@@ -69,7 +69,7 @@ function ProjectTreeSection({ className }: { className?: string }) {
                             key={discipline.id}
                             className={cn(
                                 "pl-5 border-l-3",
-                                focusObjectId === discipline.id
+                                selectedObjectId === discipline.id
                                     ? "bg-primary/15 text-primary border-primary"
                                     : "hover:bg-accent/60 border-transparent text-foreground/80"
                             )}

@@ -23,8 +23,16 @@ export type DigitalTwinFloorOption = {
 type DigitalTwinContextValue = {
     projectInfo: ProjectInfo | null;
     setProjectInfo: Dispatch<SetStateAction<ProjectInfo | null>>;
-    focusObjectId: string | null;
-    setFocusObjectId: Dispatch<SetStateAction<string | null>>;
+    // The object currently clicked/highlighted - changes freely, on every
+    // click (canvas node, tree node, search match, ...).
+    selectedObjectId: string | null;
+    setSelectedObjectId: Dispatch<SetStateAction<string | null>>;
+    // The node views like the Relationship Graph are centered on/scoped to -
+    // deliberately separate from selectedObjectId so that clicking around
+    // doesn't silently move what's being fetched; only an explicit "confirm"
+    // action (e.g. a button in SelectionPanel) should call setFocusId.
+    focusId: string | null;
+    setFocusId: Dispatch<SetStateAction<string | null>>;
     selectedIds: string[];
     setSelectedIds: Dispatch<SetStateAction<string[]>>;
     ifcFilesVisibility: string[];
@@ -48,7 +56,10 @@ const DigitalTwinContext = createContext<DigitalTwinContextValue | undefined>(
 
 export function DigitalTwinProvider({ children }: { children: ReactNode }) {
     const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null);
-    const [focusObjectId, setFocusObjectId] = useState<string | null>(null);
+    const [selectedObjectId, setSelectedObjectId] = useState<string | null>(
+        null
+    );
+    const [focusId, setFocusId] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [loadedIfcByDiscipline, setLoadedIfcByDiscipline] = useState<
         Record<string, File[]>
@@ -73,8 +84,10 @@ export function DigitalTwinProvider({ children }: { children: ReactNode }) {
         () => ({
             projectInfo,
             setProjectInfo,
-            focusObjectId,
-            setFocusObjectId,
+            selectedObjectId,
+            setSelectedObjectId,
+            focusId,
+            setFocusId,
             selectedIds,
             setSelectedIds,
             loadedIfcByDiscipline,
@@ -92,7 +105,8 @@ export function DigitalTwinProvider({ children }: { children: ReactNode }) {
         }),
         [
             projectInfo,
-            focusObjectId,
+            selectedObjectId,
+            focusId,
             selectedIds,
             loadedIfcByDiscipline,
             ifcFilesVisibility,
