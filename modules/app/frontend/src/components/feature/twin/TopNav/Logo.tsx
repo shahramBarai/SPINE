@@ -1,20 +1,20 @@
+import { ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+
 function Logo() {
     return (
-        <div className="flex items-center gap-2.5 pr-4 border-r border-border/60 h-full">
+        <Link
+            to="/projects"
+            title="Back to Projects"
+            className="flex items-center gap-2.5 pr-4 border-r border-border/60 h-full hover:opacity-80 transition-opacity"
+        >
+            <ArrowLeft className="h-4 w-4 text-muted-foreground" />
             <img
-                src="/md2mv-logo.png"
-                alt="MD2MV logo"
-                className="h-8 w-8 rounded object-cover"
+                src="/metropolia-logo.png"
+                alt="Metropolia logo"
+                className="h-8 w-auto object-contain"
             />
-            <div className="leading-tight">
-                <div className="font-semibold tracking-tight text-sm">
-                    MD<span className="text-primary">2MV</span>
-                </div>
-                <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-mono">
-                    Command Center
-                </div>
-            </div>
-        </div>
+        </Link>
     );
 }
 
