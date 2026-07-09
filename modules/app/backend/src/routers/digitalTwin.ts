@@ -314,5 +314,30 @@ export const digitalTwinRouter = router({
                 input.projectId,
                 graphUri
             );
+        }),
+
+    getRelationshipGraph: publicProcedure
+        .input(
+            z.object({
+                projectId: z.string(),
+                discipline: z.string(),
+                fileId: z.string(),
+                focusId: z.string(),
+                includeNodeTypes: z.array(z.string()).optional(),
+                includePredicates: z.array(z.string()).optional()
+            })
+        )
+        .query(async ({ input }) => {
+            const graphUri = buildTtlGraphUri(input.discipline, input.fileId);
+
+            return await BuildingGraphService.get_relationship_graph(
+                input.projectId,
+                graphUri,
+                input.focusId,
+                {
+                    includeNodeTypes: input.includeNodeTypes,
+                    includePredicates: input.includePredicates
+                }
+            );
         })
 });
