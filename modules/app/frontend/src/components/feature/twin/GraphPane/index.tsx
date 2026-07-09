@@ -1,0 +1,128 @@
+import { useRef } from "react";
+import { GitBranch, Maximize2, Minimize2 } from "lucide-react";
+import { GraphCanvas } from "./GraphCanvas";
+import { GraphLegend } from "./GraphLegend";
+import { SelectionPanel } from "./SelectionPanel";
+import { type GraphData } from "./types/graph";
+import { cn } from "utils/index";
+import { api } from "utils/trpc";
+import { useDigitalTwin } from "hooks/useDigitalTwin";
+
+// Backend call is disabled for now - working against a stand-in for the
+// shape `getRelationshipGraph` returns (GraphNode/GraphEdge) until the
+// canvas/interaction logic is solid.
+const MOCK_GRAPH_DATA: GraphData = {
+    nodes: [
+        { id: "site_1", label: "Myllypuro Campus", type: "Site" },
+        { id: "building_1", label: "Building A", type: "Building" },
+        { id: "storey_1", label: "Floor 1", type: "Storey" },
+        { id: "space_1", label: "Room 101", type: "Space" },
+        { id: "space_2", label: "Room 102", type: "Space" },
+        { id: "sensor_1", label: "Temp Sensor 1", type: "Sensor" }
+    ],
+    edges: [
+        { from_id: "site_1", to_id: "building_1", label: "hasBuilding" },
+        { from_id: "building_1", to_id: "storey_1", label: "hasStorey" },
+        { from_id: "storey_1", to_id: "space_1", label: "hasSpace" },
+        { from_id: "storey_1", to_id: "space_2", label: "hasSpace" },
+        { from_id: "space_1", to_id: "sensor_1", label: "hasSensor" }
+    ]
+};
+
+function GraphPane({
+    maximized = false,
+    onToggleMaximize
+}: {
+    maximized?: boolean;
+    onToggleMaximize?: () => void;
+}) {
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Just for testing, until we have a backend call to get the graph data.
+    // TODO: fill in the discipline/fileId this focus node's TTL was synced
+    // under (see the Fuseki tree sidebar / project files list) - the graph
+    // is now scoped to a single named graph, same as getGraphTree.
+    const projectId = "cmrb11dts00011psx69wamscr";
+    const discipline = "disc-ark";
+    const fileId = "eb66529f-5f25-463a-984e-92112a30b6fa";
+    const focuseId = "building_28cb49f1-9b69-4870-aca3-d3f3628a7f64";
+
+    const {
+        data: graphData,
+        isLoading,
+        isError
+    } = api.digitalTwin.getRelationshipGraph.useQuery({
+        projectId: projectId,
+        discipline: discipline,
+        fileId: fileId,
+        focusId: focuseId
+    });
+
+    if (isLoading) {
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <span className="text-muted-foreground">Loading graph...</span>
+            </div>
+        );
+    }
+
+    if (isError || !graphData) {
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <span className="text-destructive">
+                    Error loading graph data.
+                </span>
+            </div>
+        );
+    }
+
+    return (
+        <div
+            ref={containerRef}
+            className="relative h-full w-full overflow-hidden rounded-lg border border-border/60 bg-card/40"
+        >
+            <div
+                className={cn(
+                    "absolute top-2 left-3 z-20",
+                    "flex items-center gap-2 px-3 py-2",
+                    "rounded-md bg-surface text-surface-foreground",
+                    "border border-border/60"
+                )}
+            >
+                <GitBranch className="h-3.5 w-3.5 text-primary" />
+                <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+                    Relationship Graph
+                </span>
+            </div>
+
+            <button
+                onClick={onToggleMaximize}
+                className={cn(
+                    "absolute top-3 right-3 z-20",
+                    "h-7 w-7 flex items-center justify-center",
+                    "bg-surface/50 text-surface-foreground rounded",
+                    "border border-border/60",
+                    "hover:cursor-pointer hover:text-primary hover:bg-primary/10"
+                )}
+                aria-label={maximized ? "Restore" : "Maximize"}
+            >
+                {maximized ? (
+                    <Minimize2 className="h-3.5 w-3.5" />
+                ) : (
+                    <Maximize2 className="h-3.5 w-3.5" />
+                )}
+            </button>
+
+            <GraphCanvas graphData={graphData} centerNodeId={focuseId} />
+
+            <GraphLegend nodes={graphData.nodes} />
+
+            <SelectionPanel
+                containerRef={containerRef}
+                nodes={graphData.nodes}
+            />
+        </div>
+    );
+}
+
+export { GraphPane };

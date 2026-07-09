@@ -1,0 +1,23 @@
+export type GraphNode = { id: string; label: string; type: string };
+export type GraphEdge = { from_id: string; to_id: string; label: string };
+export type GraphData = { nodes: GraphNode[]; edges: GraphEdge[] };
+
+export type NodeState = {
+    id: string;
+    label: string;
+    type: string;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    fixed: boolean;
+};
+
+export type LayoutPosition = { x: number; y: number };
+
+// The graph is laid out on a fixed virtual canvas and then panned/zoomed via
+// an SVG transform, so these dimensions are geometry constants, not pixels.
+export const VIEW_WIDTH = 700;
+export const VIEW_HEIGHT = 420;
+export const VIEW_CENTER_X = VIEW_WIDTH / 2;
+export const VIEW_CENTER_Y = VIEW_HEIGHT / 2;

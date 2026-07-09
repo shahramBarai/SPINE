@@ -170,3 +170,12 @@
     stroke: var(--primary) !important;
     stroke-width: 2.5px !important;
 }
+
+@layer utilities {
+    .grid-bg {
+        background-image:
+            linear-gradient(var(--border) 1px, transparent 1px),
+            linear-gradient(90deg, var(--border) 1px, transparent 1px);
+        background-size: 32px 32px;
+    }
+}

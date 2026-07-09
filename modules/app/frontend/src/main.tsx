@@ -9,7 +9,7 @@ import { NotFound } from "pages/404";
 
 import { ApiProvider } from "utils/trpc";
 import { AuthPage } from "pages/auth";
-import { DigitalTwin } from "pages/digitalTwin";
+import { DigitalTwin } from "pages/projects/digitalTwin";
 import { ProjectsPage } from "pages/projects";
 
 import { ToastContainer } from "react-toastify";
