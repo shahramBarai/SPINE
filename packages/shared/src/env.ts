@@ -11,8 +11,6 @@ const SHARED_ENV_FILE = resolve(
 interface WorkspaceEnv {
     NODE_ENV: string;
     LOG_LEVEL: string;
-    MQTT_USERNAME: string;
-    MQTT_PASSWORD: string;
     DATABASE_URL_PLATFORM: string;
     DATABASE_URL_TIMESCALE: string;
     DATABASE_URL_MINIO: string;
@@ -48,8 +46,6 @@ dotenv.config({ path: SHARED_ENV_FILE });
 const env: WorkspaceEnv = {
     NODE_ENV: requiredEnv("NODE_ENV"),
     LOG_LEVEL: requiredEnv("LOG_LEVEL"),
-    MQTT_USERNAME: requiredEnv("MQTT_USERNAME"),
-    MQTT_PASSWORD: requiredEnv("MQTT_PASSWORD"),
     DATABASE_URL_PLATFORM: requiredEnv("DATABASE_URL_PLATFORM"),
     DATABASE_URL_TIMESCALE: requiredEnv("DATABASE_URL_TIMESCALE"),
     DATABASE_URL_MINIO: requiredEnv("DATABASE_URL_MINIO"),
