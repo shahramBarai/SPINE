@@ -38,19 +38,6 @@ const HeaderLabel = ({ discipline }: { discipline: Discipline }) => (
 function ProjectTreeSection({ className }: { className?: string }) {
     const { projectInfo, selectedObjectId } = useDigitalTwin();
 
-    if (!projectInfo) {
-        return (
-            <div
-                className={cn(
-                    "flex items-center justify-center py-1 font-mono text-muted-foreground",
-                    className
-                )}
-            >
-                <span className="text-xs">No project selected</span>
-            </div>
-        );
-    }
-
     return (
         <TreeHeader
             className={className}

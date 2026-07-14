@@ -21,8 +21,10 @@ export type DigitalTwinFloorOption = {
 };
 
 type DigitalTwinContextValue = {
-    projectInfo: ProjectInfo | null;
-    setProjectInfo: Dispatch<SetStateAction<ProjectInfo | null>>;
+    // Fixed for the lifetime of the provider - the page resolves the project
+    // from the route before mounting it, and remounts (via a `key={projectId}`)
+    // rather than reassigning this in place when the user switches projects.
+    projectInfo: ProjectInfo;
     // The object currently clicked/highlighted - changes freely, on every
     // click (canvas node, tree node, search match, ...).
     selectedObjectId: string | null;
@@ -54,8 +56,13 @@ const DigitalTwinContext = createContext<DigitalTwinContextValue | undefined>(
     undefined
 );
 
-export function DigitalTwinProvider({ children }: { children: ReactNode }) {
-    const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null);
+export function DigitalTwinProvider({
+    projectInfo,
+    children
+}: {
+    projectInfo: ProjectInfo;
+    children: ReactNode;
+}) {
     const [selectedObjectId, setSelectedObjectId] = useState<string | null>(
         null
     );
@@ -83,7 +90,6 @@ export function DigitalTwinProvider({ children }: { children: ReactNode }) {
     const value = useMemo<DigitalTwinContextValue>(
         () => ({
             projectInfo,
-            setProjectInfo,
             selectedObjectId,
             setSelectedObjectId,
             focusId,

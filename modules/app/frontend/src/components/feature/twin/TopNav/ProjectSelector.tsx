@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
 import { api } from "utils/trpc";
 import { ChevronDown, Loader } from "lucide-react";
 import { cn } from "utils/index";
 
 function ProjectSelector() {
-    const { projectInfo, setProjectInfo } = useDigitalTwin();
+    const { projectInfo } = useDigitalTwin();
+    const navigate = useNavigate();
     const [openProj, setOpenProj] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
 
@@ -35,7 +37,7 @@ function ProjectSelector() {
     }, [openProj]);
 
     const handleProjectSelect = (project: { id: string; name: string }) => {
-        setProjectInfo({ id: project.id, name: project.name });
+        navigate(`/digital-twin/${project.id}`);
         setOpenProj(false);
     };
 
@@ -81,14 +83,12 @@ function ProjectSelector() {
                     className={cn(
                         "flex items-center justify-between h-9 w-64 px-3 text-sm ",
                         "border border-border/60 rounded-md",
-                        projectInfo
-                            ? "bg-background text-foreground hover:bg-accent hover:text-foreground"
-                            : "bg-secondary text-secondary-foreground hover:bg-primary/60 hover:text-foreground",
+                        "bg-background text-foreground hover:bg-accent hover:text-foreground",
                         "hover:cursor-pointer"
                     )}
                 >
                     <span className="font-medium truncate">
-                        {projectInfo ? projectInfo.name : "Select Project..."}
+                        {projectInfo.name}
                     </span>
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>
@@ -104,7 +104,7 @@ function ProjectSelector() {
                             <button
                                 key={project.id}
                                 onClick={() => {
-                                    if (projectInfo?.id !== project.id) {
+                                    if (projectInfo.id !== project.id) {
                                         handleProjectSelect(project);
                                     }
                                     setOpenProj(false);
@@ -112,7 +112,7 @@ function ProjectSelector() {
                                 className={cn(
                                     "w-full text-left px-3 py-2 rounded text-sm transition-colors duration-100",
                                     "hover:cursor-pointer hover:bg-primary/10 hover:scale-102",
-                                    projectInfo?.id === project.id &&
+                                    projectInfo.id === project.id &&
                                         "text-primary"
                                 )}
                             >

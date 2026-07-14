@@ -3,7 +3,6 @@ import { Button } from "components/basics/Button";
 import { Input } from "components/basics/input";
 import { Search, FileCode2, CloudUpload, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { useDigitalTwin } from "hooks/useDigitalTwin";
 import { cn } from "utils/index";
 import { toast } from "react-toastify";
 import { Logo } from "./Logo";
@@ -17,8 +16,6 @@ const PROJECT_OPTIONS = ["Metropolia Myllypuro Campus", "SmartLab"] as const;
 const TopNav = ({ liveMode }: { liveMode: boolean }) => {
     const [inputPath, setInputPath] = useState("");
     const [openProj, setOpenProj] = useState(false);
-
-    const { projectInfo, setProjectInfo } = useDigitalTwin();
 
     // FIXME:
     const fusekiConnected = true;

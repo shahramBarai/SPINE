@@ -10,31 +10,9 @@ import {
 import { GraphCanvas } from "./GraphCanvas";
 import { GraphLegend } from "./GraphLegend";
 import { SelectionPanel } from "./SelectionPanel";
-import { type GraphData } from "./types/graph";
 import { cn } from "utils/index";
 import { api } from "utils/trpc";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
-
-// Backend call is disabled for now - working against a stand-in for the
-// shape `getRelationshipGraph` returns (GraphNode/GraphEdge) until the
-// canvas/interaction logic is solid.
-const MOCK_GRAPH_DATA: GraphData = {
-    nodes: [
-        { id: "site_1", label: "Myllypuro Campus", type: "Site" },
-        { id: "building_1", label: "Building A", type: "Building" },
-        { id: "storey_1", label: "Floor 1", type: "Storey" },
-        { id: "space_1", label: "Room 101", type: "Space" },
-        { id: "space_2", label: "Room 102", type: "Space" },
-        { id: "sensor_1", label: "Temp Sensor 1", type: "Sensor" }
-    ],
-    edges: [
-        { from_id: "site_1", to_id: "building_1", label: "hasBuilding" },
-        { from_id: "building_1", to_id: "storey_1", label: "hasStorey" },
-        { from_id: "storey_1", to_id: "space_1", label: "hasSpace" },
-        { from_id: "storey_1", to_id: "space_2", label: "hasSpace" },
-        { from_id: "space_1", to_id: "sensor_1", label: "hasSensor" }
-    ]
-};
 
 // Shared chrome (border, header badge) so the loading/error placeholders
 // read as the same panel rather than an unrelated centered-text block.
@@ -81,7 +59,7 @@ function GraphPane({
     // TODO: fill in the discipline/fileId this focus node's TTL was synced
     // under (see the Fuseki tree sidebar / project files list) - the graph
     // is now scoped to a single named graph, same as getGraphTree.
-    const projectId = "cmrj97fa70001mrvg2cfblzmw";
+    const { projectInfo } = useDigitalTwin();
     const discipline = "disc-ark";
     const fileId = "eb66529f-5f25-463a-984e-92112a30b6fa";
     const DEFAULT_FOCUS_ID = "building_28cb49f1-9b69-4870-aca3-d3f3628a7f64";
@@ -97,7 +75,7 @@ function GraphPane({
         isError,
         error
     } = api.digitalTwin.getRelationshipGraph.useQuery({
-        projectId: projectId,
+        projectId: projectInfo.id,
         discipline: discipline,
         fileId: fileId,
         focusId: effectiveFocusId
