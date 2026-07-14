@@ -163,7 +163,9 @@ export const digitalTwinRouter = router({
         .input(
             z.object({
                 projectId: z.string(),
-                discipline: z.string(),
+                // Omit to list files across every discipline in the project
+                // (e.g. GraphPane gathering all synced TTL graphs at once).
+                discipline: z.string().optional(),
                 fileTypes: z.array(z.enum(["ifc", "ttl", "pdf"]))
             })
         )
@@ -172,7 +174,9 @@ export const digitalTwinRouter = router({
 
             const filesInfo = await BucketService.listFiles({
                 bucketName,
-                prefix: `${input.projectId}/${input.discipline}`,
+                prefix: input.discipline
+                    ? `${input.projectId}/${input.discipline}`
+                    : `${input.projectId}/`,
                 recursive: true
             });
 
@@ -364,19 +368,30 @@ export const digitalTwinRouter = router({
         .input(
             z.object({
                 projectId: z.string(),
-                discipline: z.string(),
-                fileId: z.string(),
+                // Every graph the relationship search should span - lets
+                // links that live in one file's graph (e.g. the "Linkset"
+                // discipline) connect nodes from other visible files.
+                files: z
+                    .array(
+                        z.object({
+                            discipline: z.string(),
+                            fileId: z.string()
+                        })
+                    )
+                    .min(1),
                 focusId: z.string(),
                 includeNodeTypes: z.array(z.string()).optional(),
                 includePredicates: z.array(z.string()).optional()
             })
         )
         .query(async ({ input }) => {
-            const graphUri = buildTtlGraphUri(input.discipline, input.fileId);
+            const graphUris = input.files.map((file) =>
+                buildTtlGraphUri(file.discipline, file.fileId)
+            );
 
             return await BuildingGraphService.get_relationship_graph(
                 input.projectId,
-                graphUri,
+                graphUris,
                 input.focusId,
                 {
                     includeNodeTypes: input.includeNodeTypes,

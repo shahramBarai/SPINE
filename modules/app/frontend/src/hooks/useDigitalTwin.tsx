@@ -13,45 +13,14 @@ type ProjectInfo = {
     name: string;
 };
 
-type SharedDictionary = Record<string, unknown>;
-
-export type DigitalTwinFloorOption = {
-    key: string;
-    label: string;
-};
-
 type DigitalTwinContextValue = {
-    // Fixed for the lifetime of the provider - the page resolves the project
-    // from the route before mounting it, and remounts (via a `key={projectId}`)
-    // rather than reassigning this in place when the user switches projects.
     projectInfo: ProjectInfo;
-    // The object currently clicked/highlighted - changes freely, on every
-    // click (canvas node, tree node, search match, ...).
     selectedObjectId: string | null;
     setSelectedObjectId: Dispatch<SetStateAction<string | null>>;
-    // The node views like the Relationship Graph are centered on/scoped to -
-    // deliberately separate from selectedObjectId so that clicking around
-    // doesn't silently move what's being fetched; only an explicit "confirm"
-    // action (e.g. a button in SelectionPanel) should call setFocusId.
-    // Seeded from the project's rootId (see getProject) when the provider
-    // mounts, then freely reassignable from there.
     focusId: string;
     setFocusId: Dispatch<SetStateAction<string>>;
-    selectedIds: string[];
-    setSelectedIds: Dispatch<SetStateAction<string[]>>;
-    ifcFilesVisibility: string[];
-    setIfcFilesVisibility: Dispatch<SetStateAction<string[]>>;
-    selectedFloorKeys: string[];
-    setSelectedFloorKeys: Dispatch<SetStateAction<string[]>>;
-    // Not used for now:
-    loadedIfcByDiscipline: Record<string, File[]>;
-    setLoadedIfcByDiscipline: Dispatch<SetStateAction<Record<string, File[]>>>;
-    floorOptions: DigitalTwinFloorOption[];
-    setFloorOptions: Dispatch<SetStateAction<DigitalTwinFloorOption[]>>;
-    selectedComponentInfo: SharedDictionary | null;
-    setSelectedComponentInfo: Dispatch<SetStateAction<SharedDictionary | null>>;
-    sharedObjects: SharedDictionary;
-    setSharedObject: (key: string, value: unknown) => void;
+    ttlFilesHidden: string[];
+    setTtlFilesHidden: Dispatch<SetStateAction<string[]>>;
 };
 
 const DigitalTwinContext = createContext<DigitalTwinContextValue | undefined>(
@@ -71,25 +40,7 @@ export function DigitalTwinProvider({
         null
     );
     const [focusId, setFocusId] = useState<string>(initialFocusId);
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [loadedIfcByDiscipline, setLoadedIfcByDiscipline] = useState<
-        Record<string, File[]>
-    >({});
-    const [ifcFilesVisibility, setIfcFilesVisibility] = useState<string[]>([]);
-    const [selectedFloorKeys, setSelectedFloorKeys] = useState<string[]>([]);
-    const [floorOptions, setFloorOptions] = useState<DigitalTwinFloorOption[]>(
-        []
-    );
-    const [selectedComponentInfo, setSelectedComponentInfo] =
-        useState<SharedDictionary | null>(null);
-    const [sharedObjects, setSharedObjects] = useState<SharedDictionary>({});
-
-    const setSharedObject = (key: string, value: unknown) => {
-        setSharedObjects((current) => ({
-            ...current,
-            [key]: value
-        }));
-    };
+    const [ttlFilesHidden, setTtlFilesHidden] = useState<string[]>([]);
 
     const value = useMemo<DigitalTwinContextValue>(
         () => ({
@@ -98,33 +49,10 @@ export function DigitalTwinProvider({
             setSelectedObjectId,
             focusId,
             setFocusId,
-            selectedIds,
-            setSelectedIds,
-            loadedIfcByDiscipline,
-            setLoadedIfcByDiscipline,
-            ifcFilesVisibility,
-            setIfcFilesVisibility,
-            selectedFloorKeys,
-            setSelectedFloorKeys,
-            floorOptions,
-            setFloorOptions,
-            selectedComponentInfo,
-            setSelectedComponentInfo,
-            sharedObjects,
-            setSharedObject
+            ttlFilesHidden,
+            setTtlFilesHidden
         }),
-        [
-            projectInfo,
-            selectedObjectId,
-            focusId,
-            selectedIds,
-            loadedIfcByDiscipline,
-            ifcFilesVisibility,
-            selectedFloorKeys,
-            floorOptions,
-            selectedComponentInfo,
-            sharedObjects
-        ]
+        [projectInfo, selectedObjectId, focusId, ttlFilesHidden]
     );
 
     return (

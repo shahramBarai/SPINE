@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Eye, EyeOff } from "lucide-react";
 import { cn } from "utils/index";
+import { useDigitalTwin } from "hooks/useDigitalTwin";
 import { SyncToFusekiButton } from "./SyncToFusekiButton";
 import { DeleteFileButton } from "../DeleteFileButton";
 import { FusekiTreeSection } from "./FusekiTreeSection";
@@ -21,11 +22,14 @@ function TtlFileHeader({
     className
 }: TtlFileHeaderProps) {
     const [treeExpanded, setTreeExpanded] = useState<boolean>(false);
+    const { ttlFilesHidden, setTtlFilesHidden } = useDigitalTwin();
+    const isVisible = !ttlFilesHidden.includes(fileId);
 
     return (
         <div
             className={cn(
                 "rounded border border-border/40 bg-background/20",
+                !isVisible && "opacity-50",
                 className
             )}
         >
@@ -48,6 +52,32 @@ function TtlFileHeader({
                         )}
                     />
                     <span className="truncate">{fileName}</span>
+                </button>
+
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setTtlFilesHidden((prev) =>
+                            prev.includes(fileId)
+                                ? prev.filter((id) => id !== fileId)
+                                : [...prev, fileId]
+                        );
+                    }}
+                    title={
+                        isVisible
+                            ? "Exclude from relationship graph search"
+                            : "Include in relationship graph search"
+                    }
+                    className={cn(
+                        "h-5 w-5 rounded flex items-center justify-center text-muted-foreground",
+                        "hover:cursor-pointer hover:text-muted-foreground hover:bg-muted transition-all"
+                    )}
+                >
+                    {isVisible ? (
+                        <Eye className="h-3 w-3" />
+                    ) : (
+                        <EyeOff className="h-3 w-3" />
+                    )}
                 </button>
 
                 <SyncToFusekiButton

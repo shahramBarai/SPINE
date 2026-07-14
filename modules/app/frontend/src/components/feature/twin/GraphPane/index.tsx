@@ -53,33 +53,61 @@ function GraphPane({
     onToggleMaximize?: () => void;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const { projectInfo, focusId } = useDigitalTwin();
+    const { projectInfo, focusId, ttlFilesHidden } = useDigitalTwin();
 
-    // Just for testing, until we have a backend call to get the graph data.
-    // TODO: fill in the discipline/fileId this focus node's TTL was synced
-    // under (see the Fuseki tree sidebar / project files list) - the graph
-    // is now scoped to a single named graph, same as getGraphTree.
-    const discipline = "disc-ark";
-    const fileId = "f9767f10-c0c4-46bc-9d2d-b608492dfcec";
+    // Every synced TTL file in the project, regardless of discipline - the
+    // relationship graph searches across whichever of these are currently
+    // visible (see TtlFileHeader's Eye/EyeOff toggle), so a link stored in
+    // one file (e.g. the "Linkset" discipline) can connect nodes from other
+    // visible files.
+    const { data: ttlFiles, isLoading: isTtlFilesLoading } =
+        api.digitalTwin.getProjectFilesInfo.useQuery({
+            projectId: projectInfo.id,
+            fileTypes: ["ttl"]
+        });
+
+    const visibleFiles = (ttlFiles ?? [])
+        .filter((file) => !ttlFilesHidden.includes(file.fileId))
+        .map((file) => ({
+            discipline: file.discipline,
+            fileId: file.fileId
+        }));
 
     const {
         data: graphData,
-        isLoading,
+        isLoading: isGraphLoading,
         isError,
         error
-    } = api.digitalTwin.getRelationshipGraph.useQuery({
-        projectId: projectInfo.id,
-        discipline: discipline,
-        fileId: fileId,
-        focusId: focusId
-    });
+    } = api.digitalTwin.getRelationshipGraph.useQuery(
+        {
+            projectId: projectInfo.id,
+            files: visibleFiles,
+            focusId: focusId
+        },
+        { enabled: visibleFiles.length > 0 }
+    );
 
-    if (isLoading) {
+    if (isTtlFilesLoading || (isGraphLoading && visibleFiles.length > 0)) {
         return (
             <GraphPaneShell>
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <span className="text-xs">Loading graph...</span>
+                </div>
+            </GraphPaneShell>
+        );
+    }
+
+    if (visibleFiles.length === 0) {
+        return (
+            <GraphPaneShell>
+                <div className="flex flex-col items-center gap-2 px-4 text-center text-muted-foreground">
+                    <DatabaseX className="h-5 w-5" />
+                    <span className="text-xs">
+                        {ttlFiles?.length
+                            ? "All TTL files are hidden. Enable at least one in the sidebar to see the relationship graph."
+                            : "No TTL files synced yet. Upload and sync a TTL file first."}
+                    </span>
                 </div>
             </GraphPaneShell>
         );

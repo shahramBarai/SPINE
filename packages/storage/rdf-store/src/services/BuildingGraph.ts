@@ -178,6 +178,15 @@ function includeListLiteral(values: string[]): string {
     return values.map(sparqlStringLiteral).join(", ");
 }
 
+// Restricts ?g to exactly the given named graphs, so `GRAPH ?g { ... }`
+// below behaves like a UNION across them - this is what lets a link stored
+// in one file's graph (e.g. the "Linkset" discipline) connect nodes that
+// live in other visible files' graphs.
+function graphValuesClause(graphUris: string[]): string {
+    const uris = graphUris.map((uri) => `<${uri}>`).join(" ");
+    return `VALUES ?g { ${uris} }`;
+}
+
 // Filters a triple's own predicate by short local name - a plain FILTER is
 // safe here since a triple pattern binds ?predicate to exactly one value
 // per row (no multiplicity to worry about).
@@ -214,17 +223,17 @@ const resolveFocusQueryResultSchema = z.array(
 // The rest of the app (get_tree, the Fuseki tree sidebar, focusObjectId)
 // identifies nodes by their short local name (e.g. "building_<uuid>"), not
 // their full URI - so focusId is looked up here by matching that name
-// against the end of a node's URI, scoped to the one graph being queried
-// (kept cheap by staying within a single graph rather than scanning the
-// whole dataset).
+// against the end of a node's URI, scoped to the given graphs being queried
+// (kept cheap by staying within them rather than scanning the whole dataset).
 async function resolve_focus_uri(
     datasetName: string,
-    graphUri: string,
+    graphUris: string[],
     focusId: string
 ): Promise<string> {
     const query = `
         SELECT ?node WHERE {
-            GRAPH <${graphUri}> {
+            ${graphValuesClause(graphUris)}
+            GRAPH ?g {
                 ?node ?p ?o .
                 FILTER(
                     STRENDS(STR(?node), ${sparqlStringLiteral(`/${focusId}`)}) ||
@@ -262,23 +271,26 @@ const neighborQueryResultSchema = z.array(
 );
 
 /**
- * Retrieves the focus node plus its direct neighbors (one hop out) from a
- * single named graph - deliberately simple, mirroring get_tree's shape of
- * "one query, then a small pass in JS", rather than a multi-hop traversal.
+ * Retrieves the focus node plus its direct neighbors (one hop out), searched
+ * across every graph passed in - deliberately simple, mirroring get_tree's
+ * shape of "one query, then a small pass in JS", rather than a multi-hop
+ * traversal. Passing every currently-visible TTL file's graph is what lets a
+ * link stored in one file (e.g. the "Linkset" discipline) connect nodes that
+ * live in other files.
  *
  * @param datasetName The name of the dataset to query.
- * @param graphUri The named graph to search (as with get_tree, exactly one).
+ * @param graphUris The named graphs to search.
  * @param focusId The node to center the graph on - its short local id (matching get_tree/focusObjectId).
  * @param filters Optional include-only allow-lists (by short local name) for neighbor node types and/or the predicates connecting them. The focus node itself is never filtered out.
- * @throws FusekiSparqlError (status 404) if focusId can't be resolved to a node in this graph, or if the server returns an error status code or there's a network error.
+ * @throws FusekiSparqlError (status 404) if focusId can't be resolved to a node in these graphs, or if the server returns an error status code or there's a network error.
  */
 async function get_relationship_graph(
     datasetName: string,
-    graphUri: string,
+    graphUris: string[],
     focusId: string,
     filters?: RelationshipGraphFilters
 ): Promise<RelationshipGraph> {
-    const focusUri = await resolve_focus_uri(datasetName, graphUri, focusId);
+    const focusUri = await resolve_focus_uri(datasetName, graphUris, focusId);
     const predicateFilter = predicateIncludeClause(filters?.includePredicates);
     const nodeTypeFilter = nodeTypeIncludeClause(filters?.includeNodeTypes);
 
@@ -287,7 +299,8 @@ async function get_relationship_graph(
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
         SELECT ?node ?label ?type ?predicate ?direction WHERE {
-            GRAPH <${graphUri}> {
+            ${graphValuesClause(graphUris)}
+            GRAPH ?g {
                 {
                     BIND(<${focusUri}> AS ?node)
                 }
