@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronRight, Box } from "lucide-react";
 import { cn } from "utils/index";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
+import { FocusButton } from "../../../FocusButton";
 
 interface FusekiTreeNodeData {
     id: string;
@@ -68,6 +69,8 @@ function FusekiTreeNode({
                         {node.type}
                     </span>
                 </button>
+
+                <FocusButton nodeId={node.id} className="shrink-0" />
             </div>
 
             {expanded && hasChildren && (

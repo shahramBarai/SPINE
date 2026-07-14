@@ -1,7 +1,8 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
-import { Crosshair, GripHorizontal, X } from "lucide-react";
+import { GripHorizontal, X } from "lucide-react";
 import { type GraphNode } from "./types/graph";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
+import { FocusButton } from "../FocusButton";
 import { cn } from "utils/index";
 
 function SelectionPanel({
@@ -11,8 +12,7 @@ function SelectionPanel({
     containerRef: RefObject<HTMLDivElement | null>;
     nodes: GraphNode[];
 }) {
-    const { selectedObjectId, setSelectedObjectId, focusId, setFocusId } =
-        useDigitalTwin();
+    const { selectedObjectId, setSelectedObjectId } = useDigitalTwin();
     const node = nodes.find((n) => n.id === selectedObjectId) ?? null;
 
     const [position, setPosition] = useState<{ x: number; y: number }>({
@@ -102,23 +102,7 @@ function SelectionPanel({
                 </div>
                 <div className="flex items-center gap-2">
                     <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-                    <button
-                        type="button"
-                        className={cn(
-                            "rounded p-1 transition hover:bg-primary/10 hover:text-primary",
-                            focusId === node.id
-                                ? "text-primary"
-                                : "text-muted-foreground"
-                        )}
-                        aria-label="Set as relationship graph focus"
-                        title="Set as relationship graph focus"
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            setFocusId(node.id);
-                        }}
-                    >
-                        <Crosshair className="h-3.5 w-3.5" />
-                    </button>
+                    <FocusButton nodeId={node.id} />
                     <button
                         type="button"
                         className="rounded p-1 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
