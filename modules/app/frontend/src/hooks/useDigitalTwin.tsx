@@ -33,8 +33,10 @@ type DigitalTwinContextValue = {
     // deliberately separate from selectedObjectId so that clicking around
     // doesn't silently move what's being fetched; only an explicit "confirm"
     // action (e.g. a button in SelectionPanel) should call setFocusId.
-    focusId: string | null;
-    setFocusId: Dispatch<SetStateAction<string | null>>;
+    // Seeded from the project's rootId (see getProject) when the provider
+    // mounts, then freely reassignable from there.
+    focusId: string;
+    setFocusId: Dispatch<SetStateAction<string>>;
     selectedIds: string[];
     setSelectedIds: Dispatch<SetStateAction<string[]>>;
     ifcFilesVisibility: string[];
@@ -58,15 +60,17 @@ const DigitalTwinContext = createContext<DigitalTwinContextValue | undefined>(
 
 export function DigitalTwinProvider({
     projectInfo,
+    focusId: initialFocusId,
     children
 }: {
     projectInfo: ProjectInfo;
+    focusId: string;
     children: ReactNode;
 }) {
     const [selectedObjectId, setSelectedObjectId] = useState<string | null>(
         null
     );
-    const [focusId, setFocusId] = useState<string | null>(null);
+    const [focusId, setFocusId] = useState<string>(initialFocusId);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [loadedIfcByDiscipline, setLoadedIfcByDiscipline] = useState<
         Record<string, File[]>

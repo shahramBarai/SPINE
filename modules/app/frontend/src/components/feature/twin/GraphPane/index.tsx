@@ -53,21 +53,14 @@ function GraphPane({
     onToggleMaximize?: () => void;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const { focusId } = useDigitalTwin();
+    const { projectInfo, focusId } = useDigitalTwin();
 
     // Just for testing, until we have a backend call to get the graph data.
     // TODO: fill in the discipline/fileId this focus node's TTL was synced
     // under (see the Fuseki tree sidebar / project files list) - the graph
     // is now scoped to a single named graph, same as getGraphTree.
-    const { projectInfo } = useDigitalTwin();
     const discipline = "disc-ark";
-    const fileId = "eb66529f-5f25-463a-984e-92112a30b6fa";
-    const DEFAULT_FOCUS_ID = "building_28cb49f1-9b69-4870-aca3-d3f3628a7f64";
-
-    // focusId starts null until the user explicitly confirms one (see
-    // SelectionPanel's "set as focus" button) - fall back to the test
-    // default until then, so this keeps working standalone.
-    const effectiveFocusId = focusId ?? DEFAULT_FOCUS_ID;
+    const fileId = "f9767f10-c0c4-46bc-9d2d-b608492dfcec";
 
     const {
         data: graphData,
@@ -78,7 +71,7 @@ function GraphPane({
         projectId: projectInfo.id,
         discipline: discipline,
         fileId: fileId,
-        focusId: effectiveFocusId
+        focusId: focusId
     });
 
     if (isLoading) {
@@ -145,10 +138,7 @@ function GraphPane({
                 )}
             </button>
 
-            <GraphCanvas
-                graphData={graphData}
-                centerNodeId={effectiveFocusId}
-            />
+            <GraphCanvas graphData={graphData} centerNodeId={focusId} />
 
             <GraphLegend nodes={graphData.nodes} />
 

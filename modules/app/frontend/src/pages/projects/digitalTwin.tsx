@@ -17,27 +17,22 @@ import { cn } from "utils/index";
 
 type MaximizedZone = "viewer" | "graph" | "semantic" | null;
 
-// Resolves the project named in the /digital-twin/:projectId route against
-// the caller's visible-projects list (public or a member of), then mounts
-// DigitalTwinLayout with a guaranteed, non-null project. Bounces back to
-// /projects if the id is missing or doesn't resolve to a visible project,
-// rather than rendering the page in a half-initialized "no project" state.
 const DigitalTwin = () => {
     const { projectId } = useParams<{ projectId?: string }>();
     const navigate = useNavigate();
-    const { data: projects, isLoading } =
-        api.digitalTwin.getProjects.useQuery();
 
-    const project = projects?.find((p) => p.id === projectId);
+    if (!projectId) {
+        navigate("/404", { replace: true });
+        return;
+    }
 
-    useEffect(() => {
-        if (isLoading || project) {
-            return;
-        }
-        navigate("/projects", { replace: true });
-    }, [isLoading, project, navigate]);
+    const {
+        data: project,
+        isLoading,
+        error
+    } = api.digitalTwin.getProject.useQuery({ projectId: projectId });
 
-    if (isLoading || !project) {
+    if (isLoading) {
         return (
             <div className="h-screen w-screen flex items-center justify-center gap-2 bg-background text-foreground">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -48,10 +43,16 @@ const DigitalTwin = () => {
         );
     }
 
+    if (!projectId || error || !project) {
+        navigate("/404", { replace: true });
+        return;
+    }
+
     return (
         <DigitalTwinProvider
             key={project.id}
             projectInfo={{ id: project.id, name: project.name }}
+            focusId={project.rootId}
         >
             <DigitalTwinLayout />
         </DigitalTwinProvider>

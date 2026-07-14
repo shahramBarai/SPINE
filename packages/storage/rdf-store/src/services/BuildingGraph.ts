@@ -15,48 +15,46 @@ interface IfcNode {
 /* ------------------------------------------------------- */
 /* ------ Service Functions (use CRUD style naming) ------ */
 /* ------------------------------------------------------- */
-/**
- * Retrieves a tree structure of nodes from the specified dataset.
- *
- * @param datasetName The name of the dataset to query.
- * @returns A list of IfcNode objects representing the tree structure of nodes.
- * @throws FusekiSparqlError If the server returns an error status code or there's a network error.
- */
-async function get_tree(
+
+const treeQueryResultSchema = z.array(
+    z.object({
+        node: z.object({
+            type: z.string(),
+            value: z.string()
+        }),
+        label: z
+            .object({
+                type: z.string(),
+                value: z.string()
+            })
+            .optional(),
+        type: z.object({
+            type: z.string(),
+            value: z.string()
+        }),
+        parent: z
+            .object({
+                type: z.string(),
+                value: z.string()
+            })
+            .optional()
+    })
+);
+
+// Shared by get_tree (one named graph, `<uri>`) and get_root_id (every named
+// graph in the dataset, `?g`) - same shape of query and tree assembly,
+// differing only in how much of the dataset the GRAPH clause covers.
+async function queryTreeRoots(
     datasetName: string,
-    graphUri: string
+    graphPattern: string
 ): Promise<IfcNode[]> {
-    const queryResultSchema = z.array(
-        z.object({
-            node: z.object({
-                type: z.string(),
-                value: z.string()
-            }),
-            label: z
-                .object({
-                    type: z.string(),
-                    value: z.string()
-                })
-                .optional(),
-            type: z.object({
-                type: z.string(),
-                value: z.string()
-            }),
-            parent: z
-                .object({
-                    type: z.string(),
-                    value: z.string()
-                })
-                .optional()
-        })
-    );
     const query = `
             PREFIX bot: <https://w3id.org/bot#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
             SELECT ?node ?label ?type ?parent
             WHERE {
-                GRAPH <${graphUri}> {
+                GRAPH ${graphPattern} {
                     ?node a ?type .
                     FILTER (?type IN (bot:Site, bot:Building, bot:Storey, bot:Space))
                     OPTIONAL { ?node rdfs:label ?label }
@@ -70,7 +68,7 @@ async function get_tree(
     const buindings = await fusekiClient.sparql_query(
         datasetName,
         query,
-        queryResultSchema
+        treeQueryResultSchema
     );
 
     const nodesById = new Map<string, IfcNode>();
@@ -113,13 +111,55 @@ async function get_tree(
     return roots;
 }
 
+/**
+ * Retrieves a tree structure of nodes from the specified named graph.
+ *
+ * @param datasetName The name of the dataset to query.
+ * @param graphUri The named graph to search.
+ * @returns A list of IfcNode objects representing the tree structure of nodes.
+ * @throws FusekiSparqlError If the server returns an error status code or there's a network error.
+ */
+async function get_tree(
+    datasetName: string,
+    graphUri: string
+): Promise<IfcNode[]> {
+    return queryTreeRoots(datasetName, `<${graphUri}>`);
+}
+
+/**
+ * Resolves the project's default relationship-graph focus: the id of the
+ * first root node (a bot:Site/Building/Storey/Space with no parent) found
+ * across every named graph in the dataset, i.e. project-wide rather than
+ * scoped to one synced file.
+ *
+ * @param datasetName The name of the dataset to query.
+ * @returns The short local id of a root node.
+ * @throws FusekiSparqlError (status 404) if the dataset has no synced graph data yet, or if the server returns an error status code or there's a network error.
+ */
+async function get_root_id(datasetName: string): Promise<string> {
+    const roots = await queryTreeRoots(datasetName, "?g");
+    const rootId = roots[0]?.id;
+
+    if (!rootId) {
+        throw new FusekiSparqlError(
+            `No root node found for dataset: ${datasetName}`,
+            404
+        );
+    }
+
+    return rootId;
+}
+
 /* ------------------------------------------------------- */
 /* --------------- Relationship Graph --------------------- */
 /* ------------------------------------------------------- */
 
 type RelationshipNode = { id: string; label: string; type: string };
 type RelationshipEdge = { from_id: string; to_id: string; label: string };
-type RelationshipGraph = { nodes: RelationshipNode[]; edges: RelationshipEdge[] };
+type RelationshipGraph = {
+    nodes: RelationshipNode[];
+    edges: RelationshipEdge[];
+};
 type RelationshipGraphFilters = {
     includeNodeTypes?: string[];
     includePredicates?: string[];
@@ -216,9 +256,7 @@ const neighborQueryResultSchema = z.array(
         node: z.object({ type: z.string(), value: z.string() }),
         label: z.object({ type: z.string(), value: z.string() }).optional(),
         type: z.object({ type: z.string(), value: z.string() }).optional(),
-        predicate: z
-            .object({ type: z.string(), value: z.string() })
-            .optional(),
+        predicate: z.object({ type: z.string(), value: z.string() }).optional(),
         direction: z.object({ type: z.string(), value: z.string() }).optional()
     })
 );
@@ -306,10 +344,7 @@ async function get_relationship_graph(
                           to_id: uri_to_id(focusUri),
                           label: uri_to_id(row.predicate.value)
                       };
-            edgesByKey.set(
-                `${edge.from_id}|${edge.label}|${edge.to_id}`,
-                edge
-            );
+            edgesByKey.set(`${edge.from_id}|${edge.label}|${edge.to_id}`, edge);
         }
     }
 
@@ -322,7 +357,7 @@ async function get_relationship_graph(
 /* ------------------------------------------------------- */
 /* ---- Export the service functions for external use ---- */
 /* ------------------------------------------------------- */
-export { get_tree, get_relationship_graph };
+export { get_tree, get_root_id, get_relationship_graph };
 export type {
     RelationshipNode,
     RelationshipEdge,

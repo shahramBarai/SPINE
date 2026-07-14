@@ -107,6 +107,28 @@ export const digitalTwinRouter = router({
         );
     }),
 
+    // A single project by id, plus rootId - the default relationship-graph
+    // focus, resolved project-wide across every synced graph (see
+    // BuildingGraphService.get_root_id). Lets the digital-twin page resolve
+    // the active project directly instead of fetching the whole
+    // visible-projects list and filtering by id.
+    getProject: publicProcedure
+        .input(z.object({ projectId: z.string() }))
+        .query(async ({ input }) => {
+            const project = await EntityService.getEntityById(input.projectId);
+            if (!project) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: `Project not found: ${input.projectId}`
+                });
+            }
+            const rootId = await BuildingGraphService.get_root_id(
+                input.projectId
+            ).catch(rethrowMissingDataset);
+
+            return { ...project, rootId };
+        }),
+
     // Creates a project and its dedicated Fuseki dataset together. If dataset
     // provisioning fails, the project row is rolled back so a project never
     // exists without its Fuseki storage.
