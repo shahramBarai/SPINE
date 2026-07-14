@@ -2,6 +2,7 @@
 
 import z from "zod";
 import { fusekiClient } from "../db/client";
+import { FusekiSparqlError } from "../db/fuseki";
 import { uri_to_id } from "../utils";
 
 interface IfcNode {
@@ -202,7 +203,10 @@ async function resolve_focus_uri(
 
     const resolved = rows[0]?.node.value;
     if (!resolved) {
-        throw new Error(`Focus node not found: ${focusId}`);
+        // Treated the same as a missing dataset: the graph has no matching
+        // node, either because it's empty (TTL not synced yet) or focusId
+        // doesn't exist in it - both mean "no data yet" to the caller.
+        throw new FusekiSparqlError(`Focus node not found: ${focusId}`, 404);
     }
     return resolved;
 }
@@ -228,8 +232,7 @@ const neighborQueryResultSchema = z.array(
  * @param graphUri The named graph to search (as with get_tree, exactly one).
  * @param focusId The node to center the graph on - its short local id (matching get_tree/focusObjectId).
  * @param filters Optional include-only allow-lists (by short local name) for neighbor node types and/or the predicates connecting them. The focus node itself is never filtered out.
- * @throws Error if focusId can't be resolved to a node in this graph.
- * @throws FusekiSparqlError If the server returns an error status code or there's a network error.
+ * @throws FusekiSparqlError (status 404) if focusId can't be resolved to a node in this graph, or if the server returns an error status code or there's a network error.
  */
 async function get_relationship_graph(
     datasetName: string,

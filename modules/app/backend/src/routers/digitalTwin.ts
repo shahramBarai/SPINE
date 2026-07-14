@@ -1,13 +1,35 @@
 import z from "zod";
+import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure, router } from "../trpc";
 import {
     PresignedService,
     type BUCKET_NAMES,
     BucketService
 } from "@spine/storage-minio";
-import { DatasetService, BuildingGraphService } from "@spine/storage-rdf-store";
+import {
+    DatasetService,
+    BuildingGraphService,
+    FusekiSparqlError
+} from "@spine/storage-rdf-store";
 import { EntityService } from "@spine/storage-platform";
 import { Readable } from "stream";
+
+// FusekiSparqlError with status 404 covers two "no data yet" cases: the
+// project's dataset hasn't been provisioned, or the dataset exists but this
+// file's graph is empty/unsynced (see resolve_focus_uri). Surface both as a
+// typed NOT_FOUND instead of a raw 500 so the UI can show a specific
+// "no data yet" message rather than a generic error.
+function rethrowMissingDataset(error: unknown): never {
+    if (error instanceof FusekiSparqlError && error.status === 404) {
+        throw new TRPCError({
+            code: "NOT_FOUND",
+            message: error.message,
+            cause: error
+        });
+    }
+
+    throw error;
+}
 
 function buildTtlGraphUri(discipline: string, fileId: string): string {
     return `urn:spine:${discipline}:${fileId}`;
@@ -313,7 +335,7 @@ export const digitalTwinRouter = router({
             return await BuildingGraphService.get_tree(
                 input.projectId,
                 graphUri
-            );
+            ).catch(rethrowMissingDataset);
         }),
 
     getRelationshipGraph: publicProcedure
@@ -338,6 +360,6 @@ export const digitalTwinRouter = router({
                     includeNodeTypes: input.includeNodeTypes,
                     includePredicates: input.includePredicates
                 }
-            );
+            ).catch(rethrowMissingDataset);
         })
 });

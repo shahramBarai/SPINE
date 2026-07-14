@@ -14,7 +14,8 @@ function FusekiTreeSection({
     const {
         data: tree,
         isLoading,
-        isError
+        isError,
+        error
     } = api.digitalTwin.getGraphTree.useQuery({
         projectId,
         discipline: disciplineId,
@@ -25,6 +26,17 @@ function FusekiTreeSection({
         return (
             <div className="ml-4 mr-1 mb-1 flex items-center justify-center py-1.5 rounded border border-border/40 bg-background/30">
                 <Loader className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
+            </div>
+        );
+    }
+
+    if (error?.data?.code === "NOT_FOUND") {
+        return (
+            <div className="ml-4 mr-1 mb-1 flex items-center justify-center gap-2 py-1.5 rounded border border-border/40 bg-background/30">
+                <DatabaseX className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] text-muted-foreground">
+                    No graph data found. Sync this file to Fuseki first.
+                </span>
             </div>
         );
     }

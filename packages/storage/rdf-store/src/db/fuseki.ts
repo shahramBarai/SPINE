@@ -43,9 +43,12 @@ type GetOperationalStatsResponse = z.infer<
 /* ----- Error Handling ----- */
 
 class FusekiSparqlError extends Error {
-    constructor(message: string) {
+    readonly status?: number;
+
+    constructor(message: string, status?: number) {
         super(message);
         this.name = "FusekiSparqlError";
+        this.status = status;
     }
 }
 
@@ -105,7 +108,8 @@ class FusekiClient {
 
         const body = await response.text().catch(() => "");
         throw new FusekiSparqlError(
-            `Fuseki request failed with status ${response.status}${body ? `: ${body}` : ""}`
+            `Fuseki request failed with status ${response.status}${body ? `: ${body}` : ""}`,
+            response.status
         );
     }
 
