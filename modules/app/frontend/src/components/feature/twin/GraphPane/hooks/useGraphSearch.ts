@@ -30,7 +30,7 @@ function useGraphSearch({
     nodes,
     searchText
 }: {
-    nodes: GraphNode[];
+    nodes: Pick<GraphNode, "id" | "label">[];
     searchText: string;
 }): string | null {
     const [debouncedText, setDebouncedText] = useState(searchText);
@@ -54,9 +54,7 @@ function useGraphSearch({
             return tokens.every((token) => haystack.includes(token));
         };
 
-        const match = nodes.find((node) =>
-            matchesAllTokens([node.id, node.label])
-        );
+        const match = nodes.find((node) => matchesAllTokens([node.label]));
         return match ? match.id : null;
     }, [nodes, debouncedText]);
 }

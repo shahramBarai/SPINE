@@ -1,4 +1,9 @@
-export type GraphNode = { id: string; label: string; type: string };
+export type GraphNode = {
+    id: string;
+    label: string;
+    type: string;
+    sameAsIds: string[];
+};
 export type GraphEdge = { from_id: string; to_id: string; label: string };
 export type GraphData = { nodes: GraphNode[]; edges: GraphEdge[] };
 

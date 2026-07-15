@@ -5,7 +5,12 @@ import { fusekiClient } from "../db/client";
 import { FusekiSparqlError } from "../db/fuseki";
 import { uri_to_id, sparqlStringLiteral } from "../utils";
 
-type RelationshipNode = { id: string; label: string; type: string };
+type RelationshipNode = {
+    id: string;
+    label: string;
+    type: string;
+    sameAsIds: string[];
+};
 type RelationshipEdge = { from_id: string; to_id: string; label: string };
 type RelationshipGraph = {
     nodes: RelationshipNode[];
@@ -129,6 +134,151 @@ async function resolve_focus_uri(
     return resolved;
 }
 
+const sameAsPairQueryResultSchema = z.array(
+    z.object({
+        a: z.object({ type: z.string(), value: z.string() }),
+        b: z.object({ type: z.string(), value: z.string() })
+    })
+);
+
+// Finds direct owl:sameAs links (either direction) among the given node
+// URIs, searched across every visible graph - used to cluster nodes that
+// represent the "same" real-world entity across different disciplines'
+// graphs (see mergeSameAsEquivalentNodes).
+async function findSameAsPairs(
+    datasetName: string,
+    graphUris: string[],
+    nodeUris: string[]
+): Promise<{ a: string; b: string }[]> {
+    if (nodeUris.length === 0) {
+        return [];
+    }
+
+    const query = `
+        PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+        SELECT ?a ?b WHERE {
+            VALUES ?a { ${nodeUris.map((uri) => `<${uri}>`).join(" ")} }
+            ${graphValuesClause(graphUris, "sameG")}
+            GRAPH ?sameG { ?a (owl:sameAs|^owl:sameAs) ?b }
+        }
+    `;
+
+    const rows = await fusekiClient.sparql_query(
+        datasetName,
+        query,
+        sameAsPairQueryResultSchema
+    );
+
+    return rows.map((row) => ({ a: row.a.value, b: row.b.value }));
+}
+
+// Collapses neighbor nodes that are owl:sameAs-equivalent to each other
+// into a single RelationshipNode - otherwise the same building/storey/etc.
+// comes back once per discipline, with matching or near-matching labels
+// and no indication they're the same thing. The focus node's own id is
+// always kept as its cluster's canonical id, since edges are anchored
+// there (see get_relationship_graph); other clusters pick deterministically
+// (lowest id) rather than by query result order.
+async function mergeSameAsEquivalentNodes(
+    datasetName: string,
+    graphUris: string[],
+    nodesById: Map<string, RelationshipNode>,
+    nodeUriById: Map<string, string>,
+    edgesByKey: Map<string, RelationshipEdge>,
+    focusShortId: string
+): Promise<RelationshipGraph> {
+    const pairs = await findSameAsPairs(
+        datasetName,
+        graphUris,
+        Array.from(nodeUriById.values())
+    );
+
+    const parent = new Map<string, string>();
+    const find = (id: string): string => {
+        let root = parent.get(id) ?? id;
+        while (parent.has(root) && parent.get(root) !== root) {
+            root = parent.get(root)!;
+        }
+        parent.set(id, root);
+        return root;
+    };
+    const union = (a: string, b: string) => {
+        if (!nodesById.has(a) || !nodesById.has(b)) {
+            return;
+        }
+        const rootA = find(a);
+        const rootB = find(b);
+        if (rootA === rootB) {
+            return;
+        }
+        if (rootA === focusShortId) {
+            parent.set(rootB, rootA);
+        } else if (rootB === focusShortId) {
+            parent.set(rootA, rootB);
+        } else if (rootA < rootB) {
+            parent.set(rootB, rootA);
+        } else {
+            parent.set(rootA, rootB);
+        }
+    };
+
+    for (const pair of pairs) {
+        union(uri_to_id(pair.a), uri_to_id(pair.b));
+    }
+
+    const clusters = new Map<string, string[]>();
+    for (const id of nodesById.keys()) {
+        const root = find(id);
+        const members = clusters.get(root) ?? [];
+        members.push(id);
+        clusters.set(root, members);
+    }
+
+    const mergedNodesById = new Map<string, RelationshipNode>();
+    const canonicalIdByOriginal = new Map<string, string>();
+
+    for (const [canonicalId, members] of clusters) {
+        for (const memberId of members) {
+            canonicalIdByOriginal.set(memberId, canonicalId);
+        }
+
+        const memberNodes = members.map((id) => nodesById.get(id)!);
+        // Prefer a member that actually has a real rdfs:label (rows without
+        // one fell back to their own id - see the caller) over one that
+        // doesn't, same idea for type.
+        const label =
+            memberNodes.find((n) => n.label !== n.id)?.label ??
+            memberNodes[0]!.label;
+        const type = memberNodes.find((n) => n.type)?.type ?? "";
+
+        mergedNodesById.set(canonicalId, {
+            id: canonicalId,
+            label,
+            type,
+            sameAsIds: members.filter((id) => id !== canonicalId)
+        });
+    }
+
+    const mergedEdgesByKey = new Map<string, RelationshipEdge>();
+    for (const edge of edgesByKey.values()) {
+        const from_id = canonicalIdByOriginal.get(edge.from_id) ?? edge.from_id;
+        const to_id = canonicalIdByOriginal.get(edge.to_id) ?? edge.to_id;
+        if (from_id === to_id) {
+            // A neighbor that turned out to be sameAs-equivalent to the
+            // focus itself collapses to a self-loop - not a real edge.
+            continue;
+        }
+        const key = `${from_id}|${edge.label}|${to_id}`;
+        mergedEdgesByKey.set(key, { from_id, to_id, label: edge.label });
+    }
+
+    return {
+        nodes: Array.from(mergedNodesById.values()),
+        edges: Array.from(mergedEdgesByKey.values())
+    };
+}
+
 const neighborQueryResultSchema = z.array(
     z.object({
         node: z.object({ type: z.string(), value: z.string() }),
@@ -164,7 +314,9 @@ async function get_relationship_graph(
     const focusUri = await resolve_focus_uri(datasetName, graphUris, focusId);
     const predicateFilter = predicateIncludeClause(filters?.includePredicates);
     const nodeTypeFilter = nodeTypeIncludeClause(filters?.includeNodeTypes);
-    const nodeTypeExcludeFilter = nodeTypeExcludeClause(filters?.excludeNodeTypes);
+    const nodeTypeExcludeFilter = nodeTypeExcludeClause(
+        filters?.excludeNodeTypes
+    );
     // The sameAs walk and the neighbor lookup are independently-scoped graph
     // choices (see graphValuesClause), so a hop through a Linkset graph can
     // land on a neighbor triple that only exists in a different file's graph.
@@ -224,15 +376,18 @@ async function get_relationship_graph(
     );
 
     const nodesById = new Map<string, RelationshipNode>();
+    const nodeUriById = new Map<string, string>();
     const edgesByKey = new Map<string, RelationshipEdge>();
 
     for (const row of rows) {
         const id = uri_to_id(row.node.value);
         const existing = nodesById.get(id);
+        nodeUriById.set(id, row.node.value);
         nodesById.set(id, {
             id,
             label: row.label?.value ?? existing?.label ?? id,
-            type: row.type ? uri_to_id(row.type.value) : (existing?.type ?? "")
+            type: row.type ? uri_to_id(row.type.value) : (existing?.type ?? ""),
+            sameAsIds: []
         });
 
         if (row.predicate && row.direction) {
@@ -252,10 +407,14 @@ async function get_relationship_graph(
         }
     }
 
-    return {
-        nodes: Array.from(nodesById.values()),
-        edges: Array.from(edgesByKey.values())
-    };
+    return mergeSameAsEquivalentNodes(
+        datasetName,
+        graphUris,
+        nodesById,
+        nodeUriById,
+        edgesByKey,
+        uri_to_id(focusUri)
+    );
 }
 
 /* ------------------------------------------------------- */

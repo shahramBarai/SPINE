@@ -26,7 +26,7 @@ function GraphToolbar({
     filterActive,
     className
 }: {
-    nodes: GraphNode[];
+    nodes: Pick<GraphNode, "id" | "label">[];
     onFitToScreen: () => void;
     onFocusSelection: () => void;
     physicsEnabled: boolean;

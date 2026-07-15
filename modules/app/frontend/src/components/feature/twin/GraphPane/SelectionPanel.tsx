@@ -69,7 +69,10 @@ function SelectionPanel({
     const rows = [
         { label: "Name", value: node.label },
         { label: "Id", value: node.id },
-        { label: "Type", value: node.type }
+        { label: "Type", value: node.type },
+        ...(node.sameAsIds.length > 0
+            ? [{ label: "Same As", value: node.sameAsIds.join(", ") }]
+            : [])
     ];
 
     return (

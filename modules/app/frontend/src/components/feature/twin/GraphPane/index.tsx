@@ -184,10 +184,7 @@ function GraphPane({
 
             <GraphLegend nodes={graphData.nodes} />
 
-            <SelectionPanel
-                containerRef={containerRef}
-                nodes={graphData.nodes}
-            />
+            <SelectionPanel containerRef={containerRef} nodes={graphData.nodes} />
         </div>
     );
 }
