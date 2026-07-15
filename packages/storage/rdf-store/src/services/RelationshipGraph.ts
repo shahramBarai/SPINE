@@ -20,18 +20,20 @@ function includeListLiteral(values: string[]): string {
     return values.map(sparqlStringLiteral).join(", ");
 }
 
-// Restricts ?g to exactly the given named graphs, so `GRAPH ?g { ... }`
-// below behaves like a UNION across them - this is what lets a link stored
-// in one file's graph (e.g. the "Linkset" discipline) connect nodes that
-// live in other visible files' graphs.
-function graphValuesClause(graphUris: string[]): string {
+// Restricts a graph variable to exactly the given named graphs, so
+// `GRAPH ?varName { ... }` behaves like a UNION across them.
+//
+// Pass distinct varNames when a query needs two independently-chosen
+// graphs (see get_relationship_graph's sameAs traversal).
+function graphValuesClause(graphUris: string[], varName: string = "g"): string {
     const uris = graphUris.map((uri) => `<${uri}>`).join(" ");
-    return `VALUES ?g { ${uris} }`;
+    return `VALUES ?${varName} { ${uris} }`;
 }
 
-// Filters a triple's own predicate by short local name - a plain FILTER is
-// safe here since a triple pattern binds ?predicate to exactly one value
-// per row (no multiplicity to worry about).
+// Filters a triple's own predicate by short local name.
+//
+// A plain FILTER is safe here since a triple pattern binds ?predicate to
+// exactly one value per row (no multiplicity to worry about).
 function predicateIncludeClause(includePredicates?: string[]): string {
     if (!includePredicates || includePredicates.length === 0) {
         return "";
@@ -41,11 +43,11 @@ function predicateIncludeClause(includePredicates?: string[]): string {
                     FILTER(?predicateName IN (${includeListLiteral(includePredicates)}))`;
 }
 
-// Gates ?node by "has at least one rdf:type whose short name is allow-
-// listed", via FILTER EXISTS - a boolean check rather than an extra SELECT
-// variable, so it can't multiply result rows for a multi-typed node the way
-// an extra OPTIONAL ?type binding would, and (unlike OPTIONAL+FILTER) can
-// actually reject a row rather than just leave a variable unbound.
+// Gates ?node to those with an allow-listed rdf:type.
+//
+// Uses FILTER EXISTS rather than an extra OPTIONAL ?type binding, so a
+// multi-typed node can't multiply result rows, and a non-matching node is
+// actually rejected rather than left with an unbound variable.
 function nodeTypeIncludeClause(includeNodeTypes?: string[]): string {
     if (!includeNodeTypes || includeNodeTypes.length === 0) {
         return "";
@@ -62,11 +64,20 @@ const resolveFocusQueryResultSchema = z.array(
     z.object({ node: z.object({ type: z.string(), value: z.string() }) })
 );
 
-// The rest of the app (get_tree, the Fuseki tree sidebar, focusObjectId)
-// identifies nodes by their short local name (e.g. "building_<uuid>"), not
-// their full URI - so focusId is looked up here by matching that name
-// against the end of a node's URI, scoped to the given graphs being queried
-// (kept cheap by staying within them rather than scanning the whole dataset).
+/**
+ * Resolves a short local id (e.g. "building_<uuid>") to its full node URI.
+ *
+ * The rest of the app (get_tree, the Fuseki tree sidebar, focusObjectId)
+ * identifies nodes by this short name rather than their full URI, so it's
+ * matched here against the end of a node's URI - scoped to the given
+ * graphs to keep the scan cheap.
+ *
+ * @param datasetName The name of the dataset to query.
+ * @param graphUris The named graphs to search.
+ * @param focusId The short local id to resolve.
+ * @returns The full URI of the matching node.
+ * @throws FusekiSparqlError (status 404) if no node matches, or if the server returns an error status code or there's a network error.
+ */
 async function resolve_focus_uri(
     datasetName: string,
     graphUris: string[],
@@ -113,12 +124,14 @@ const neighborQueryResultSchema = z.array(
 );
 
 /**
- * Retrieves the focus node plus its direct neighbors (one hop out), searched
- * across every graph passed in - deliberately simple, mirroring get_tree's
- * shape of "one query, then a small pass in JS", rather than a multi-hop
- * traversal. Passing every currently-visible TTL file's graph is what lets a
- * link stored in one file (e.g. the "Linkset" discipline) connect nodes that
- * live in other files.
+ * Retrieves the focus node plus its direct neighbors (one hop out),
+ * searched across every graph passed in.
+ *
+ * owl:sameAs edges are treated as transparent: the focus node is first
+ * walked through its sameAs-equivalent nodes (zero or more hops, either
+ * direction) before collecting neighbors, so a bare identity pointer never
+ * shows up as a dead-end edge. Each hop, and each neighbor lookup, may land
+ * in a different visible graph (e.g. a Linkset graph bridging disciplines).
  *
  * @param datasetName The name of the dataset to query.
  * @param graphUris The named graphs to search.
@@ -135,35 +148,52 @@ async function get_relationship_graph(
     const focusUri = await resolve_focus_uri(datasetName, graphUris, focusId);
     const predicateFilter = predicateIncludeClause(filters?.includePredicates);
     const nodeTypeFilter = nodeTypeIncludeClause(filters?.includeNodeTypes);
+    // The sameAs walk and the neighbor lookup are independently-scoped graph
+    // choices (see graphValuesClause), so a hop through a Linkset graph can
+    // land on a neighbor triple that only exists in a different file's graph.
+    const sameAsHop = `${graphValuesClause(graphUris, "sameG")}
+                    GRAPH ?sameG { <${focusUri}> (owl:sameAs|^owl:sameAs)* ?same }`;
 
     const query = `
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
         SELECT ?node ?label ?type ?predicate ?direction WHERE {
-            ${graphValuesClause(graphUris)}
-            GRAPH ?g {
-                {
-                    BIND(<${focusUri}> AS ?node)
-                }
-                UNION
-                {
-                    <${focusUri}> ?predicate ?node .
-                    FILTER(isIRI(?node) && ?predicate != rdf:type)
+            {
+                BIND(<${focusUri}> AS ?node)
+            }
+            UNION
+            {
+                ${sameAsHop}
+                ${graphValuesClause(graphUris, "g")}
+                GRAPH ?g {
+                    ?same ?predicate ?node .
+                    FILTER(isIRI(?node) && ?predicate NOT IN (rdf:type, owl:sameAs))
                     BIND("out" AS ?direction)
                     ${predicateFilter}
                     ${nodeTypeFilter}
                 }
-                UNION
-                {
-                    ?node ?predicate <${focusUri}> .
-                    FILTER(isIRI(?node) && ?predicate != rdf:type)
+            }
+            UNION
+            {
+                ${sameAsHop}
+                ${graphValuesClause(graphUris, "g")}
+                GRAPH ?g {
+                    ?node ?predicate ?same .
+                    FILTER(isIRI(?node) && ?predicate NOT IN (rdf:type, owl:sameAs))
                     BIND("in" AS ?direction)
                     ${predicateFilter}
                     ${nodeTypeFilter}
                 }
-                OPTIONAL { ?node rdfs:label ?label }
-                OPTIONAL { ?node a ?type }
+            }
+            OPTIONAL {
+                ${graphValuesClause(graphUris, "labelG")}
+                GRAPH ?labelG { ?node rdfs:label ?label }
+            }
+            OPTIONAL {
+                ${graphValuesClause(graphUris, "typeG")}
+                GRAPH ?typeG { ?node a ?type }
             }
         }
     `;
