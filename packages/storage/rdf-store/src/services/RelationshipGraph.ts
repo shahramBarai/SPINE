@@ -13,6 +13,7 @@ type RelationshipGraph = {
 };
 type RelationshipGraphFilters = {
     includeNodeTypes?: string[];
+    excludeNodeTypes?: string[];
     includePredicates?: string[];
 };
 
@@ -57,6 +58,21 @@ function nodeTypeIncludeClause(includeNodeTypes?: string[]): string {
                         ?node a ?filterNodeType .
                         BIND(REPLACE(STR(?filterNodeType), "^.*[#/]", "") AS ?filterNodeTypeName)
                         FILTER(?filterNodeTypeName IN (${includeListLiteral(includeNodeTypes)}))
+                    }`;
+}
+
+// Inverse of nodeTypeIncludeClause: rejects ?node if it has an
+// excluded rdf:type (e.g. the bulk "Element" leaf type), via the same
+// FILTER NOT EXISTS reasoning. Never applied to the focus node itself.
+function nodeTypeExcludeClause(excludeNodeTypes?: string[]): string {
+    if (!excludeNodeTypes || excludeNodeTypes.length === 0) {
+        return "";
+    }
+    return `
+                    FILTER NOT EXISTS {
+                        ?node a ?excludedNodeType .
+                        BIND(REPLACE(STR(?excludedNodeType), "^.*[#/]", "") AS ?excludedNodeTypeName)
+                        FILTER(?excludedNodeTypeName IN (${includeListLiteral(excludeNodeTypes)}))
                     }`;
 }
 
@@ -136,7 +152,7 @@ const neighborQueryResultSchema = z.array(
  * @param datasetName The name of the dataset to query.
  * @param graphUris The named graphs to search.
  * @param focusId The node to center the graph on - its short local id (matching get_tree/focusObjectId).
- * @param filters Optional include-only allow-lists (by short local name) for neighbor node types and/or the predicates connecting them. The focus node itself is never filtered out.
+ * @param filters Optional include/exclude allow- and deny-lists (by short local name) for neighbor node types, and an allow-list for the predicates connecting them. The focus node itself is never filtered out.
  * @throws FusekiSparqlError (status 404) if focusId can't be resolved to a node in these graphs, or if the server returns an error status code or there's a network error.
  */
 async function get_relationship_graph(
@@ -148,6 +164,7 @@ async function get_relationship_graph(
     const focusUri = await resolve_focus_uri(datasetName, graphUris, focusId);
     const predicateFilter = predicateIncludeClause(filters?.includePredicates);
     const nodeTypeFilter = nodeTypeIncludeClause(filters?.includeNodeTypes);
+    const nodeTypeExcludeFilter = nodeTypeExcludeClause(filters?.excludeNodeTypes);
     // The sameAs walk and the neighbor lookup are independently-scoped graph
     // choices (see graphValuesClause), so a hop through a Linkset graph can
     // land on a neighbor triple that only exists in a different file's graph.
@@ -173,6 +190,7 @@ async function get_relationship_graph(
                     BIND("out" AS ?direction)
                     ${predicateFilter}
                     ${nodeTypeFilter}
+                    ${nodeTypeExcludeFilter}
                 }
             }
             UNION
@@ -185,6 +203,7 @@ async function get_relationship_graph(
                     BIND("in" AS ?direction)
                     ${predicateFilter}
                     ${nodeTypeFilter}
+                    ${nodeTypeExcludeFilter}
                 }
             }
             OPTIONAL {

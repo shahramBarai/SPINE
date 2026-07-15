@@ -390,6 +390,7 @@ export const digitalTwinRouter = router({
                     .min(1),
                 focusId: z.string(),
                 includeNodeTypes: z.array(z.string()).optional(),
+                excludeNodeTypes: z.array(z.string()).optional(),
                 includePredicates: z.array(z.string()).optional()
             })
         )
@@ -404,6 +405,7 @@ export const digitalTwinRouter = router({
                 input.focusId,
                 {
                     includeNodeTypes: input.includeNodeTypes,
+                    excludeNodeTypes: input.excludeNodeTypes,
                     includePredicates: input.includePredicates
                 }
             ).catch(rethrowMissingDataset);

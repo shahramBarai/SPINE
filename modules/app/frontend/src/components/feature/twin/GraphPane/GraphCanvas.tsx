@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useGraphNodes } from "./hooks/useGraphNodes";
 import { useGraphTypeFilter } from "./hooks/useGraphTypeFilter";
 import {
+    PHYSICS_NODE_LIMIT,
     VIEW_CENTER_X,
     VIEW_CENTER_Y,
     VIEW_HEIGHT,
@@ -19,19 +20,25 @@ import { useDigitalTwin } from "hooks/useDigitalTwin";
 
 function GraphCanvas({
     graphData,
-    centerNodeId
+    centerNodeId,
+    showBulkNodeTypes,
+    onToggleBulkNodeTypes
 }: {
     graphData: GraphData;
     centerNodeId: string | null;
+    showBulkNodeTypes: boolean;
+    onToggleBulkNodeTypes: () => void;
 }) {
     const [physicsEnabled, setPhysicsEnabled] = useState(true);
+    const physicsAvailable = graphData.nodes.length <= PHYSICS_NODE_LIMIT;
+    const effectivePhysicsEnabled = physicsEnabled && physicsAvailable;
 
     const { selectedObjectId, setSelectedObjectId } = useDigitalTwin();
 
     const { nodes, setNodes, draggedNodeIdRef, restoreDefaultLayout } =
         useGraphNodes({
             graphData,
-            physicsEnabled
+            physicsEnabled: effectivePhysicsEnabled
         });
     const viewport = useGraphViewport({
         nodes,
@@ -106,7 +113,8 @@ function GraphCanvas({
                         ? viewport.focusOnNode(selectedObjectId)
                         : viewport.fitToScreen()
                 }
-                physicsEnabled={physicsEnabled}
+                physicsEnabled={effectivePhysicsEnabled}
+                physicsLocked={!physicsAvailable}
                 onTogglePhysics={() => setPhysicsEnabled((prev) => !prev)}
                 onRestoreLayout={restoreDefaultLayout}
                 onResetView={() => viewport.resetView()}
@@ -123,6 +131,8 @@ function GraphCanvas({
                     selectedPredicates={selectedPredicates}
                     onToggleNodeType={toggleNodeType}
                     onTogglePredicate={togglePredicate}
+                    showBulkNodeTypes={showBulkNodeTypes}
+                    onToggleBulkNodeTypes={onToggleBulkNodeTypes}
                     onClose={() => setFilterPanelOpen(false)}
                 />
             )}

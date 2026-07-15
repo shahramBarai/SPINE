@@ -18,6 +18,7 @@ function GraphToolbar({
     onFitToScreen,
     onFocusSelection,
     physicsEnabled,
+    physicsLocked,
     onTogglePhysics,
     onRestoreLayout,
     onResetView,
@@ -29,6 +30,7 @@ function GraphToolbar({
     onFitToScreen: () => void;
     onFocusSelection: () => void;
     physicsEnabled: boolean;
+    physicsLocked: boolean;
     onTogglePhysics: () => void;
     onRestoreLayout: () => void;
     onResetView: () => void;
@@ -85,8 +87,19 @@ function GraphToolbar({
             </button>
             <button
                 onClick={onTogglePhysics}
-                className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10"
-                title={physicsEnabled ? "Pause physics" : "Resume physics"}
+                disabled={physicsLocked}
+                className={cn(
+                    "h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10",
+                    physicsLocked &&
+                        "opacity-40 hover:bg-transparent hover:text-muted-foreground cursor-not-allowed"
+                )}
+                title={
+                    physicsLocked
+                        ? "Physics disabled - too many nodes to simulate smoothly"
+                        : physicsEnabled
+                          ? "Pause physics"
+                          : "Resume physics"
+                }
             >
                 {physicsEnabled ? (
                     <Pause className="h-3.5 w-3.5" />

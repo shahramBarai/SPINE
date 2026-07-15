@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
     AlertTriangle,
     DatabaseX,
@@ -10,6 +10,7 @@ import {
 import { GraphCanvas } from "./GraphCanvas";
 import { GraphLegend } from "./GraphLegend";
 import { SelectionPanel } from "./SelectionPanel";
+import { DEFAULT_EXCLUDED_NODE_TYPES } from "./types/graph";
 import { cn } from "utils/index";
 import { api } from "utils/trpc";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
@@ -54,6 +55,9 @@ function GraphPane({
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const { projectInfo, focusId, ttlFilesHidden } = useDigitalTwin();
+    // Off by default: bulk leaf types (see DEFAULT_EXCLUDED_NODE_TYPES) are
+    // excluded from the query until explicitly opted into (GraphFilterPanel).
+    const [showBulkNodeTypes, setShowBulkNodeTypes] = useState(false);
 
     // Every synced TTL file in the project, regardless of discipline - the
     // relationship graph searches across whichever of these are currently
@@ -82,7 +86,10 @@ function GraphPane({
         {
             projectId: projectInfo.id,
             files: visibleFiles,
-            focusId: focusId
+            focusId: focusId,
+            excludeNodeTypes: showBulkNodeTypes
+                ? undefined
+                : DEFAULT_EXCLUDED_NODE_TYPES
         },
         { enabled: visibleFiles.length > 0 }
     );
@@ -166,7 +173,14 @@ function GraphPane({
                 )}
             </button>
 
-            <GraphCanvas graphData={graphData} centerNodeId={focusId} />
+            <GraphCanvas
+                graphData={graphData}
+                centerNodeId={focusId}
+                showBulkNodeTypes={showBulkNodeTypes}
+                onToggleBulkNodeTypes={() =>
+                    setShowBulkNodeTypes((prev) => !prev)
+                }
+            />
 
             <GraphLegend nodes={graphData.nodes} />
 
