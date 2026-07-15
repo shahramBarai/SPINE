@@ -9,6 +9,7 @@ import {
 import {
     DatasetService,
     BuildingGraphService,
+    RelationshipGraphService,
     FusekiSparqlError
 } from "@spine/storage-rdf-store";
 import { EntityService } from "@spine/storage-platform";
@@ -397,7 +398,7 @@ export const digitalTwinRouter = router({
                 buildTtlGraphUri(file.discipline, file.fileId)
             );
 
-            return await BuildingGraphService.get_relationship_graph(
+            return await RelationshipGraphService.get_relationship_graph(
                 input.projectId,
                 graphUris,
                 input.focusId,

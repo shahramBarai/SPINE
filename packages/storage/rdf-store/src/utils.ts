@@ -44,4 +44,20 @@ function uri_to_id(uri: string): string {
     return uri;
 }
 
-export { base64Encode, uri_to_id };
+/**
+ * Escapes a string for embedding as a SPARQL string literal, including the
+ * surrounding double quotes.
+ *
+ * @param value The raw string to escape.
+ * @returns The value formatted as a quoted SPARQL string literal.
+ */
+function sparqlStringLiteral(value: string): string {
+    const escaped = value
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r");
+    return `"${escaped}"`;
+}
+
+export { base64Encode, uri_to_id, sparqlStringLiteral };
