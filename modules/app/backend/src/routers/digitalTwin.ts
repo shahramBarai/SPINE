@@ -108,10 +108,13 @@ export const digitalTwinRouter = router({
     }),
 
     // A single project by id, plus rootId - the default relationship-graph
-    // focus, resolved project-wide across every synced graph (see
-    // BuildingGraphService.get_root_id). Lets the digital-twin page resolve
-    // the active project directly instead of fetching the whole
-    // visible-projects list and filtering by id.
+    // focus. Each discipline keeps its own independent site/building/storey
+    // skeleton (stitched together by owl:sameAs links in Linkset graphs), so
+    // get_root_id is steered toward the architectural discipline's graphs
+    // first for a stable default, falling back to any synced graph if ARK
+    // isn't synced yet (see BuildingGraphService.get_root_id). Lets the
+    // digital-twin page resolve the active project directly instead of
+    // fetching the whole visible-projects list and filtering by id.
     getProject: publicProcedure
         .input(z.object({ projectId: z.string() }))
         .query(async ({ input }) => {
@@ -122,8 +125,13 @@ export const digitalTwinRouter = router({
                     message: `Project not found: ${input.projectId}`
                 });
             }
+
+            // Empty fileId trims buildTtlGraphUri's output down to the
+            // "urn:spine:disc-ark:" prefix shared by every ARK graph.
+            const arkGraphPrefix = buildTtlGraphUri("disc-ark", "");
             const rootId = await BuildingGraphService.get_root_id(
-                input.projectId
+                input.projectId,
+                arkGraphPrefix
             ).catch(rethrowMissingDataset);
 
             return { ...project, rootId };

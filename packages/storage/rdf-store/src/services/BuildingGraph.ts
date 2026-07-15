@@ -12,6 +12,15 @@ interface IfcNode {
     children: IfcNode[];
 }
 
+function sparqlStringLiteral(value: string): string {
+    const escaped = value
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r");
+    return `"${escaped}"`;
+}
+
 /* ------------------------------------------------------- */
 /* ------ Service Functions (use CRUD style naming) ------ */
 /* ------------------------------------------------------- */
@@ -41,12 +50,15 @@ const treeQueryResultSchema = z.array(
     })
 );
 
-// Shared by get_tree (one named graph, `<uri>`) and get_root_id (every named
-// graph in the dataset, `?g`) - same shape of query and tree assembly,
-// differing only in how much of the dataset the GRAPH clause covers.
+// Shared by get_tree (one named graph, `<uri>`), get_root_id's dataset-wide
+// scan (`?g`, optionally narrowed further by extraGraphFilter), and its
+// preferred-discipline scan (`?g` + a STRSTARTS filter) - same shape of
+// query and tree assembly, differing only in how much of the dataset the
+// GRAPH clause covers.
 async function queryTreeRoots(
     datasetName: string,
-    graphPattern: string
+    graphPattern: string,
+    extraGraphFilter: string = ""
 ): Promise<IfcNode[]> {
     const query = `
             PREFIX bot: <https://w3id.org/bot#>
@@ -62,6 +74,7 @@ async function queryTreeRoots(
                         ?parent (bot:hasBuilding | bot:hasStorey | bot:hasSpace | bot:containsZone) ?node .
                     }
                 }
+                ${extraGraphFilter}
             }
         `;
 
@@ -127,16 +140,39 @@ async function get_tree(
 }
 
 /**
- * Resolves the project's default relationship-graph focus: the id of the
- * first root node (a bot:Site/Building/Storey/Space with no parent) found
- * across every named graph in the dataset, i.e. project-wide rather than
- * scoped to one synced file.
+ * Resolves the project's default relationship-graph focus: the id of a root
+ * node (a bot:Site/Building/Storey/Space with no parent) in the dataset.
+ *
+ * Each discipline keeps its own independent copy of the site/building/storey
+ * skeleton (different UUIDs per discipline, stitched together by owl:sameAs
+ * links in Linkset graphs) - so picking a root from an unbound scan over
+ * every graph is arbitrary whenever more than one discipline is synced. To
+ * keep the default focus stable, graphs whose URI starts with
+ * preferredGraphPrefix (e.g. the architectural discipline's graphs) are
+ * tried first; only if none of those have data yet does this fall back to
+ * any graph in the dataset.
  *
  * @param datasetName The name of the dataset to query.
+ * @param preferredGraphPrefix Prefix (e.g. from buildTtlGraphUri(discipline, "")) identifying the graphs to prefer a root from.
  * @returns The short local id of a root node.
  * @throws FusekiSparqlError (status 404) if the dataset has no synced graph data yet, or if the server returns an error status code or there's a network error.
  */
-async function get_root_id(datasetName: string): Promise<string> {
+async function get_root_id(
+    datasetName: string,
+    preferredGraphPrefix?: string
+): Promise<string> {
+    if (preferredGraphPrefix) {
+        const preferredRoots = await queryTreeRoots(
+            datasetName,
+            "?g",
+            `FILTER(STRSTARTS(STR(?g), ${sparqlStringLiteral(preferredGraphPrefix)}))`
+        );
+        const preferredRootId = preferredRoots[0]?.id;
+        if (preferredRootId) {
+            return preferredRootId;
+        }
+    }
+
     const roots = await queryTreeRoots(datasetName, "?g");
     const rootId = roots[0]?.id;
 
@@ -164,15 +200,6 @@ type RelationshipGraphFilters = {
     includeNodeTypes?: string[];
     includePredicates?: string[];
 };
-
-function sparqlStringLiteral(value: string): string {
-    const escaped = value
-        .replace(/\\/g, "\\\\")
-        .replace(/"/g, '\\"')
-        .replace(/\n/g, "\\n")
-        .replace(/\r/g, "\\r");
-    return `"${escaped}"`;
-}
 
 function includeListLiteral(values: string[]): string {
     return values.map(sparqlStringLiteral).join(", ");
