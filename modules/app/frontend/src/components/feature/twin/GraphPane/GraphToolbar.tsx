@@ -7,7 +7,6 @@ import {
     RotateCcw,
     Search
 } from "lucide-react";
-import { useEffect, useState } from "react";
 import { cn } from "utils/index";
 import { useGraphSearch } from "./hooks/useGraphSearch";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
@@ -38,22 +37,12 @@ function GraphToolbar({
     filterActive: boolean;
     className?: string;
 }) {
-    const [searchText, setSearchText] = useState("");
-    const { setSelectedObjectIds } = useDigitalTwin();
+    const { searchText, setSearchText } = useDigitalTwin();
 
-    // Debounced against searchText, so typing doesn't thrash selectedObjectIds
-    // on every keystroke - only once the user pauses. `nodes` here is the
-    // stable fetched graph data (not the physics-updated positions), so this
-    // effect only re-fires when the match itself changes.
-    const searchMatchId = useGraphSearch({ nodes, searchText });
-    useEffect(() => {
-        if (!searchMatchId) {
-            setSelectedObjectIds([]);
-            return;
-        }
-        const match = nodes.find((node) => node.id === searchMatchId);
-        setSelectedObjectIds([searchMatchId, ...(match?.sameAsIds ?? [])]);
-    }, [searchMatchId, nodes, setSelectedObjectIds]);
+    // `nodes` here is the stable fetched graph data (not the physics-updated
+    // positions), and useGraphSearch itself drives the shared selection from
+    // the debounced match, so no separate effect is needed here.
+    useGraphSearch({ nodes });
 
     const handleResetView = () => {
         onResetView();

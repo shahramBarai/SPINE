@@ -12,7 +12,7 @@ function SelectionPanel({
     containerRef: RefObject<HTMLDivElement | null>;
     nodes: GraphNode[];
 }) {
-    const { selectedObjectIds, setSelectedObjectIds } = useDigitalTwin();
+    const { selectedObjectIds, clearSelection } = useDigitalTwin();
     const node = nodes.find((n) => selectedObjectIds.includes(n.id)) ?? null;
 
     const [position, setPosition] = useState<{ x: number; y: number }>({
@@ -114,7 +114,7 @@ function SelectionPanel({
                             event.stopPropagation();
                             draggingRef.current = false;
                             dragOffsetRef.current = null;
-                            setSelectedObjectIds([]);
+                            clearSelection();
                         }}
                     >
                         <X className="h-3.5 w-3.5" />

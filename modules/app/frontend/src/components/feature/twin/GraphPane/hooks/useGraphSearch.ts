@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useDigitalTwin } from "hooks/useDigitalTwin";
 import { type GraphNode } from "../types/graph";
 
 const SEARCH_DEBOUNCE_MS = 500;
@@ -22,17 +23,18 @@ const searchTokens = (query: string): string[] =>
             return withoutPrefix ? [token, withoutPrefix] : [token];
         });
 
-// Debounces the raw search text, then returns the id of the first node
-// whose id or label matches every search token (or null if the query is
-// empty or nothing matches). Debouncing means we don't re-highlight on
-// every keystroke while the user is still typing.
+// Debounces the shared search text (see useDigitalTwin), matches it against
+// this window's own node list, and drives the shared selection from the
+// result - so any window with a node/label list can wire up the same search
+// box behavior. Returns the matched node id (or null) for callers that also
+// want to show match state locally. Debouncing means we don't re-highlight
+// on every keystroke while the user is still typing.
 function useGraphSearch({
-    nodes,
-    searchText
+    nodes
 }: {
-    nodes: Pick<GraphNode, "id" | "label">[];
-    searchText: string;
+    nodes: Pick<GraphNode, "id" | "label" | "sameAsIds">[];
 }): string | null {
+    const { searchText, selectObject, clearSelection } = useDigitalTwin();
     const [debouncedText, setDebouncedText] = useState(searchText);
 
     useEffect(() => {
@@ -43,7 +45,7 @@ function useGraphSearch({
         return () => clearTimeout(timeout);
     }, [searchText]);
 
-    return useMemo(() => {
+    const matchId = useMemo(() => {
         const tokens = searchTokens(debouncedText);
         if (!tokens.length) {
             return null;
@@ -57,6 +59,17 @@ function useGraphSearch({
         const match = nodes.find((node) => matchesAllTokens([node.label]));
         return match ? match.id : null;
     }, [nodes, debouncedText]);
+
+    useEffect(() => {
+        if (!matchId) {
+            clearSelection();
+            return;
+        }
+        const match = nodes.find((node) => node.id === matchId);
+        selectObject(matchId, match?.sameAsIds);
+    }, [matchId, nodes, selectObject, clearSelection]);
+
+    return matchId;
 }
 
 export { useGraphSearch };

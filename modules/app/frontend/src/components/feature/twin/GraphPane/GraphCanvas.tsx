@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 
 import { useGraphNodes } from "./hooks/useGraphNodes";
-import { useGraphTypeFilter } from "./hooks/useGraphTypeFilter";
 import {
     PHYSICS_NODE_LIMIT,
     VIEW_CENTER_X,
@@ -33,7 +32,15 @@ function GraphCanvas({
     const physicsAvailable = graphData.nodes.length <= PHYSICS_NODE_LIMIT;
     const effectivePhysicsEnabled = physicsEnabled && physicsAvailable;
 
-    const { selectedObjectIds, setSelectedObjectIds } = useDigitalTwin();
+    const {
+        selectedObjectIds,
+        selectObject,
+        clearSelection,
+        selectedNodeTypes,
+        setSelectedNodeTypes,
+        selectedPredicates,
+        setSelectedPredicates
+    } = useDigitalTwin();
 
     const { nodes, setNodes, draggedNodeIdRef, restoreDefaultLayout } =
         useGraphNodes({
@@ -44,7 +51,7 @@ function GraphCanvas({
         nodes,
         setNodes,
         draggedNodeIdRef,
-        onBackgroundClick: () => setSelectedObjectIds([])
+        onBackgroundClick: clearSelection
     });
 
     const nodeTypeUniverse = useMemo(
@@ -57,12 +64,6 @@ function GraphCanvas({
     );
 
     const [filterPanelOpen, setFilterPanelOpen] = useState(false);
-    const [selectedNodeTypes, setSelectedNodeTypes] = useState<Set<
-        string
-    > | null>(null);
-    const [selectedPredicates, setSelectedPredicates] = useState<Set<
-        string
-    > | null>(null);
 
     // null (or a Set covering the whole universe) means "unrestricted" -
     // toggling one off materializes a concrete Set of everything else, and
@@ -93,12 +94,45 @@ function GraphCanvas({
     const filterActive =
         selectedNodeTypes !== null || selectedPredicates !== null;
 
-    const { visibleNodeIds, visibleEdgeKeys } = useGraphTypeFilter({
-        graphData,
-        centerNodeId,
-        selectedNodeTypes,
-        selectedPredicates
-    });
+    // Turns the always-loaded, unfiltered graphData plus the shared type/
+    // predicate selections into the set of nodes/edges that should actually
+    // render. Deliberately client-side only (no re-querying Fuseki per
+    // checkbox click) - the backend's includeNodeTypes/includePredicates
+    // params exist for callers who already know what they want, not for
+    // driving this interactive UI.
+    const { visibleNodeIds, visibleEdgeKeys } = useMemo(() => {
+        // An empty selection means "nothing unchecked yet", not "hide
+        // everything" - same convention as the backend's undefined/[].
+        const nodeTypeOk = (id: string, type: string) =>
+            id === centerNodeId ||
+            !selectedNodeTypes ||
+            selectedNodeTypes.size === 0 ||
+            selectedNodeTypes.has(type);
+
+        const visibleNodeIds = new Set(
+            graphData.nodes
+                .filter((node) => nodeTypeOk(node.id, node.type))
+                .map((node) => node.id)
+        );
+
+        const visibleEdgeKeys = new Set(
+            graphData.edges
+                .filter((edge) => {
+                    const predicateOk =
+                        !selectedPredicates ||
+                        selectedPredicates.size === 0 ||
+                        selectedPredicates.has(edge.label);
+                    return (
+                        predicateOk &&
+                        visibleNodeIds.has(edge.from_id) &&
+                        visibleNodeIds.has(edge.to_id)
+                    );
+                })
+                .map((edge) => `${edge.from_id}|${edge.label}|${edge.to_id}`)
+        );
+
+        return { visibleNodeIds, visibleEdgeKeys };
+    }, [graphData, centerNodeId, selectedNodeTypes, selectedPredicates]);
 
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
@@ -242,10 +276,7 @@ function GraphCanvas({
                                 key={node.id}
                                 className="cursor-pointer"
                                 onClick={() =>
-                                    setSelectedObjectIds([
-                                        node.id,
-                                        ...node.sameAsIds
-                                    ])
+                                    selectObject(node.id, node.sameAsIds)
                                 }
                                 onPointerDown={viewport.onNodePointerDown(
                                     node.id
