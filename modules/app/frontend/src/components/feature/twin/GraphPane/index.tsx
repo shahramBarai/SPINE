@@ -85,7 +85,6 @@ function GraphPane({
     } = api.digitalTwin.getRelationshipGraph.useQuery(
         {
             projectId: projectInfo.id,
-            files: visibleFiles,
             focusId: focusId,
             excludeNodeTypes: showBulkNodeTypes
                 ? undefined
@@ -184,7 +183,10 @@ function GraphPane({
 
             <GraphLegend nodes={graphData.nodes} />
 
-            <SelectionPanel containerRef={containerRef} nodes={graphData.nodes} />
+            <SelectionPanel
+                containerRef={containerRef}
+                nodes={graphData.nodes}
+            />
         </div>
     );
 }

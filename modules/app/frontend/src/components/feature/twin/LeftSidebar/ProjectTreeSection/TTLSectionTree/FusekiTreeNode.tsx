@@ -19,9 +19,9 @@ function FusekiTreeNode({
     depth: number;
 }) {
     const [expanded, setExpanded] = useState<boolean>(depth < 1);
-    const { selectedObjectId, setSelectedObjectId } = useDigitalTwin();
+    const { selectedObjectIds, setSelectedObjectIds } = useDigitalTwin();
     const hasChildren = node.children.length > 0;
-    const isSelected = selectedObjectId === node.id;
+    const isSelected = selectedObjectIds.includes(node.id);
 
     return (
         <div>
@@ -57,7 +57,7 @@ function FusekiTreeNode({
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedObjectId(node.id);
+                        setSelectedObjectIds([node.id]);
                     }}
                     className="flex-1 flex items-center gap-1 min-w-0 px-1 py-1 text-left text-[10px] font-mono hover:cursor-pointer"
                 >

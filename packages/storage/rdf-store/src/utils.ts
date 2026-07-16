@@ -60,4 +60,18 @@ function sparqlStringLiteral(value: string): string {
     return `"${escaped}"`;
 }
 
-export { base64Encode, uri_to_id, sparqlStringLiteral };
+/**
+ * Restricts a graph variable to exactly the given named graphs, so
+ * `GRAPH ?varName { ... }` behaves like a UNION across them. Pass distinct
+ * varNames when a single query needs two independently-chosen graphs.
+ *
+ * @param graphUris The named graphs to restrict the variable to.
+ * @param varName The SPARQL variable name to bind (without the leading `?`).
+ * @returns A `VALUES ?varName { ... }` clause.
+ */
+function graphValuesClause(graphUris: string[], varName: string = "g"): string {
+    const uris = graphUris.map((uri) => `<${uri}>`).join(" ");
+    return `VALUES ?${varName} { ${uris} }`;
+}
+
+export { base64Encode, uri_to_id, sparqlStringLiteral, graphValuesClause };

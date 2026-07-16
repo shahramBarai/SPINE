@@ -33,7 +33,7 @@ function GraphCanvas({
     const physicsAvailable = graphData.nodes.length <= PHYSICS_NODE_LIMIT;
     const effectivePhysicsEnabled = physicsEnabled && physicsAvailable;
 
-    const { selectedObjectId, setSelectedObjectId } = useDigitalTwin();
+    const { selectedObjectIds, setSelectedObjectIds } = useDigitalTwin();
 
     const { nodes, setNodes, draggedNodeIdRef, restoreDefaultLayout } =
         useGraphNodes({
@@ -44,7 +44,7 @@ function GraphCanvas({
         nodes,
         setNodes,
         draggedNodeIdRef,
-        onBackgroundClick: () => setSelectedObjectId(null)
+        onBackgroundClick: () => setSelectedObjectIds([])
     });
 
     const nodeTypeUniverse = useMemo(
@@ -106,11 +106,11 @@ function GraphCanvas({
         <div className="absolute inset-0 grid-bg">
             <GraphToolbar
                 className="absolute top-12 left-3 z-20"
-                nodes={nodes}
+                nodes={graphData.nodes}
                 onFitToScreen={() => viewport.fitToScreen()}
                 onFocusSelection={() =>
-                    selectedObjectId
-                        ? viewport.focusOnNode(selectedObjectId)
+                    selectedObjectIds[0]
+                        ? viewport.focusOnNode(selectedObjectIds[0])
                         : viewport.fitToScreen()
                 }
                 physicsEnabled={effectivePhysicsEnabled}
@@ -164,10 +164,10 @@ function GraphCanvas({
                         }
 
                         const selected =
-                            selectedObjectId === null
+                            selectedObjectIds.length === 0
                                 ? null
-                                : a.id === selectedObjectId ||
-                                  b.id === selectedObjectId;
+                                : selectedObjectIds.includes(a.id) ||
+                                  selectedObjectIds.includes(b.id);
 
                         const key = edgeKey(
                             i,
@@ -232,16 +232,21 @@ function GraphCanvas({
                         }
 
                         const selected =
-                            selectedObjectId === null
+                            selectedObjectIds.length === 0
                                 ? null
-                                : node.id === selectedObjectId;
+                                : selectedObjectIds.includes(node.id);
                         const { fill, stroke } = colorForNodeType(node.type);
 
                         return (
                             <g
                                 key={node.id}
                                 className="cursor-pointer"
-                                onClick={() => setSelectedObjectId(node.id)}
+                                onClick={() =>
+                                    setSelectedObjectIds([
+                                        node.id,
+                                        ...node.sameAsIds
+                                    ])
+                                }
                                 onPointerDown={viewport.onNodePointerDown(
                                     node.id
                                 )}

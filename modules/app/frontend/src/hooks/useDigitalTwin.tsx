@@ -15,8 +15,8 @@ type ProjectInfo = {
 
 type DigitalTwinContextValue = {
     projectInfo: ProjectInfo;
-    selectedObjectId: string | null;
-    setSelectedObjectId: Dispatch<SetStateAction<string | null>>;
+    selectedObjectIds: string[];
+    setSelectedObjectIds: Dispatch<SetStateAction<string[]>>;
     focusId: string;
     setFocusId: Dispatch<SetStateAction<string>>;
     ttlFilesHidden: string[];
@@ -36,23 +36,21 @@ export function DigitalTwinProvider({
     focusId: string;
     children: ReactNode;
 }) {
-    const [selectedObjectId, setSelectedObjectId] = useState<string | null>(
-        null
-    );
+    const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
     const [focusId, setFocusId] = useState<string>(initialFocusId);
     const [ttlFilesHidden, setTtlFilesHidden] = useState<string[]>([]);
 
     const value = useMemo<DigitalTwinContextValue>(
         () => ({
             projectInfo,
-            selectedObjectId,
-            setSelectedObjectId,
+            selectedObjectIds,
+            setSelectedObjectIds,
             focusId,
             setFocusId,
             ttlFilesHidden,
             setTtlFilesHidden
         }),
-        [projectInfo, selectedObjectId, focusId, ttlFilesHidden]
+        [projectInfo, selectedObjectIds, focusId, ttlFilesHidden]
     );
 
     return (

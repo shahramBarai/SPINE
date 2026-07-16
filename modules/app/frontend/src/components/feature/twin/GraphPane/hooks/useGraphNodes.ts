@@ -41,7 +41,8 @@ function useGraphNodes({
                     return {
                         ...existing,
                         label: rawNode.label,
-                        type: rawNode.type
+                        type: rawNode.type,
+                        sameAsIds: rawNode.sameAsIds
                     };
                 }
 
@@ -50,6 +51,7 @@ function useGraphNodes({
                     id: rawNode.id,
                     label: rawNode.label,
                     type: rawNode.type,
+                    sameAsIds: rawNode.sameAsIds,
                     x: position?.x ?? VIEW_CENTER_X,
                     y: position?.y ?? VIEW_CENTER_Y,
                     vx: 0,

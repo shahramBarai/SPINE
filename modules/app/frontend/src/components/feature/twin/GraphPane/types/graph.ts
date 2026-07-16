@@ -11,6 +11,7 @@ export type NodeState = {
     id: string;
     label: string;
     type: string;
+    sameAsIds: string[];
     x: number;
     y: number;
     vx: number;

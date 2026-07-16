@@ -179,7 +179,7 @@ export const digitalTwinRouter = router({
             })
         )
         .query(async ({ input }): Promise<FileInfo[]> => {
-            const bucketName: BUCKET_NAMES = "project-files"; // Replace with your true runtime BUCKET_NAMES key
+            const bucketName: BUCKET_NAMES = "project-files";
 
             const filesInfo = await BucketService.listFiles({
                 bucketName,
@@ -377,17 +377,6 @@ export const digitalTwinRouter = router({
         .input(
             z.object({
                 projectId: z.string(),
-                // Every graph the relationship search should span - lets
-                // links that live in one file's graph (e.g. the "Linkset"
-                // discipline) connect nodes from other visible files.
-                files: z
-                    .array(
-                        z.object({
-                            discipline: z.string(),
-                            fileId: z.string()
-                        })
-                    )
-                    .min(1),
                 focusId: z.string(),
                 includeNodeTypes: z.array(z.string()).optional(),
                 excludeNodeTypes: z.array(z.string()).optional(),
@@ -395,9 +384,10 @@ export const digitalTwinRouter = router({
             })
         )
         .query(async ({ input }) => {
-            const graphUris = input.files.map((file) =>
-                buildTtlGraphUri(file.discipline, file.fileId)
+            const graphs = await DatasetService.read_list_graphs(
+                input.projectId
             );
+            const graphUris = graphs.map((g) => g.uri);
 
             return await RelationshipGraphService.get_relationship_graph(
                 input.projectId,

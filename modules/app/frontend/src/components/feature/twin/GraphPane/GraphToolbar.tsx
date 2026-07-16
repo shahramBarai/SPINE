@@ -26,7 +26,7 @@ function GraphToolbar({
     filterActive,
     className
 }: {
-    nodes: Pick<GraphNode, "id" | "label">[];
+    nodes: Pick<GraphNode, "id" | "label" | "sameAsIds">[];
     onFitToScreen: () => void;
     onFocusSelection: () => void;
     physicsEnabled: boolean;
@@ -39,14 +39,21 @@ function GraphToolbar({
     className?: string;
 }) {
     const [searchText, setSearchText] = useState("");
-    const { setSelectedObjectId } = useDigitalTwin();
+    const { setSelectedObjectIds } = useDigitalTwin();
 
-    // Debounced against searchText, so typing doesn't thrash selectedObjectId
-    // on every keystroke - only once the user pauses.
+    // Debounced against searchText, so typing doesn't thrash selectedObjectIds
+    // on every keystroke - only once the user pauses. `nodes` here is the
+    // stable fetched graph data (not the physics-updated positions), so this
+    // effect only re-fires when the match itself changes.
     const searchMatchId = useGraphSearch({ nodes, searchText });
     useEffect(() => {
-        setSelectedObjectId(searchMatchId);
-    }, [searchMatchId, setSelectedObjectId]);
+        if (!searchMatchId) {
+            setSelectedObjectIds([]);
+            return;
+        }
+        const match = nodes.find((node) => node.id === searchMatchId);
+        setSelectedObjectIds([searchMatchId, ...(match?.sameAsIds ?? [])]);
+    }, [searchMatchId, nodes, setSelectedObjectIds]);
 
     const handleResetView = () => {
         onResetView();

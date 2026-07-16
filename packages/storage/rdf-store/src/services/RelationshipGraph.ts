@@ -3,7 +3,12 @@
 import z from "zod";
 import { fusekiClient } from "../db/client";
 import { FusekiSparqlError } from "../db/fuseki";
-import { uri_to_id, sparqlStringLiteral } from "../utils";
+import {
+    uri_to_id,
+    sparqlStringLiteral,
+    graphValuesClause
+} from "../utils";
+import { findSameAsPairs } from "./sameAs";
 
 type RelationshipNode = {
     id: string;
@@ -24,16 +29,6 @@ type RelationshipGraphFilters = {
 
 function includeListLiteral(values: string[]): string {
     return values.map(sparqlStringLiteral).join(", ");
-}
-
-// Restricts a graph variable to exactly the given named graphs, so
-// `GRAPH ?varName { ... }` behaves like a UNION across them.
-//
-// Pass distinct varNames when a query needs two independently-chosen
-// graphs (see get_relationship_graph's sameAs traversal).
-function graphValuesClause(graphUris: string[], varName: string = "g"): string {
-    const uris = graphUris.map((uri) => `<${uri}>`).join(" ");
-    return `VALUES ?${varName} { ${uris} }`;
 }
 
 // Filters a triple's own predicate by short local name.
@@ -132,45 +127,6 @@ async function resolve_focus_uri(
         throw new FusekiSparqlError(`Focus node not found: ${focusId}`, 404);
     }
     return resolved;
-}
-
-const sameAsPairQueryResultSchema = z.array(
-    z.object({
-        a: z.object({ type: z.string(), value: z.string() }),
-        b: z.object({ type: z.string(), value: z.string() })
-    })
-);
-
-// Finds direct owl:sameAs links (either direction) among the given node
-// URIs, searched across every visible graph - used to cluster nodes that
-// represent the "same" real-world entity across different disciplines'
-// graphs (see mergeSameAsEquivalentNodes).
-async function findSameAsPairs(
-    datasetName: string,
-    graphUris: string[],
-    nodeUris: string[]
-): Promise<{ a: string; b: string }[]> {
-    if (nodeUris.length === 0) {
-        return [];
-    }
-
-    const query = `
-        PREFIX owl: <http://www.w3.org/2002/07/owl#>
-
-        SELECT ?a ?b WHERE {
-            VALUES ?a { ${nodeUris.map((uri) => `<${uri}>`).join(" ")} }
-            ${graphValuesClause(graphUris, "sameG")}
-            GRAPH ?sameG { ?a (owl:sameAs|^owl:sameAs) ?b }
-        }
-    `;
-
-    const rows = await fusekiClient.sparql_query(
-        datasetName,
-        query,
-        sameAsPairQueryResultSchema
-    );
-
-    return rows.map((row) => ({ a: row.a.value, b: row.b.value }));
 }
 
 // Collapses neighbor nodes that are owl:sameAs-equivalent to each other
