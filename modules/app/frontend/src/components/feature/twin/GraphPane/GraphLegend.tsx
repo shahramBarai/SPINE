@@ -1,10 +1,10 @@
 import { type GraphNode } from "./types/graph";
-import { colorForNodeType } from "./utils/nodeTypeColors";
+import { colorForType } from "../utils/typeColors";
 import { cn } from "utils/index";
 
 // Shows the distinct node types actually present on the canvas, each with
 // the same fill color as its nodes - so it doubles as a key for
-// colorForNodeType's groups.
+// colorForType's groups.
 function GraphLegend({ nodes }: { nodes: GraphNode[] }) {
     const types = Array.from(new Set(nodes.map((n) => n.type))).sort();
 
@@ -29,7 +29,7 @@ function GraphLegend({ nodes }: { nodes: GraphNode[] }) {
                             cx={4}
                             cy={4}
                             r={4}
-                            className={colorForNodeType(type).fill}
+                            className={colorForType(type).fill}
                         />
                     </svg>
                     {type}

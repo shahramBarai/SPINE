@@ -10,7 +10,7 @@ import {
     type GraphData
 } from "./types/graph";
 import { curvedEdgePath, edgeKey } from "./utils/graphLayout";
-import { colorForNodeType } from "./utils/nodeTypeColors";
+import { colorForType } from "../utils/typeColors";
 import { useGraphViewport } from "./hooks/useGraphViewport";
 import { GraphToolbar } from "./GraphToolbar";
 import { GraphFilterPanel } from "./GraphFilterPanel";
@@ -269,7 +269,7 @@ function GraphCanvas({
                             selectedObjectIds.length === 0
                                 ? null
                                 : selectedObjectIds.includes(node.id);
-                        const { fill, stroke } = colorForNodeType(node.type);
+                        const { fill, stroke } = colorForType(node.type);
 
                         return (
                             <g

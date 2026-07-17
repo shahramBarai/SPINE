@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Box, Database, Loader2 } from "lucide-react";
+import { Box, Loader2 } from "lucide-react";
 import { type ImperativePanelHandle } from "react-resizable-panels";
 import { LeftSidebar } from "components/feature/twin/LeftSidebar";
 import { TopNav } from "components/feature/twin/TopNav/index";
 import { PlaceholderPane } from "components/feature/twin/PlaceholderPane";
 import { GraphPane } from "components/feature/twin/GraphPane";
+import { SemanticSearchPanel } from "components/feature/twin/SemanticSearchPanel";
 import {
     ResizableHandle,
     ResizablePanel,
@@ -196,9 +197,7 @@ const DigitalTwinLayout = () => {
                                 collapsedSize={6}
                                 className="min-h-0"
                             >
-                                <PlaceholderPane
-                                    icon={Database}
-                                    label="Semantic Data"
+                                <SemanticSearchPanel
                                     maximized={semanticMaximized}
                                     onToggleMaximize={() =>
                                         setMaximized((m) =>

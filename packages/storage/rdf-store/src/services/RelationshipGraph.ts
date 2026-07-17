@@ -6,7 +6,8 @@ import { FusekiSparqlError } from "../db/fuseki";
 import {
     uri_to_id,
     sparqlStringLiteral,
-    graphValuesClause
+    graphValuesClause,
+    uri_to_type
 } from "../utils";
 import { findSameAsPairs } from "./sameAs";
 
@@ -342,7 +343,9 @@ async function get_relationship_graph(
         nodesById.set(id, {
             id,
             label: row.label?.value ?? existing?.label ?? id,
-            type: row.type ? uri_to_id(row.type.value) : (existing?.type ?? ""),
+            type: row.type
+                ? uri_to_type(row.type.value)
+                : (existing?.type ?? "Unkown"),
             sameAsIds: []
         });
 

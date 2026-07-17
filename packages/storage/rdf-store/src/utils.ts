@@ -45,6 +45,19 @@ function uri_to_id(uri: string): string {
 }
 
 /**
+ * Converts a type URI to a simplified type.
+ *
+ * @param uri The URI string to convert.
+ * @returns A simplified type extracted from the URI.
+ */
+function uri_to_type(uri: string): string {
+    const type = uri.split("/").pop();
+    if (type === undefined) return uri;
+
+    return type.replace("#", ":");
+}
+
+/**
  * Escapes a string for embedding as a SPARQL string literal, including the
  * surrounding double quotes.
  *
@@ -74,4 +87,10 @@ function graphValuesClause(graphUris: string[], varName: string = "g"): string {
     return `VALUES ?${varName} { ${uris} }`;
 }
 
-export { base64Encode, uri_to_id, sparqlStringLiteral, graphValuesClause };
+export {
+    base64Encode,
+    uri_to_id,
+    uri_to_type,
+    sparqlStringLiteral,
+    graphValuesClause
+};

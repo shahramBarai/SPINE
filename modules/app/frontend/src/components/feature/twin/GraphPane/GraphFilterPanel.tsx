@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { colorForNodeType } from "./utils/nodeTypeColors";
+import { colorForType } from "../utils/typeColors";
 import { DEFAULT_EXCLUDED_NODE_TYPES } from "./types/graph";
 import { cn } from "utils/index";
 
@@ -100,7 +100,7 @@ function GraphFilterPanel({
                                             cx={4}
                                             cy={4}
                                             r={4}
-                                            className={colorForNodeType(type).fill}
+                                            className={colorForType(type).fill}
                                         />
                                     </svg>
                                     {type}
