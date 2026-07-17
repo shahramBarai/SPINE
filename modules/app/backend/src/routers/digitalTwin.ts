@@ -44,12 +44,6 @@ interface FileInfo {
     lastModified?: Date;
 }
 
-// TODO: This need to be moved from this file to a more appropriate place (e.g. service layer)
-interface FloorInfo {
-    key: string;
-    label: string;
-}
-
 async function readStreamToText(stream: Readable): Promise<string> {
     const chunks: Buffer[] = [];
 
@@ -63,38 +57,6 @@ async function readStreamToText(stream: Readable): Promise<string> {
     }
 
     return Buffer.concat(chunks).toString("utf-8");
-}
-
-function parseIfcFloorOptions(ifcText: string): FloorInfo[] {
-    const storeyRegex = /IFCBUILDINGSTOREY\(([^;]*)\);/gi;
-    const quoteRegex = /'([^']*)'/g;
-    const uniqueByLabel = new Set<string>();
-    const floors: FloorInfo[] = [];
-    let match: RegExpExecArray | null = storeyRegex.exec(ifcText);
-
-    while (match) {
-        const rawArgs = match[1] || "";
-        const quotedValues = Array.from(rawArgs.matchAll(quoteRegex)).map(
-            (value) => value[1] || ""
-        );
-
-        const candidateName =
-            quotedValues.find((value) => value && value !== "$") || "";
-
-        const label = candidateName.trim();
-
-        if (label && !uniqueByLabel.has(label)) {
-            uniqueByLabel.add(label);
-            floors.push({
-                key: label.toLowerCase().replace(/\s+/g, "-"),
-                label
-            });
-        }
-
-        match = storeyRegex.exec(ifcText);
-    }
-
-    return floors.sort((left, right) => left.label.localeCompare(right.label));
 }
 
 // -----------------------------------------------------------------------------
@@ -172,8 +134,6 @@ export const digitalTwinRouter = router({
         .input(
             z.object({
                 projectId: z.string(),
-                // Omit to list files across every discipline in the project
-                // (e.g. GraphPane gathering all synced TTL graphs at once).
                 discipline: z.string().optional(),
                 fileTypes: z.array(z.enum(["ifc", "ttl", "pdf"]))
             })
@@ -293,33 +253,6 @@ export const digitalTwinRouter = router({
             const objectName = `${input.projectId}/${input.discipline}/${input.fileId}_${input.fileName}`;
 
             await BucketService.deleteFile(bucketName, objectName);
-        }),
-
-    getIfcFloorOptions: publicProcedure
-        .input(
-            z.object({
-                projectId: z.string(),
-                discipline: z.string(),
-                fileId: z.string(),
-                fileName: z.string()
-            })
-        )
-        .query(async ({ input }): Promise<FloorInfo[]> => {
-            const bucketName: BUCKET_NAMES = "project-files";
-            const objectName = `${input.projectId}/${input.discipline}/${input.fileId}_${input.fileName}`;
-
-            const fileStream = await BucketService.readFile(
-                bucketName,
-                objectName
-            );
-
-            if (!fileStream) {
-                return [];
-            }
-
-            const ifcText = await readStreamToText(fileStream);
-
-            return parseIfcFloorOptions(ifcText);
         }),
 
     syncTtlToFuseki: publicProcedure
