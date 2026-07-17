@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, publicProcedure } from "../trpc";
+import { router, publicProcedure, protectedProcedure } from "../trpc";
 import { UserService } from "@spine/storage-platform";
 import { TRPCError } from "@trpc/server";
 
@@ -17,5 +17,18 @@ export const userRouter = router({
                 cause: error
             });
         }
-    })
+    }),
+
+    search: protectedProcedure
+        .input(
+            z.object({
+                query: z.string().min(1),
+                excludeUserIds: z.array(z.string()).optional()
+            })
+        )
+        .query(async ({ input }) => {
+            return await UserService.searchUsers(input.query, {
+                excludeIds: input.excludeUserIds
+            });
+        })
 });

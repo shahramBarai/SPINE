@@ -4,12 +4,14 @@ import cors from "cors";
 import { userRouter } from "./routers/user";
 import { authRouter } from "./routers/auth";
 import { digitalTwinRouter } from "./routers/digitalTwin";
+import { projectRouter } from "./routers/project";
 import { env } from "@spine/shared";
 
 export const appRouter = router({
     user: userRouter,
     auth: authRouter,
-    digitalTwin: digitalTwinRouter
+    digitalTwin: digitalTwinRouter,
+    project: projectRouter
 });
 export type AppRouter = typeof appRouter;
 

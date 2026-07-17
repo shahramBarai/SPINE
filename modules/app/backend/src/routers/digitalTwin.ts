@@ -13,7 +13,7 @@ import {
     FusekiSparqlError
 } from "@spine/storage-rdf-store";
 import { EntityService } from "@spine/storage-platform";
-import { Readable } from "stream";
+import { readStreamToText } from "../utils/stream";
 
 // FusekiSparqlError with status 404 covers two "no data yet" cases: the
 // project's dataset hasn't been provisioned, or the dataset exists but this
@@ -42,21 +42,6 @@ interface FileInfo {
     fileName: string;
     size: number;
     lastModified?: Date;
-}
-
-async function readStreamToText(stream: Readable): Promise<string> {
-    const chunks: Buffer[] = [];
-
-    for await (const chunk of stream) {
-        if (Buffer.isBuffer(chunk)) {
-            chunks.push(chunk);
-            continue;
-        }
-
-        chunks.push(Buffer.from(chunk));
-    }
-
-    return Buffer.concat(chunks).toString("utf-8");
 }
 
 // -----------------------------------------------------------------------------
