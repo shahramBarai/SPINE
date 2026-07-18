@@ -47,7 +47,7 @@ createRoot(document.getElementById("root")!).render(
                         />
                         <Route path="/digital-twin" element={<DigitalTwin />} />
                         <Route
-                            path="/digital-twin/:projectId"
+                            path="/projects/:projectId/digital-twin"
                             element={<DigitalTwin />}
                         />
                         <Route

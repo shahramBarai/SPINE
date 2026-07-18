@@ -30,7 +30,7 @@ const ProjectsPage = () => {
                         title={project.name}
                         description={project.description || ""}
                         isPublic={project.isPublic}
-                        href={`/digital-twin/${project.id}`}
+                        href={`/projects/${project.id}/manage`}
                     />
                 ))}
                 <div
