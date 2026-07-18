@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { api } from "utils/trpc";
 import { cn } from "utils/index";
+import { pageGuard } from "utils/pageGuard";
 import { MembersTab } from "components/feature/projectManage/MembersTab";
 import { FilesTab } from "components/feature/projectManage/FilesTab";
 
@@ -13,45 +12,13 @@ const TABS: { id: ManageTab; label: string }[] = [
     { id: "files", label: "Files" }
 ];
 
-const ProjectManagePage = () => {
-    const { projectId } = useParams<{ projectId?: string }>();
-    const navigate = useNavigate();
+interface ProjectManagePageProps {
+    project: { id: string; name: string };
+    role: "OWNER" | "EDITOR" | "VIEWER";
+}
+
+function ProjectManagePageContent({ project, role }: ProjectManagePageProps) {
     const [tab, setTab] = useState<ManageTab>("members");
-
-    if (!projectId) {
-        navigate("/404", { replace: true });
-        return null;
-    }
-
-    const {
-        data: project,
-        isLoading: isProjectLoading,
-        error: projectError
-    } = api.digitalTwin.getProject.useQuery({ projectId });
-
-    const {
-        data: role,
-        isLoading: isRoleLoading,
-        error: roleError
-    } = api.project.getMyRole.useQuery({ projectId });
-
-    if (isProjectLoading || isRoleLoading) {
-        return (
-            <div className="h-full w-full flex items-center justify-center gap-2 text-foreground">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <span className="text-muted-foreground">
-                    Loading project...
-                </span>
-            </div>
-        );
-    }
-
-    const canManage = role === "OWNER" || role === "EDITOR";
-
-    if (projectError || !project || roleError || !canManage) {
-        navigate("/404", { replace: true });
-        return null;
-    }
 
     return (
         <div className="p-6 max-w-5xl mx-auto">
@@ -80,12 +47,38 @@ const ProjectManagePage = () => {
             </div>
 
             {tab === "members" ? (
-                <MembersTab projectId={projectId} isOwner={role === "OWNER"} />
+                <MembersTab projectId={project.id} isOwner={role === "OWNER"} />
             ) : (
-                <FilesTab projectId={projectId} />
+                <FilesTab projectId={project.id} />
             )}
         </div>
     );
-};
+}
+
+const ProjectManagePage = pageGuard(ProjectManagePageContent, {
+    params: ["projectId"],
+    handler: ({ projectId }) => {
+        const {
+            data: project,
+            isLoading: isProjectLoading,
+            error: projectError
+        } = api.digitalTwin.getProject.useQuery({ projectId });
+
+        const {
+            data: role,
+            isLoading: isRoleLoading,
+            error: roleError
+        } = api.project.getMyRole.useQuery({ projectId });
+
+        const canManage = role === "OWNER" || role === "EDITOR";
+
+        return {
+            isLoading: isProjectLoading || isRoleLoading,
+            error: projectError || roleError,
+            data: project && canManage ? { project, role } : undefined,
+            loadingLabel: "Loading project..."
+        };
+    }
+});
 
 export { ProjectManagePage };

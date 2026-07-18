@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Box, Loader2 } from "lucide-react";
+import { Box } from "lucide-react";
 import { type ImperativePanelHandle } from "react-resizable-panels";
 import { LeftSidebar } from "components/feature/twin/LeftSidebar";
 import { TopNav } from "components/feature/twin/TopNav/index";
@@ -15,40 +14,15 @@ import {
 import { DigitalTwinProvider } from "hooks/useDigitalTwin";
 import { api } from "utils/trpc";
 import { cn } from "utils/index";
+import { pageGuard } from "utils/pageGuard";
 
 type MaximizedZone = "viewer" | "graph" | "semantic" | null;
 
-const DigitalTwin = () => {
-    const { projectId } = useParams<{ projectId?: string }>();
-    const navigate = useNavigate();
+interface DigitalTwinPageProps {
+    project: { id: string; name: string; rootId: string };
+}
 
-    if (!projectId) {
-        navigate("/404", { replace: true });
-        return;
-    }
-
-    const {
-        data: project,
-        isLoading,
-        error
-    } = api.digitalTwin.getProject.useQuery({ projectId: projectId });
-
-    if (isLoading) {
-        return (
-            <div className="h-screen w-screen flex items-center justify-center gap-2 bg-background text-foreground">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <span className="text-muted-foreground">
-                    Loading project...
-                </span>
-            </div>
-        );
-    }
-
-    if (!projectId || error || !project) {
-        navigate("/404", { replace: true });
-        return;
-    }
-
+function DigitalTwinPageContent({ project }: DigitalTwinPageProps) {
     return (
         <DigitalTwinProvider
             key={project.id}
@@ -58,7 +32,7 @@ const DigitalTwin = () => {
             <DigitalTwinLayout />
         </DigitalTwinProvider>
     );
-};
+}
 
 const DigitalTwinLayout = () => {
     const liveMode = true; // TODO: Determine live mode based on environment or user settings
@@ -220,5 +194,24 @@ const DigitalTwinLayout = () => {
         </div>
     );
 };
+
+const DigitalTwin = pageGuard(DigitalTwinPageContent, {
+    params: ["projectId"],
+    handler: ({ projectId }) => {
+        const {
+            data: project,
+            isLoading,
+            error
+        } = api.digitalTwin.getProject.useQuery({ projectId });
+
+        return {
+            isLoading,
+            error,
+            data: project ? { project } : undefined,
+            loadingLabel: "Loading project...",
+            fullScreen: true
+        };
+    }
+});
 
 export { DigitalTwin };
