@@ -15,9 +15,15 @@ import {
 } from "@spine/storage-minio";
 import { DatasetService } from "@spine/storage-rdf-store";
 import { readStreamToText } from "../utils/stream";
+import {
+    COVER_IMAGE_FOLDER,
+    buildCoverObjectName,
+    getCoverImageUrl
+} from "../utils/coverImage";
 
 const BUCKET_NAME: BUCKET_NAMES = "project-files";
 const ALLOWED_EXTENSIONS = ["ifc", "ttl", "pdf"] as const;
+const ALLOWED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"] as const;
 const FOLDER_MARKER = ".folder";
 
 interface ProjectFileInfo {
@@ -45,6 +51,19 @@ function validateExtension(fileName: string): void {
         throw new TRPCError({
             code: "BAD_REQUEST",
             message: `Invalid file type. Only ${ALLOWED_EXTENSIONS.join(", ")} files are allowed.`
+        });
+    }
+}
+
+function validateImageExtension(fileName: string): void {
+    const extension = fileName.split(".").pop()?.toLowerCase();
+    if (
+        !extension ||
+        !(ALLOWED_IMAGE_EXTENSIONS as readonly string[]).includes(extension)
+    ) {
+        throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Invalid image type. Only ${ALLOWED_IMAGE_EXTENSIONS.join(", ")} files are allowed.`
         });
     }
 }
@@ -136,6 +155,78 @@ export const projectRouter = router({
             return await EntityService.getMembers(input.projectId);
         }),
 
+    updateSettings: projectOwnerProcedure
+        .input(
+            z.object({
+                name: z.string().min(1),
+                description: z.string().optional(),
+                isPublic: z.boolean()
+            })
+        )
+        .mutation(async ({ input }) => {
+            return await EntityService.updateEntity(input.projectId, {
+                name: input.name,
+                description: input.description,
+                isPublic: input.isPublic
+            });
+        }),
+
+    getCoverUploadUrl: projectOwnerProcedure
+        .input(z.object({ fileName: z.string() }))
+        .mutation(async ({ input }) => {
+            validateImageExtension(input.fileName);
+
+            const fileId = crypto.randomUUID();
+            const objectKey = buildCoverObjectName(
+                input.projectId,
+                fileId,
+                input.fileName
+            );
+
+            const uploadUrl = await PresignedService.generatePresignedUploadUrl(
+                {
+                    bucketName: BUCKET_NAME,
+                    objectName: objectKey,
+                    expiry: 120
+                }
+            );
+
+            return { uploadUrl, objectKey };
+        }),
+
+    // Points the project at a newly-uploaded cover image and cleans up the
+    // previous one, so replacing a cover doesn't leave orphaned files behind.
+    setCoverImage: projectOwnerProcedure
+        .input(z.object({ objectKey: z.string() }))
+        .mutation(async ({ input }) => {
+            const project = await EntityService.getEntityById(
+                input.projectId
+            );
+            const previousKey = project?.coverImageKey;
+
+            await EntityService.updateEntity(input.projectId, {
+                coverImageKey: input.objectKey
+            });
+
+            if (previousKey && previousKey !== input.objectKey) {
+                await BucketService.deleteFile(BUCKET_NAME, previousKey);
+            }
+
+            return { coverImageUrl: await getCoverImageUrl(input.objectKey) };
+        }),
+
+    removeCoverImage: projectOwnerProcedure.mutation(async ({ input }) => {
+        const project = await EntityService.getEntityById(input.projectId);
+        if (project?.coverImageKey) {
+            await BucketService.deleteFile(BUCKET_NAME, project.coverImageKey);
+        }
+
+        await EntityService.updateEntity(input.projectId, {
+            coverImageKey: null
+        });
+        return { success: true };
+    }),
+
     listFiles: projectEditorProcedure.query(async ({ input }) => {
         const objects = await BucketService.listFiles({
             bucketName: BUCKET_NAME,
@@ -149,7 +240,7 @@ export const projectRouter = router({
             const parts = object.name?.split("/") ?? [];
             const folder = parts[1];
             const fullName = parts[parts.length - 1];
-            if (!folder || !fullName) {
+            if (!folder || !fullName || folder === COVER_IMAGE_FOLDER) {
                 continue;
             }
 

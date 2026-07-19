@@ -5,6 +5,7 @@ import { userRouter } from "./routers/user";
 import { authRouter } from "./routers/auth";
 import { digitalTwinRouter } from "./routers/digitalTwin";
 import { projectRouter } from "./routers/project";
+import { handleProjectFilesRoute } from "./routes/projectFiles";
 import { env } from "@spine/shared";
 
 export const appRouter = router({
@@ -16,11 +17,19 @@ export const appRouter = router({
 export type AppRouter = typeof appRouter;
 
 // create server
+const corsMiddleware = cors({
+    origin: env.FRONTEND_URL,
+    credentials: true
+});
+
 const server = createHTTPServer({
-    middleware: cors({
-        origin: env.FRONTEND_URL,
-        credentials: true
-    }),
+    middleware: (req, res, next) => {
+        corsMiddleware(req, res, () => {
+            handleProjectFilesRoute(req, res).then((handled) => {
+                if (!handled) next();
+            });
+        });
+    },
     router: appRouter,
     createContext
 });

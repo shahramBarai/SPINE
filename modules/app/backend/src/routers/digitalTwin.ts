@@ -14,6 +14,7 @@ import {
 } from "@spine/storage-rdf-store";
 import { EntityService } from "@spine/storage-platform";
 import { readStreamToText } from "../utils/stream";
+import { getCoverImageUrl } from "../utils/coverImage";
 
 // FusekiSparqlError with status 404 covers two "no data yet" cases: the
 // project's dataset hasn't been provisioned, or the dataset exists but this
@@ -50,9 +51,14 @@ export const digitalTwinRouter = router({
     // Projects visible to the caller: public projects, plus (if logged in)
     // any project they are a member of.
     getProjects: publicProcedure.query(async ({ ctx }) => {
-        return await EntityService.getVisibleProjects(
+        const projects = await EntityService.getVisibleProjects(
             ctx.session.data?.user?.id
         );
+
+        return projects.map((project) => ({
+            ...project,
+            coverImageUrl: getCoverImageUrl(project.coverImageKey)
+        }));
     }),
 
     // A single project by id, plus rootId - the default relationship-graph
@@ -82,7 +88,9 @@ export const digitalTwinRouter = router({
                 arkGraphPrefix
             ).catch(rethrowMissingDataset);
 
-            return { ...project, rootId };
+            const coverImageUrl = getCoverImageUrl(project.coverImageKey);
+
+            return { ...project, rootId, coverImageUrl };
         }),
 
     // Creates a project and its dedicated Fuseki dataset together. If dataset
