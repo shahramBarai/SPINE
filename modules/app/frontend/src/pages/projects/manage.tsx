@@ -4,12 +4,14 @@ import { cn } from "utils/index";
 import { pageGuard } from "utils/pageGuard";
 import { MembersTab } from "components/feature/projectManage/MembersTab";
 import { FilesTab } from "components/feature/projectManage/FilesTab";
+import { SettingsTab } from "components/feature/projectManage/SettingsTab";
 
-type ManageTab = "members" | "files";
+type ManageTab = "members" | "files" | "settings";
 
 const TABS: { id: ManageTab; label: string }[] = [
     { id: "members", label: "Members" },
-    { id: "files", label: "Files" }
+    { id: "files", label: "Files" },
+    { id: "settings", label: "Settings" }
 ];
 
 interface ProjectManagePageProps {
@@ -19,6 +21,8 @@ interface ProjectManagePageProps {
 
 function ProjectManagePageContent({ project, role }: ProjectManagePageProps) {
     const [tab, setTab] = useState<ManageTab>("members");
+    const isOwner = role === "OWNER";
+    const visibleTabs = TABS.filter((t) => t.id !== "settings" || isOwner);
 
     return (
         <div className="p-6 max-w-5xl mx-auto">
@@ -30,7 +34,7 @@ function ProjectManagePageContent({ project, role }: ProjectManagePageProps) {
             </p>
 
             <div className="flex items-center gap-1 border-b border-border mb-6">
-                {TABS.map((t) => (
+                {visibleTabs.map((t) => (
                     <button
                         key={t.id}
                         onClick={() => setTab(t.id)}
@@ -46,10 +50,12 @@ function ProjectManagePageContent({ project, role }: ProjectManagePageProps) {
                 ))}
             </div>
 
-            {tab === "members" ? (
-                <MembersTab projectId={project.id} isOwner={role === "OWNER"} />
-            ) : (
-                <FilesTab projectId={project.id} />
+            {tab === "members" && (
+                <MembersTab projectId={project.id} isOwner={isOwner} />
+            )}
+            {tab === "files" && <FilesTab projectId={project.id} />}
+            {tab === "settings" && isOwner && (
+                <SettingsTab projectId={project.id} />
             )}
         </div>
     );

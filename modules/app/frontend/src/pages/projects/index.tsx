@@ -27,6 +27,7 @@ const ProjectsPage = () => {
                 {projects.data?.map((project) => (
                     <ProjectCard
                         key={project.id}
+                        imageUrl={project.coverImageUrl ?? undefined}
                         title={project.name}
                         description={project.description || ""}
                         isPublic={project.isPublic}
