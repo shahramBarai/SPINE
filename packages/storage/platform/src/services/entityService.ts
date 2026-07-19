@@ -138,6 +138,8 @@ async function getEntityById(id: string) {
             name: true,
             description: true,
             type: true,
+            isPublic: true,
+            coverImageKey: true,
             createdAt: true,
             updatedAt: true
         }
@@ -191,6 +193,7 @@ async function getVisibleProjects(userId?: string) {
             name: true,
             description: true,
             isPublic: true,
+            coverImageKey: true,
             createdAt: true,
             updatedAt: true
         }
@@ -245,6 +248,8 @@ async function updateEntity(
     data: {
         name?: string;
         description?: string;
+        isPublic?: boolean;
+        coverImageKey?: string | null;
     }
 ) {
     // Check if project exists

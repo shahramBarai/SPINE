@@ -36,6 +36,7 @@ model Entity {
     description String?
     type     EntityType
     isPublic Boolean  @default(false)
+    coverImageKey String?
 
     members  EntityMember[]
     sensors  SensorData[]
