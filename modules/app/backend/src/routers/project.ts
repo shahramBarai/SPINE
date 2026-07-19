@@ -8,64 +8,19 @@ import {
 } from "../procedures/project";
 import { EntityService, UserService } from "@spine/storage-platform";
 import { type MemberRole } from "@spine/storage-platform/types";
-import {
-    PresignedService,
-    BucketService,
-    type BUCKET_NAMES
-} from "@spine/storage-minio";
+import { ProjectFileService } from "@spine/storage-minio";
 import { DatasetService } from "@spine/storage-rdf-store";
 import { readStreamToText } from "../utils/stream";
-import {
-    COVER_IMAGE_FOLDER,
-    buildCoverObjectName,
-    getCoverImageUrl
-} from "../utils/coverImage";
+import { getCoverImageUrl } from "../utils/coverImage";
 
-const BUCKET_NAME: BUCKET_NAMES = "project-files";
-const ALLOWED_EXTENSIONS = ["ifc", "ttl", "pdf"] as const;
-const ALLOWED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"] as const;
-const FOLDER_MARKER = ".folder";
-
-interface ProjectFileInfo {
-    fileId: string;
-    fileName: string;
-    size: number;
-    lastModified?: Date;
-}
-
-function buildObjectName(
-    projectId: string,
-    folder: string,
-    fileId: string,
-    fileName: string
-): string {
-    return `${projectId}/${folder}/${fileId}_${fileName}`;
-}
-
-function validateExtension(fileName: string): void {
-    const extension = fileName.split(".").pop()?.toLowerCase();
-    if (
-        !extension ||
-        !(ALLOWED_EXTENSIONS as readonly string[]).includes(extension)
-    ) {
-        throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: `Invalid file type. Only ${ALLOWED_EXTENSIONS.join(", ")} files are allowed.`
-        });
-    }
-}
-
-function validateImageExtension(fileName: string): void {
-    const extension = fileName.split(".").pop()?.toLowerCase();
-    if (
-        !extension ||
-        !(ALLOWED_IMAGE_EXTENSIONS as readonly string[]).includes(extension)
-    ) {
-        throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: `Invalid image type. Only ${ALLOWED_IMAGE_EXTENSIONS.join(", ")} files are allowed.`
-        });
-    }
+// Turns a plain Error thrown by ProjectFileService's validation (e.g. a
+// disallowed file extension) into a client-facing 400, instead of letting
+// it fall through as an opaque 500.
+function asBadRequest(error: unknown, fallbackMessage: string): TRPCError {
+    return new TRPCError({
+        code: "BAD_REQUEST",
+        message: error instanceof Error ? error.message : fallbackMessage
+    });
 }
 
 export const projectRouter = router({
@@ -174,24 +129,14 @@ export const projectRouter = router({
     getCoverUploadUrl: projectOwnerProcedure
         .input(z.object({ fileName: z.string() }))
         .mutation(async ({ input }) => {
-            validateImageExtension(input.fileName);
-
-            const fileId = crypto.randomUUID();
-            const objectKey = buildCoverObjectName(
-                input.projectId,
-                fileId,
-                input.fileName
-            );
-
-            const uploadUrl = await PresignedService.generatePresignedUploadUrl(
-                {
-                    bucketName: BUCKET_NAME,
-                    objectName: objectKey,
-                    expiry: 120
-                }
-            );
-
-            return { uploadUrl, objectKey };
+            try {
+                return await ProjectFileService.getCoverImageUploadUrl(
+                    input.projectId,
+                    input.fileName
+                );
+            } catch (error) {
+                throw asBadRequest(error, "Invalid cover image");
+            }
         }),
 
     // Points the project at a newly-uploaded cover image and cleans up the
@@ -209,16 +154,16 @@ export const projectRouter = router({
             });
 
             if (previousKey && previousKey !== input.objectKey) {
-                await BucketService.deleteFile(BUCKET_NAME, previousKey);
+                await ProjectFileService.deleteCoverImage(previousKey);
             }
 
-            return { coverImageUrl: await getCoverImageUrl(input.objectKey) };
+            return { coverImageUrl: getCoverImageUrl(input.objectKey) };
         }),
 
     removeCoverImage: projectOwnerProcedure.mutation(async ({ input }) => {
         const project = await EntityService.getEntityById(input.projectId);
         if (project?.coverImageKey) {
-            await BucketService.deleteFile(BUCKET_NAME, project.coverImageKey);
+            await ProjectFileService.deleteCoverImage(project.coverImageKey);
         }
 
         await EntityService.updateEntity(input.projectId, {
@@ -228,61 +173,15 @@ export const projectRouter = router({
     }),
 
     listFiles: projectEditorProcedure.query(async ({ input }) => {
-        const objects = await BucketService.listFiles({
-            bucketName: BUCKET_NAME,
-            prefix: `${input.projectId}/`,
-            recursive: true
-        });
-
-        const filesByFolder = new Map<string, ProjectFileInfo[]>();
-
-        for (const object of objects) {
-            const parts = object.name?.split("/") ?? [];
-            const folder = parts[1];
-            const fullName = parts[parts.length - 1];
-            if (!folder || !fullName || folder === COVER_IMAGE_FOLDER) {
-                continue;
-            }
-
-            if (!filesByFolder.has(folder)) {
-                filesByFolder.set(folder, []);
-            }
-            if (fullName === FOLDER_MARKER) {
-                continue;
-            }
-
-            const separatorIndex = fullName.indexOf("_");
-            const fileId =
-                separatorIndex >= 0
-                    ? fullName.slice(0, separatorIndex)
-                    : "unknown";
-            const fileName =
-                separatorIndex >= 0
-                    ? fullName.slice(separatorIndex + 1)
-                    : fullName;
-
-            filesByFolder.get(folder)!.push({
-                fileId,
-                fileName,
-                size: object.size,
-                lastModified: object.lastModified
-            });
-        }
-
-        return Array.from(filesByFolder.entries()).map(([folder, files]) => ({
-            folder,
-            files
-        }));
+        return await ProjectFileService.listProjectFiles(input.projectId);
     }),
 
     createFolder: projectEditorProcedure
         .input(z.object({ folder: z.string().min(1) }))
         .mutation(async ({ input }) => {
-            const objectName = `${input.projectId}/${input.folder}/${FOLDER_MARKER}`;
-            await BucketService.uploadBuffer(
-                BUCKET_NAME,
-                objectName,
-                Buffer.alloc(0)
+            await ProjectFileService.createProjectFolder(
+                input.projectId,
+                input.folder
             );
             return { folder: input.folder };
         }),
@@ -290,25 +189,15 @@ export const projectRouter = router({
     getUploadUrl: projectEditorProcedure
         .input(z.object({ folder: z.string().min(1), fileName: z.string() }))
         .mutation(async ({ input }) => {
-            validateExtension(input.fileName);
-
-            const fileId = crypto.randomUUID();
-            const objectName = buildObjectName(
-                input.projectId,
-                input.folder,
-                fileId,
-                input.fileName
-            );
-
-            const uploadUrl = await PresignedService.generatePresignedUploadUrl(
-                {
-                    bucketName: BUCKET_NAME,
-                    objectName,
-                    expiry: 120
-                }
-            );
-
-            return { uploadUrl, objectName, fileId };
+            try {
+                return await ProjectFileService.getProjectFileUploadUrl(
+                    input.projectId,
+                    input.folder,
+                    input.fileName
+                );
+            } catch (error) {
+                throw asBadRequest(error, "Invalid file");
+            }
         }),
 
     deleteFile: projectEditorProcedure
@@ -320,13 +209,12 @@ export const projectRouter = router({
             })
         )
         .mutation(async ({ input }) => {
-            const objectName = buildObjectName(
+            await ProjectFileService.deleteProjectFile(
                 input.projectId,
                 input.folder,
                 input.fileId,
                 input.fileName
             );
-            await BucketService.deleteFile(BUCKET_NAME, objectName);
             return { success: true };
         }),
 
@@ -345,16 +233,11 @@ export const projectRouter = router({
             })
         )
         .mutation(async ({ input }) => {
-            const objectName = buildObjectName(
+            const fileStream = await ProjectFileService.readProjectFile(
                 input.projectId,
                 input.folder,
                 input.fileId,
                 input.fileName
-            );
-
-            const fileStream = await BucketService.readFile(
-                BUCKET_NAME,
-                objectName
             );
             if (!fileStream) {
                 throw new TRPCError({

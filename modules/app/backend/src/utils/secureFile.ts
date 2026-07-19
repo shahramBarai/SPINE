@@ -1,5 +1,5 @@
 import { IncomingMessage, ServerResponse } from "http";
-import { BucketService, type BUCKET_NAMES } from "@spine/storage-minio";
+import { type Readable } from "stream";
 import { getServerSession, type UserSession } from "../auth/iron-session";
 
 const MIME_TYPES: Record<string, string> = {
@@ -21,33 +21,30 @@ function getMimeType(fileName: string): string {
 interface ServeSecureFileOptions {
     req: IncomingMessage;
     res: ServerResponse;
-    bucketName: BUCKET_NAMES;
-    objectKey: string;
     fileName: string;
     /** "inline" renders in-browser (e.g. an <img>); "attachment" prompts a download. Defaults to "attachment". */
     disposition?: "inline" | "attachment";
     /** Decide whether the requesting session may read this object - the only gate between object storage and the browser. */
-    authorize: (
-        user: UserSession | undefined
-    ) => Promise<boolean> | boolean;
+    authorize: (user: UserSession | undefined) => Promise<boolean> | boolean;
+    /** Opens the file once `authorize` approves - deliberately storage-agnostic; the caller's domain service decides where the bytes actually live. */
+    getStream: () => Promise<Readable | null>;
 }
 
 /**
- * Streams a private MinIO object to an HTTP response, but only after
- * `authorize` approves the caller's session. This is the one place file
- * bytes cross from object storage into the browser, so every
- * download/preview route - cover images today, project files (IFC/TTL/PDF)
- * and any future resource type - shares this same auth-then-stream path
- * instead of each handing out a bearer presigned URL of its own.
+ * Streams a file to an HTTP response, but only after `authorize` approves
+ * the caller's session. This is the one place file bytes cross into the
+ * browser, so every download/preview route - cover images today, project
+ * files (IFC/TTL/PDF) and any future resource type - shares this same
+ * auth-then-stream path instead of each handing out a bearer presigned URL
+ * of its own.
  */
 async function serveSecureFile({
     req,
     res,
-    bucketName,
-    objectKey,
     fileName,
     disposition = "attachment",
-    authorize
+    authorize,
+    getStream
 }: ServeSecureFileOptions): Promise<void> {
     const session = await getServerSession(req, res);
     const authorized = await authorize(session.data?.user);
@@ -58,7 +55,7 @@ async function serveSecureFile({
         return;
     }
 
-    const stream = await BucketService.readFile(bucketName, objectKey);
+    const stream = await getStream();
     if (!stream) {
         res.writeHead(404, { "Content-Type": "text/plain" });
         res.end("Not found");

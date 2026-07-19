@@ -1,11 +1,7 @@
 import z from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure, router } from "../trpc";
-import {
-    PresignedService,
-    type BUCKET_NAMES,
-    BucketService
-} from "@spine/storage-minio";
+import { ProjectFileService } from "@spine/storage-minio";
 import {
     DatasetService,
     BuildingGraphService,
@@ -132,54 +128,37 @@ export const digitalTwinRouter = router({
             })
         )
         .query(async ({ input }): Promise<FileInfo[]> => {
-            const bucketName: BUCKET_NAMES = "project-files";
-
-            const filesInfo = await BucketService.listFiles({
-                bucketName,
-                prefix: input.discipline
-                    ? `${input.projectId}/${input.discipline}`
-                    : `${input.projectId}/`,
-                recursive: true
-            });
-
-            const fileTypesAsString = input.fileTypes.map((type) =>
-                type.toLocaleLowerCase()
+            const folders = await ProjectFileService.listProjectFiles(
+                input.projectId
             );
-            const result = filesInfo
-                .filter((file) => {
-                    const fileExtension = file.name
-                        ?.split(".")
-                        .pop()
-                        ?.toLowerCase();
-                    if (!fileExtension) {
-                        return false;
-                    }
-                    return fileTypesAsString.includes(fileExtension);
-                })
-                .map((file) => {
-                    const parts = file.name!.split("/");
-                    const discipline = parts[1] || "unknown";
-                    const fullName = parts[parts.length - 1] || "";
-                    const separatorIndex = fullName.indexOf("_");
-                    const fileId =
-                        separatorIndex >= 0
-                            ? fullName.slice(0, separatorIndex)
-                            : "unknown";
-                    const fileName =
-                        separatorIndex >= 0
-                            ? fullName.slice(separatorIndex + 1)
-                            : fullName || "unknown";
+            const fileTypesLower = input.fileTypes.map((type) =>
+                type.toLowerCase()
+            );
 
-                    return {
-                        discipline,
-                        fileId: fileId || "unknown",
-                        fileName: fileName || "unknown",
-                        size: file.size,
-                        lastModified: file.lastModified
-                    };
-                });
-
-            return result;
+            return folders
+                .filter(
+                    (folder) =>
+                        !input.discipline || folder.folder === input.discipline
+                )
+                .flatMap((folder) =>
+                    folder.files
+                        .filter((file) => {
+                            const extension = file.fileName
+                                .split(".")
+                                .pop()
+                                ?.toLowerCase();
+                            return extension
+                                ? fileTypesLower.includes(extension)
+                                : false;
+                        })
+                        .map((file) => ({
+                            discipline: folder.folder,
+                            fileId: file.fileId,
+                            fileName: file.fileName,
+                            size: file.size,
+                            lastModified: file.lastModified
+                        }))
+                );
         }),
 
     getPresignedUploadUrl: publicProcedure
@@ -191,45 +170,19 @@ export const digitalTwinRouter = router({
             })
         )
         .mutation(async ({ input }) => {
-            // Validate file name and type
-            const fileExtension = input.fileName
-                .split(".")
-                .pop()
-                ?.toLowerCase();
-            if (!fileExtension || !["ifc", "ttl"].includes(fileExtension)) {
-                throw new Error(
-                    "Invalid file type. Only .ifc and .ttl files are allowed."
+            try {
+                return await ProjectFileService.getProjectFileUploadUrl(
+                    input.projectId,
+                    input.discipline,
+                    input.fileName
                 );
+            } catch (error) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message:
+                        error instanceof Error ? error.message : "Invalid file"
+                });
             }
-
-            // Get project info
-            const projectInfo = {
-                id: input.projectId,
-                name: "Project Name",
-                disciplineId: input.discipline
-            };
-
-            // Generate a secure storage path name
-            const uniqueId = crypto.randomUUID();
-            const objectName = `${projectInfo.id}/${projectInfo.disciplineId}/${uniqueId}_${input.fileName}`;
-
-            const bucketName: BUCKET_NAMES = "project-files"; // Replace with your true runtime BUCKET_NAMES key
-
-            console.log("Generating presigned upload URL for:", {
-                bucketName,
-                objectName
-            });
-            const uploadUrl = await PresignedService.generatePresignedUploadUrl(
-                {
-                    bucketName: bucketName,
-                    objectName: objectName,
-                    expiry: 120 // Link valid for 2 minutes
-                }
-            );
-
-            console.log("Generated presigned upload URL:", uploadUrl);
-
-            return { uploadUrl, objectName };
         }),
 
     deleteProjectFile: publicProcedure
@@ -242,10 +195,12 @@ export const digitalTwinRouter = router({
             })
         )
         .mutation(async ({ input }) => {
-            const bucketName: BUCKET_NAMES = "project-files"; // Replace with your true runtime BUCKET_NAMES key
-            const objectName = `${input.projectId}/${input.discipline}/${input.fileId}_${input.fileName}`;
-
-            await BucketService.deleteFile(bucketName, objectName);
+            await ProjectFileService.deleteProjectFile(
+                input.projectId,
+                input.discipline,
+                input.fileId,
+                input.fileName
+            );
         }),
 
     syncTtlToFuseki: publicProcedure
@@ -258,15 +213,17 @@ export const digitalTwinRouter = router({
             })
         )
         .mutation(async ({ input }) => {
-            const bucketName: BUCKET_NAMES = "project-files";
-            const objectName = `${input.projectId}/${input.discipline}/${input.fileId}_${input.fileName}`;
-
-            const fileStream = await BucketService.readFile(
-                bucketName,
-                objectName
+            const fileStream = await ProjectFileService.readProjectFile(
+                input.projectId,
+                input.discipline,
+                input.fileId,
+                input.fileName
             );
             if (!fileStream) {
-                throw new Error(`TTL file not found: ${input.fileName}`);
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: `TTL file not found: ${input.fileName}`
+                });
             }
 
             const ttlContent = await readStreamToText(fileStream);

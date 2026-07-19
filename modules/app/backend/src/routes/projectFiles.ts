@@ -1,16 +1,16 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { EntityService } from "@spine/storage-platform";
-import { type BUCKET_NAMES } from "@spine/storage-minio";
+import { ProjectFileService } from "@spine/storage-minio";
 import { serveSecureFile } from "../utils/secureFile";
-import { COVER_IMAGE_FOLDER } from "../utils/coverImage";
 
-const BUCKET_NAME: BUCKET_NAMES = "project-files";
+const { COVER_IMAGE_FOLDER } = ProjectFileService;
 const ROUTE_PREFIX = "/files/";
 
 /**
- * Handles `GET /files/<projectId>/<...objectKeyParts>` - the URL path is
- * exactly the object's key within the project-files bucket, so serving a
- * file is just an authorization check followed by a stream.
+ * Handles `GET /files/<projectId>/<folder>/<fileId>_<fileName>` - the URL
+ * path mirrors the object's key within the project-files bucket, so serving
+ * a file is just an authorization check followed by a stream, both left to
+ * ProjectFileService.
  *
  * Cover images (stored under the reserved COVER_IMAGE_FOLDER) are viewable
  * by anyone who can see the project at all - public, or a member. Every
@@ -42,16 +42,23 @@ async function handleProjectFilesRoute(
 
     const isCover = folder === COVER_IMAGE_FOLDER;
     const separatorIndex = fullName.indexOf("_");
+    const fileId =
+        separatorIndex >= 0 ? fullName.slice(0, separatorIndex) : "unknown";
     const fileName =
         separatorIndex >= 0 ? fullName.slice(separatorIndex + 1) : fullName;
 
     await serveSecureFile({
         req,
         res,
-        bucketName: BUCKET_NAME,
-        objectKey,
         fileName,
         disposition: isCover ? "inline" : "attachment",
+        getStream: () =>
+            ProjectFileService.readProjectFile(
+                projectId,
+                folder,
+                fileId,
+                fileName
+            ),
         authorize: async (user) => {
             if (isCover) {
                 const project = await EntityService.getEntityById(projectId);

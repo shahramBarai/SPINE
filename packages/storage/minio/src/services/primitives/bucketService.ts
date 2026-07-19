@@ -1,5 +1,5 @@
 import { type BucketItem, CopyConditions } from "minio";
-import { minioClient, type BUCKET_NAMES } from "../db/minio";
+import { minioClient, type BUCKET_NAMES } from "../../db/minio";
 import { Readable } from "stream";
 
 type CopyObjectResult = Awaited<ReturnType<typeof minioClient.copyObject>>;

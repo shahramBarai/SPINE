@@ -1,4 +1,4 @@
-import { minioClient, type BUCKET_NAMES } from "../db/minio";
+import { minioClient, type BUCKET_NAMES } from "../../db/minio";
 
 /* -------------------------------- INTERFACES -------------------------------- */
 
