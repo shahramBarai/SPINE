@@ -48,7 +48,11 @@ function TreeHeader({
                     />
                     {label}
                 </div>
-                {button}
+                {button && (
+                    // Stops the row's own toggle from firing when an action
+                    // in the button slot (e.g. upload) is clicked.
+                    <div onClick={(e) => e.stopPropagation()}>{button}</div>
+                )}
             </div>
             {sectionExpanded && children}
         </>

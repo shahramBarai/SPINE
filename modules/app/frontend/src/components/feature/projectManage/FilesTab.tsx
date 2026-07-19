@@ -1,19 +1,13 @@
 import { useState } from "react";
-import {
-    Loader2,
-    FolderPlus,
-    ChevronRight,
-    ChevronDown,
-    Trash2,
-    Share2
-} from "lucide-react";
+import { Loader2, FolderPlus, Folder, File } from "lucide-react";
 import { toast } from "react-toastify";
 import { api } from "utils/trpc";
-import { cn } from "utils/index";
 import { Button } from "components/basics/Button";
 import { Input } from "components/basics/input";
+import { TreeHeader } from "components/complex/TreeHeader";
 import { UploadFileButton } from "components/feature/twin/LeftSidebar/ProjectTreeSection/UploadFileButton";
-import { SyncToFusekiModal } from "./SyncToFusekiModal";
+import { DeleteFileButton } from "./DeleteFileButton";
+import { DeleteFolderButton } from "./DeleteFolderButton";
 
 const ALLOWED_EXTENSIONS = [".ifc", ".ttl", ".pdf"];
 
@@ -23,16 +17,20 @@ function formatSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// `date` may arrive as an ISO string over the wire even though its static
+// type says Date, since plain JSON (no superjson transformer here) can't
+// carry Date instances - wrapping in `new Date(...)` normalizes either case.
+function formatDate(date: Date | string): string {
+    return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short"
+    }).format(new Date(date));
+}
+
 function FilesTab({ projectId }: { projectId: string }) {
     const utils = api.useUtils();
-    const [expandedFolder, setExpandedFolder] = useState<string | null>(null);
     const [newFolderName, setNewFolderName] = useState("");
     const [showNewFolder, setShowNewFolder] = useState(false);
-    const [syncTarget, setSyncTarget] = useState<{
-        folder: string;
-        fileId: string;
-        fileName: string;
-    } | null>(null);
 
     const {
         data: folders,
@@ -46,11 +44,6 @@ function FilesTab({ projectId }: { projectId: string }) {
             setNewFolderName("");
             setShowNewFolder(false);
         },
-        onError: (err) => toast.error(err.message)
-    });
-
-    const deleteFile = api.project.deleteFile.useMutation({
-        onSuccess: () => utils.project.listFiles.invalidate({ projectId }),
         onError: (err) => toast.error(err.message)
     });
 
@@ -74,7 +67,7 @@ function FilesTab({ projectId }: { projectId: string }) {
     }
 
     return (
-        <div className="flex flex-col gap-4">
+        <div className="w-2xl flex flex-col gap-4">
             <div className="flex justify-end gap-2">
                 {showNewFolder ? (
                     <div className="flex items-center gap-2">
@@ -127,153 +120,118 @@ function FilesTab({ projectId }: { projectId: string }) {
                     No folders yet. Create one to start uploading files.
                 </p>
             ) : (
-                <div className="flex flex-col gap-2">
-                    {folders.map(({ folder, files }) => {
-                        const isExpanded = expandedFolder === folder;
-                        return (
-                            <div
+                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+                    {folders.map(
+                        ({ folder, files, totalSize, lastModified }) => (
+                            <TreeHeader
                                 key={folder}
-                                className="border border-border rounded-lg overflow-hidden"
+                                className="px-2 hover:bg-muted"
+                                label={
+                                    <span className="flex items-center gap-2 min-w-0">
+                                        <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                        <span className="flex flex-col min-w-0">
+                                            <span className="flex items-center gap-2">
+                                                <span className="font-medium text-foreground truncate">
+                                                    {folder}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground shrink-0">
+                                                    ({files.length})
+                                                </span>
+                                            </span>
+                                            <span className="text-xs text-muted-foreground truncate">
+                                                {formatSize(totalSize)}
+                                                {lastModified &&
+                                                    ` · Updated ${formatDate(lastModified)}`}
+                                            </span>
+                                        </span>
+                                    </span>
+                                }
+                                button={
+                                    <div className="flex items-center gap-1">
+                                        <UploadFileButton
+                                            allowedFileTypes={
+                                                ALLOWED_EXTENSIONS
+                                            }
+                                            maxFileSizeMB={1000}
+                                            getUploadUrlString={async (
+                                                fileName
+                                            ) => {
+                                                const { uploadUrl } =
+                                                    await getUploadUrl.mutateAsync(
+                                                        {
+                                                            projectId,
+                                                            folder,
+                                                            fileName
+                                                        }
+                                                    );
+                                                return uploadUrl;
+                                            }}
+                                            onUploadSuccess={() =>
+                                                utils.project.listFiles.invalidate(
+                                                    { projectId }
+                                                )
+                                            }
+                                        />
+                                        <DeleteFolderButton
+                                            projectId={projectId}
+                                            folder={folder}
+                                            fileNames={files.map(
+                                                (file) => file.fileName
+                                            )}
+                                            onSuccess={() =>
+                                                utils.project.listFiles.invalidate(
+                                                    { projectId }
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                }
                             >
-                                <button
-                                    className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-muted transition-colors"
-                                    onClick={() =>
-                                        setExpandedFolder(
-                                            isExpanded ? null : folder
-                                        )
-                                    }
-                                >
-                                    {isExpanded ? (
-                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                <div className="pr-2 pb-2 flex flex-col gap-1">
+                                    {files.length === 0 ? (
+                                        <p className="pl-8 text-xs text-muted-foreground text-center py-2">
+                                            No files in this folder yet.
+                                        </p>
                                     ) : (
-                                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                    )}
-                                    <span className="font-medium text-foreground">
-                                        {folder}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                        ({files.length})
-                                    </span>
-                                </button>
-
-                                {isExpanded && (
-                                    <div className="border-t border-border p-3 flex flex-col gap-2">
-                                        <div className="flex justify-end">
-                                            <UploadFileButton
-                                                allowedFileTypes={
-                                                    ALLOWED_EXTENSIONS
-                                                }
-                                                maxFileSizeMB={1000}
-                                                getUploadUrlString={async (
-                                                    fileName
-                                                ) => {
-                                                    const {
-                                                        uploadUrl
-                                                    } =
-                                                        await getUploadUrl.mutateAsync(
-                                                            {
-                                                                projectId,
-                                                                folder,
-                                                                fileName
-                                                            }
-                                                        );
-                                                    return uploadUrl;
-                                                }}
-                                                onUploadSuccess={() =>
-                                                    utils.project.listFiles.invalidate(
-                                                        { projectId }
-                                                    )
-                                                }
-                                            />
-                                        </div>
-
-                                        {files.length === 0 ? (
-                                            <p className="text-xs text-muted-foreground text-center py-2">
-                                                No files in this folder yet.
-                                            </p>
-                                        ) : (
-                                            files.map((file) => {
-                                                const isTtl = file.fileName
-                                                    .toLowerCase()
-                                                    .endsWith(".ttl");
-                                                return (
-                                                    <div
-                                                        key={file.fileId}
-                                                        className={cn(
-                                                            "flex items-center gap-2 px-3 py-1.5 rounded border border-border text-sm"
-                                                        )}
-                                                    >
-                                                        <span className="flex-1 truncate text-foreground">
+                                        files.map((file) => {
+                                            return (
+                                                <div
+                                                    key={file.fileId}
+                                                    className="pl-8 flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted text-sm"
+                                                >
+                                                    <File className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                                    <span className="flex-1 flex flex-col min-w-0">
+                                                        <span className="truncate text-foreground">
                                                             {file.fileName}
                                                         </span>
-                                                        <span className="text-xs text-muted-foreground">
+                                                        <span className="text-xs text-muted-foreground truncate">
                                                             {formatSize(
                                                                 file.size
                                                             )}
+                                                            {file.lastModified &&
+                                                                ` · Uploaded ${formatDate(file.lastModified)}`}
                                                         </span>
-                                                        {isTtl && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                title="Load to Fuseki"
-                                                                onClick={() =>
-                                                                    setSyncTarget(
-                                                                        {
-                                                                            folder,
-                                                                            fileId: file.fileId,
-                                                                            fileName:
-                                                                                file.fileName
-                                                                        }
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Share2 className="h-4 w-4" />
-                                                            </Button>
-                                                        )}
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            disabled={
-                                                                deleteFile.isPending
-                                                            }
-                                                            title="Delete file"
-                                                            onClick={() =>
-                                                                deleteFile.mutate(
-                                                                    {
-                                                                        projectId,
-                                                                        folder,
-                                                                        fileId: file.fileId,
-                                                                        fileName:
-                                                                            file.fileName
-                                                                    }
-                                                                )
-                                                            }
-                                                        >
-                                                            <Trash2 className="h-4 w-4 text-danger" />
-                                                        </Button>
-                                                    </div>
-                                                );
-                                            })
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                                                    </span>
+                                                    <DeleteFileButton
+                                                        projectId={projectId}
+                                                        folder={folder}
+                                                        fileId={file.fileId}
+                                                        fileName={file.fileName}
+                                                        onSuccess={() =>
+                                                            utils.project.listFiles.invalidate(
+                                                                { projectId }
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </TreeHeader>
+                        )
+                    )}
                 </div>
-            )}
-
-            {syncTarget && (
-                <SyncToFusekiModal
-                    projectId={projectId}
-                    folder={syncTarget.folder}
-                    fileId={syncTarget.fileId}
-                    fileName={syncTarget.fileName}
-                    open={!!syncTarget}
-                    setOpen={(open) => {
-                        if (!open) setSyncTarget(null);
-                    }}
-                />
             )}
         </div>
     );

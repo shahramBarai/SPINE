@@ -1,5 +1,5 @@
 import { DatabaseX, Loader } from "lucide-react";
-import { TreeHeader } from "../TreeHeader";
+import { TreeHeader } from "components/complex/TreeHeader";
 import { api } from "utils/trpc";
 import { UploadFileButton } from "../UploadFileButton";
 import { cn } from "utils/index";

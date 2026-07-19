@@ -170,7 +170,7 @@ function MembersTab({
     };
 
     return (
-        <div className="flex flex-col gap-4">
+        <div className="w-full flex flex-col gap-">
             <div className="border border-border rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
                     <thead className="bg-muted text-muted-foreground text-left">

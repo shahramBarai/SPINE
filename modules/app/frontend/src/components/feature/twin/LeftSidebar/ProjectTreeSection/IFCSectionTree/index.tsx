@@ -1,7 +1,7 @@
 import { api } from "utils/trpc";
 import { Loader, DatabaseX } from "lucide-react";
 import { UploadFileButton } from "../UploadFileButton";
-import { TreeHeader } from "../TreeHeader";
+import { TreeHeader } from "components/complex/TreeHeader";
 import { cn } from "utils/index";
 import { DeleteFileButton } from "../DeleteFileButton";
 import { ConvertToTtlButton } from "./ConvertToTtlButton";

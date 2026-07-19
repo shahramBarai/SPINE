@@ -8,6 +8,7 @@ import { Textarea } from "components/basics/textarea";
 import { Label } from "components/basics/label";
 import { Switch } from "components/basics/switch";
 import { UploadFileButton } from "components/feature/twin/LeftSidebar/ProjectTreeSection/UploadFileButton";
+import { MembersTab } from "./MembersTab";
 
 const ALLOWED_IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
 
@@ -103,7 +104,7 @@ function SettingsTab({ projectId }: { projectId: string }) {
     };
 
     return (
-        <div className="flex flex-col gap-6 max-w-2xl">
+        <div className="w-xl flex flex-col gap-6">
             <div className="flex flex-col gap-2">
                 <Label>Cover image</Label>
                 <div className="relative h-40 w-full max-w-sm rounded-lg overflow-hidden border border-border bg-muted">
@@ -193,8 +194,8 @@ function SettingsTab({ projectId }: { projectId: string }) {
                         Public project
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        Anyone can view a public project. Only members can
-                        view a private one.
+                        Anyone can view a public project. Only members can view
+                        a private one.
                     </p>
                 </div>
                 <Switch
@@ -205,6 +206,8 @@ function SettingsTab({ projectId }: { projectId: string }) {
                     }}
                 />
             </div>
+
+            <MembersTab projectId={project.id} isOwner={true} />
 
             {dirty && (
                 <div className="flex justify-end">

@@ -11,7 +11,7 @@ import { cn } from "utils/index";
 import { IfcSectionTree } from "./IFCSectionTree";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
 import { TtlSectionTree } from "./TTLSectionTree";
-import { TreeHeader } from "./TreeHeader";
+import { TreeHeader } from "components/complex/TreeHeader";
 
 interface Discipline {
     id: string;

@@ -14,6 +14,9 @@ interface ProjectFileInfo {
 interface ProjectFolder {
     folder: string;
     files: ProjectFileInfo[];
+    totalSize: number;
+    /** The most recent of its files' lastModified, or undefined for an empty folder. */
+    lastModified?: Date;
 }
 
 interface UploadUrlResult {
@@ -179,10 +182,18 @@ async function listProjectFiles(projectId: string): Promise<ProjectFolder[]> {
         });
     }
 
-    return Array.from(filesByFolder.entries()).map(([folder, files]) => ({
-        folder,
-        files
-    }));
+    return Array.from(filesByFolder.entries()).map(([folder, files]) => {
+        const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+        const lastModified = files.reduce<Date | undefined>(
+            (latest, file) =>
+                !latest || (file.lastModified && file.lastModified > latest)
+                    ? file.lastModified
+                    : latest,
+            undefined
+        );
+
+        return { folder, files, totalSize, lastModified };
+    });
 }
 
 /**
@@ -214,6 +225,29 @@ async function deleteCoverImage(coverImageKey: string): Promise<void> {
     await BucketService.deleteFile(PROJECT_FILES_BUCKET, coverImageKey);
 }
 
+/**
+ * Deletes a folder and everything in it (its files and its FOLDER_MARKER,
+ * if present).
+ */
+async function deleteProjectFolder(
+    projectId: string,
+    folder: string
+): Promise<void> {
+    const objects = await BucketService.listFiles({
+        bucketName: PROJECT_FILES_BUCKET,
+        prefix: `${projectId}/${folder}/`,
+        recursive: true
+    });
+
+    const objectNames = objects
+        .map((object) => object.name)
+        .filter((name): name is string => Boolean(name));
+
+    if (objectNames.length > 0) {
+        await BucketService.deleteFiles(PROJECT_FILES_BUCKET, objectNames);
+    }
+}
+
 export {
     PROJECT_FILES_BUCKET,
     COVER_IMAGE_FOLDER,
@@ -225,5 +259,6 @@ export {
     listProjectFiles,
     readProjectFile,
     deleteProjectFile,
+    deleteProjectFolder,
     deleteCoverImage
 };

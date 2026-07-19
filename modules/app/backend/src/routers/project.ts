@@ -218,6 +218,16 @@ export const projectRouter = router({
             return { success: true };
         }),
 
+    deleteFolder: projectEditorProcedure
+        .input(z.object({ folder: z.string().min(1) }))
+        .mutation(async ({ input }) => {
+            await ProjectFileService.deleteProjectFolder(
+                input.projectId,
+                input.folder
+            );
+            return { success: true };
+        }),
+
     listGraphs: projectEditorProcedure.query(async ({ input }) => {
         return await DatasetService.read_list_graphs(input.projectId);
     }),

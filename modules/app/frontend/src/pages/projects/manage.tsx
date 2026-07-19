@@ -2,14 +2,12 @@ import { useState } from "react";
 import { api } from "utils/trpc";
 import { cn } from "utils/index";
 import { pageGuard } from "utils/pageGuard";
-import { MembersTab } from "components/feature/projectManage/MembersTab";
 import { FilesTab } from "components/feature/projectManage/FilesTab";
 import { SettingsTab } from "components/feature/projectManage/SettingsTab";
 
-type ManageTab = "members" | "files" | "settings";
+type ManageTab = "files" | "settings";
 
 const TABS: { id: ManageTab; label: string }[] = [
-    { id: "members", label: "Members" },
     { id: "files", label: "Files" },
     { id: "settings", label: "Settings" }
 ];
@@ -20,12 +18,12 @@ interface ProjectManagePageProps {
 }
 
 function ProjectManagePageContent({ project, role }: ProjectManagePageProps) {
-    const [tab, setTab] = useState<ManageTab>("members");
+    const [tab, setTab] = useState<ManageTab>("files");
     const isOwner = role === "OWNER";
     const visibleTabs = TABS.filter((t) => t.id !== "settings" || isOwner);
 
     return (
-        <div className="p-6 max-w-5xl mx-auto">
+        <div className="p-6 max-w-5xl mx-auto pb-20">
             <h1 className="text-2xl font-bold text-foreground mb-1">
                 {project.name}
             </h1>
@@ -40,6 +38,7 @@ function ProjectManagePageContent({ project, role }: ProjectManagePageProps) {
                         onClick={() => setTab(t.id)}
                         className={cn(
                             "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+                            "hover:cursor-pointer",
                             tab === t.id
                                 ? "border-primary text-primary"
                                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -50,13 +49,12 @@ function ProjectManagePageContent({ project, role }: ProjectManagePageProps) {
                 ))}
             </div>
 
-            {tab === "members" && (
-                <MembersTab projectId={project.id} isOwner={isOwner} />
-            )}
-            {tab === "files" && <FilesTab projectId={project.id} />}
-            {tab === "settings" && isOwner && (
-                <SettingsTab projectId={project.id} />
-            )}
+            <div className="flex flex-col items-center">
+                {tab === "files" && <FilesTab projectId={project.id} />}
+                {tab === "settings" && isOwner && (
+                    <SettingsTab projectId={project.id} />
+                )}
+            </div>
         </div>
     );
 }
