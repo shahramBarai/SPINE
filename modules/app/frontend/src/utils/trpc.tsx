@@ -3,6 +3,7 @@ import type { AppRouter } from "@server/server";
 import React, { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
+import { BACKEND_URL } from "./backendUrl";
 
 const api = createTRPCReact<AppRouter>();
 
@@ -12,7 +13,7 @@ function ApiProvider({ children }: { children: React.ReactNode }) {
         api.createClient({
             links: [
                 httpBatchLink({
-                    url: "http://localhost:4000",
+                    url: BACKEND_URL,
                     fetch(url, options) {
                         return fetch(url, {
                             ...options,
