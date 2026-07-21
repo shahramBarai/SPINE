@@ -24,7 +24,7 @@ function SettingsTab({ projectId }: { projectId: string }) {
         data: project,
         isLoading,
         error
-    } = api.digitalTwin.getProject.useQuery({ projectId });
+    } = api.project.getProjectInfo.useQuery({ projectId });
 
     // Local draft of the settings form - seeded from the server once, then
     // edited freely until Save persists it.
@@ -44,7 +44,7 @@ function SettingsTab({ projectId }: { projectId: string }) {
 
     const updateSettings = api.project.updateSettings.useMutation({
         onSuccess: () => {
-            utils.digitalTwin.getProject.invalidate({ projectId });
+            utils.project.getProjectInfo.invalidate({ projectId });
             utils.digitalTwin.getProjects.invalidate();
             setDirty(false);
             toast.success("Project settings saved.");
@@ -56,7 +56,7 @@ function SettingsTab({ projectId }: { projectId: string }) {
 
     const setCoverImage = api.project.setCoverImage.useMutation({
         onSuccess: () => {
-            utils.digitalTwin.getProject.invalidate({ projectId });
+            utils.project.getProjectInfo.invalidate({ projectId });
             utils.digitalTwin.getProjects.invalidate();
             toast.success("Cover image updated.");
         },
@@ -65,7 +65,7 @@ function SettingsTab({ projectId }: { projectId: string }) {
 
     const removeCoverImage = api.project.removeCoverImage.useMutation({
         onSuccess: () => {
-            utils.digitalTwin.getProject.invalidate({ projectId });
+            utils.project.getProjectInfo.invalidate({ projectId });
             utils.digitalTwin.getProjects.invalidate();
             toast.success("Cover image removed.");
         },

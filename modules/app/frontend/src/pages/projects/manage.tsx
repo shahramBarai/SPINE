@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { api } from "utils/trpc";
-import { cn } from "utils/index";
 import { pageGuard } from "utils/pageGuard";
-import { FilesTab } from "components/feature/projectManage/FilesTab";
+import { TabBar } from "components/complex/TabBar";
+import { FilesOverviewTab } from "components/feature/projectManage/FilesOverviewTab";
 import { SettingsTab } from "components/feature/projectManage/SettingsTab";
 
 type ManageTab = "files" | "settings";
@@ -31,26 +31,15 @@ function ProjectManagePageContent({ project, role }: ProjectManagePageProps) {
                 Manage members, files, and semantic graphs for this project.
             </p>
 
-            <div className="flex items-center gap-1 border-b border-border mb-6">
-                {visibleTabs.map((t) => (
-                    <button
-                        key={t.id}
-                        onClick={() => setTab(t.id)}
-                        className={cn(
-                            "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
-                            "hover:cursor-pointer",
-                            tab === t.id
-                                ? "border-primary text-primary"
-                                : "border-transparent text-muted-foreground hover:text-foreground"
-                        )}
-                    >
-                        {t.label}
-                    </button>
-                ))}
-            </div>
+            <TabBar
+                className="mb-6"
+                tabs={visibleTabs}
+                active={tab}
+                onChange={setTab}
+            />
 
             <div className="flex flex-col items-center">
-                {tab === "files" && <FilesTab projectId={project.id} />}
+                {tab === "files" && <FilesOverviewTab projectId={project.id} />}
                 {tab === "settings" && isOwner && (
                     <SettingsTab projectId={project.id} />
                 )}
@@ -66,7 +55,7 @@ const ProjectManagePage = pageGuard(ProjectManagePageContent, {
             data: project,
             isLoading: isProjectLoading,
             error: projectError
-        } = api.digitalTwin.getProject.useQuery({ projectId });
+        } = api.project.getProjectInfo.useQuery({ projectId });
 
         const {
             data: role,

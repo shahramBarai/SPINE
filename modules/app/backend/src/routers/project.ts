@@ -34,6 +34,27 @@ export const projectRouter = router({
             return member?.role ?? null;
         }),
 
+    // Basic project info for the manage page - deliberately lighter than
+    // digitalTwin.getProject, which also resolves a Fuseki rootId for the
+    // 3D/graph viewer's default focus node. That resolution fails for a
+    // project with no synced Fuseki data yet, which would needlessly break
+    // the manage page (name/description/cover editing, etc.) even though it
+    // never uses rootId.
+    getProjectInfo: projectViewerProcedure.query(async ({ input }) => {
+        const project = await EntityService.getEntityById(input.projectId);
+        if (!project) {
+            throw new TRPCError({
+                code: "NOT_FOUND",
+                message: `Project not found: ${input.projectId}`
+            });
+        }
+
+        return {
+            ...project,
+            coverImageUrl: getCoverImageUrl(project.coverImageKey)
+        };
+    }),
+
     getMembers: projectViewerProcedure.query(async ({ input }) => {
         const members = await EntityService.getMembers(input.projectId);
         const userDetails = await Promise.all(
@@ -144,9 +165,7 @@ export const projectRouter = router({
     setCoverImage: projectOwnerProcedure
         .input(z.object({ objectKey: z.string() }))
         .mutation(async ({ input }) => {
-            const project = await EntityService.getEntityById(
-                input.projectId
-            );
+            const project = await EntityService.getEntityById(input.projectId);
             const previousKey = project?.coverImageKey;
 
             await EntityService.updateEntity(input.projectId, {
@@ -179,10 +198,14 @@ export const projectRouter = router({
     createFolder: projectEditorProcedure
         .input(z.object({ folder: z.string().min(1) }))
         .mutation(async ({ input }) => {
-            await ProjectFileService.createProjectFolder(
-                input.projectId,
-                input.folder
-            );
+            try {
+                await ProjectFileService.createProjectFolder(
+                    input.projectId,
+                    input.folder
+                );
+            } catch (error) {
+                throw asBadRequest(error, "Invalid folder name");
+            }
             return { folder: input.folder };
         }),
 
@@ -231,6 +254,70 @@ export const projectRouter = router({
     listGraphs: projectEditorProcedure.query(async ({ input }) => {
         return await DatasetService.read_list_graphs(input.projectId);
     }),
+
+    createGraph: projectEditorProcedure
+        .input(z.object({ graphUri: z.string().min(1) }))
+        .mutation(async ({ input }) => {
+            if (input.graphUri === "default") {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "The default graph always exists"
+                });
+            }
+
+            try {
+                await DatasetService.createGraph(
+                    input.projectId,
+                    input.graphUri
+                );
+            } catch (error) {
+                throw asBadRequest(error, "Invalid graph URI");
+            }
+
+            return { graphUri: input.graphUri };
+        }),
+
+    renameGraph: projectEditorProcedure
+        .input(
+            z.object({
+                oldUri: z.string().min(1),
+                newUri: z.string().min(1)
+            })
+        )
+        .mutation(async ({ input }) => {
+            if (input.oldUri === "default" || input.newUri === "default") {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "The default graph cannot be renamed"
+                });
+            }
+
+            try {
+                await DatasetService.renameGraph(
+                    input.projectId,
+                    input.oldUri,
+                    input.newUri
+                );
+            } catch (error) {
+                throw asBadRequest(error, "Invalid graph URI");
+            }
+
+            return { graphUri: input.newUri };
+        }),
+
+    deleteGraph: projectEditorProcedure
+        .input(z.object({ graphUri: z.string().min(1) }))
+        .mutation(async ({ input }) => {
+            if (input.graphUri === "default") {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "The default graph cannot be deleted"
+                });
+            }
+
+            await DatasetService.deleteGraph(input.projectId, input.graphUri);
+            return { success: true };
+        }),
 
     loadTtlToFuseki: projectEditorProcedure
         .input(

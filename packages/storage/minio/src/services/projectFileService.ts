@@ -73,6 +73,16 @@ function assertAllowedExtension(
     }
 }
 
+// buildObjectName joins projectId/folder/fileId_fileName with "/" to form
+// the object key - a "/" inside folder or fileName would inject extra path
+// segments, which listProjectFiles' naive parts[1]-as-folder parsing can't
+// tell apart from a real subfolder, silently misgrouping files.
+function assertNoPathSeparator(value: string, label: string): void {
+    if (value.includes("/")) {
+        throw new Error(`${label} cannot contain "/".`);
+    }
+}
+
 /* -------------------------------- CREATE -------------------------------- */
 
 /**
@@ -83,6 +93,8 @@ async function createProjectFolder(
     projectId: string,
     folder: string
 ): Promise<void> {
+    assertNoPathSeparator(folder, "Folder name");
+
     const objectName = `${projectId}/${folder}/${FOLDER_MARKER}`;
     await BucketService.uploadBuffer(
         PROJECT_FILES_BUCKET,
@@ -102,6 +114,8 @@ async function getProjectFileUploadUrl(
     folder: string,
     fileName: string
 ): Promise<UploadUrlResult> {
+    assertNoPathSeparator(folder, "Folder name");
+    assertNoPathSeparator(fileName, "File name");
     assertAllowedExtension(fileName, ALLOWED_FILE_EXTENSIONS, "file");
 
     const fileId = crypto.randomUUID();
@@ -124,6 +138,7 @@ async function getCoverImageUploadUrl(
     projectId: string,
     fileName: string
 ): Promise<UploadUrlResult & { objectKey: string }> {
+    assertNoPathSeparator(fileName, "File name");
     assertAllowedExtension(fileName, ALLOWED_IMAGE_EXTENSIONS, "image");
 
     const fileId = crypto.randomUUID();
