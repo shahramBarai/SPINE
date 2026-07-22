@@ -26,8 +26,16 @@ const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     // Save theme to localStorage on change
     useEffect(() => {
         localStorage.setItem("theme", theme);
-        // Optionally, update <html> class for Tailwind dark mode
-        document.documentElement.classList.toggle("dark", theme === "dark");
+
+        const root = document.documentElement;
+        root.classList.add("theme-transitioning");
+        root.classList.toggle("dark", theme === "dark");
+        // Force a reflow so the transition-suppressing class is applied
+        // before the swap paints, not removed before it took effect.
+        void root.offsetHeight;
+        requestAnimationFrame(() => {
+            root.classList.remove("theme-transitioning");
+        });
     }, [theme]);
 
     const setTheme = (t: Theme) => setThemeState(t);

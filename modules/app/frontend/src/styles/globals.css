@@ -158,6 +158,15 @@
     }
 }
 
+/* Suppresses color transitions for one frame around a theme switch - see
+   useTheme.tsx. Without this, elements with transition-colors/transition-all
+   (e.g. Button's "outline" variant) visibly animate between the old and new
+   theme's colors while non-transitioning elements snap instantly, producing
+   a brief mismatch/"blink". */
+.theme-transitioning * {
+    transition: none !important;
+}
+
 /* Edge hover effect */
 .react-flow__edge:hover .react-flow__edge-path {
     stroke: var(--primary) !important;
