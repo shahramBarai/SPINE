@@ -231,7 +231,11 @@ async function listProjectFiles(projectId: string): Promise<ProjectFolder[]> {
             undefined
         );
 
-        return { folder, files, totalSize, lastModified };
+        const sortedFiles = files.sort((a, b) =>
+            a.fileName.localeCompare(b.fileName)
+        );
+
+        return { folder, files: sortedFiles, totalSize, lastModified };
     });
 }
 
