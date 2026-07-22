@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { api } from "utils/trpc";
 import { Modal } from "components/complex/Modal";
+import { TabBar } from "components/complex/TabBar";
 import { Label } from "components/basics/label";
 import { Input } from "components/basics/input";
 import { Button } from "components/basics/Button";
@@ -15,6 +16,11 @@ import {
 } from "components/basics/select";
 
 type GraphChoice = "existing" | "new";
+
+const GRAPH_CHOICE_TABS: { id: GraphChoice; label: string }[] = [
+    { id: "existing", label: "Existing graph" },
+    { id: "new", label: "New graph" }
+];
 
 interface TtlFileOption {
     folder: string;
@@ -51,11 +57,10 @@ function UploadTtlToGraphModal({
 
     const [selectedFileKey, setSelectedFileKey] = useState("");
     const [choice, setChoice] = useState<GraphChoice>("existing");
-    const [existingGraphUri, setExistingGraphUri] = useState("");
+    const [existingGraphUri, setExistingGraphUri] = useState("default");
     const [newGraphUri, setNewGraphUri] = useState("");
-    const [replace, setReplace] = useState(true);
+    const [replace, setReplace] = useState(false);
 
-    const namedGraphs = existingGraphs.filter((g) => g.uri !== "default");
     const selectedFile = ttlFiles.find(
         (file) => `${file.folder}/${file.fileId}` === selectedFileKey
     );
@@ -70,9 +75,7 @@ function UploadTtlToGraphModal({
             return;
         }
         if (!graphUri) {
-            toast.warning(
-                "Choose an existing graph or enter a new graph URI."
-            );
+            toast.warning("Choose an existing graph or enter a new graph URI.");
             return;
         }
 
@@ -83,7 +86,7 @@ function UploadTtlToGraphModal({
                 fileId: selectedFile.fileId,
                 fileName: selectedFile.fileName,
                 graphUri,
-                replace
+                replace: choice === "existing" ? replace : true
             });
             await utils.project.listGraphs.invalidate({ projectId });
             onSuccess?.();
@@ -92,7 +95,9 @@ function UploadTtlToGraphModal({
         } catch (error) {
             console.error(error);
             toast.error(
-                `Failed to load ${selectedFile.fileName} into Fuseki.`
+                error instanceof Error
+                    ? error.message
+                    : `Failed to load ${selectedFile.fileName} into Fuseki.`
             );
         }
     };
@@ -104,7 +109,7 @@ function UploadTtlToGraphModal({
             open={open}
             setOpen={setOpen}
         >
-            <div className="space-y-4">
+            <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
                     <Label>TTL file</Label>
                     <Select
@@ -135,63 +140,44 @@ function UploadTtlToGraphModal({
                     </Select>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="radio"
-                            id="graph-existing"
-                            name="graph-choice"
-                            checked={choice === "existing"}
-                            onChange={() => setChoice("existing")}
-                        />
-                        <Label htmlFor="graph-existing">
-                            Use an existing graph
-                        </Label>
-                    </div>
-                    <Select
-                        value={existingGraphUri}
-                        disabled={choice !== "existing"}
-                        onValueChange={setExistingGraphUri}
-                    >
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a graph" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {namedGraphs.map((g) => (
-                                <SelectItem key={g.uri} value={g.uri}>
-                                    {g.uri} ({g.count} triples)
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                <TabBar
+                    tabs={GRAPH_CHOICE_TABS}
+                    active={choice}
+                    onChange={setChoice}
+                />
 
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="radio"
-                            id="graph-new"
-                            name="graph-choice"
-                            checked={choice === "new"}
-                            onChange={() => setChoice("new")}
-                        />
-                        <Label htmlFor="graph-new">Create a new graph</Label>
-                    </div>
+                {choice === "existing" ? (
+                    <>
+                        <Select
+                            value={existingGraphUri}
+                            onValueChange={setExistingGraphUri}
+                        >
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select a graph" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {existingGraphs.map((g) => (
+                                    <SelectItem key={g.uri} value={g.uri}>
+                                        {g.uri} ({g.count} triples)
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <div className="flex items-center gap-2 mb-2">
+                            <CheckButton
+                                checked={replace}
+                                onClick={() => setReplace((v) => !v)}
+                            />
+                            <Label>Replace existing graph content</Label>
+                        </div>
+                    </>
+                ) : (
                     <Input
                         placeholder="e.g. urn:spine:my-project:model-1"
-                        disabled={choice !== "new"}
                         value={newGraphUri}
                         onChange={(e) => setNewGraphUri(e.target.value)}
                     />
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <CheckButton
-                        checked={replace}
-                        onClick={() => setReplace((v) => !v)}
-                    />
-                    <Label>Replace existing graph content</Label>
-                </div>
+                )}
 
                 <Button
                     variant="primary"

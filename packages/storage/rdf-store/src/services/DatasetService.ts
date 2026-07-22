@@ -84,8 +84,9 @@ async function read_list_graphs(datasetName: string) {
  *
  * @param datasetName - The name of the dataset to upload to.
  * @param ttlContent - The TTL content to upload as bytes.
- * @param graphUri - The URI of the graph to upload to. If omitted, the default graph is targeted.
+ * @param graphUri - The URI of the graph to upload to. Omit, or pass "default", to target the default graph.
  * @param replace - If true, replaces the existing graph content instead of appending to it.
+ * @throws {Error} If graphUri is provided and isn't a validly-formed URI
  * @throws FusekiSparqlError If the server returns an error status code or there's a network error.
  */
 async function uploadTtlToFuseki(
@@ -94,10 +95,20 @@ async function uploadTtlToFuseki(
     graphUri?: string,
     replace: boolean = false
 ): Promise<void> {
+    // "default" is the sentinel read_list_graphs reports for Fuseki's
+    // unnamed default graph (there's no real URI for it) - Graph Store
+    // Protocol instead expects graphUri to be omitted entirely to target it,
+    // so without this translation, uploading to "default" would create/write
+    // to an actual named graph literally called "default" instead.
+    const targetGraphUri = graphUri === "default" ? undefined : graphUri;
+    if (targetGraphUri) {
+        assertValidGraphUri(targetGraphUri);
+    }
+
     await fusekiClient.graph_upload_ttl(
         datasetName,
         ttlContent,
-        graphUri,
+        targetGraphUri,
         replace
     );
 }

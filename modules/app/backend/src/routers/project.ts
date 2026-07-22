@@ -387,12 +387,16 @@ export const projectRouter = router({
             }
 
             const ttlContent = await readStreamToText(fileStream);
-            await DatasetService.uploadTtlToFuseki(
-                input.projectId,
-                Buffer.from(ttlContent, "utf-8"),
-                input.graphUri,
-                input.replace
-            );
+            try {
+                await DatasetService.uploadTtlToFuseki(
+                    input.projectId,
+                    Buffer.from(ttlContent, "utf-8"),
+                    input.graphUri,
+                    input.replace
+                );
+            } catch (error) {
+                throw asBadRequest(error, "Failed to load TTL into Fuseki");
+            }
 
             return { graphUri: input.graphUri };
         }),
