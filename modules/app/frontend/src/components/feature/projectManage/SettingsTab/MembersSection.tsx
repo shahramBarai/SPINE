@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { api } from "utils/trpc";
 import { cn } from "utils/index";
 import { Button } from "components/basics/Button";
+import { SectionCard } from "components/complex/SectionCard";
 import { SearchDropdown } from "components/complex/SearchDropdown";
 import {
     Select,
@@ -16,6 +17,7 @@ import {
 const ROLE_OPTIONS = ["OWNER", "EDITOR", "VIEWER"] as const;
 type Role = (typeof ROLE_OPTIONS)[number];
 const SEARCH_DEBOUNCE_MS = 300;
+const MEMBER_PAGE_SIZE = 5;
 
 interface MemberRowState {
     userId: string;
@@ -28,10 +30,12 @@ interface MemberRowState {
 
 function MembersTab({
     projectId,
-    isOwner
+    isOwner,
+    className
 }: {
     projectId: string;
     isOwner: boolean;
+    className?: string;
 }) {
     const utils = api.useUtils();
     const {
@@ -48,6 +52,7 @@ function MembersTab({
     const [searchOpen, setSearchOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [visibleCount, setVisibleCount] = useState(MEMBER_PAGE_SIZE);
 
     useEffect(() => {
         if (members && rows === null) {
@@ -91,18 +96,22 @@ function MembersTab({
 
     if (isLoading || rows === null) {
         return (
-            <div className="flex items-center gap-2 text-muted-foreground py-6">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading members...
-            </div>
+            <SectionCard title="Members" className={className}>
+                <div className="flex items-center gap-2 text-muted-foreground py-6">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading members...
+                </div>
+            </SectionCard>
         );
     }
 
     if (error || !members) {
         return (
-            <p className="text-danger text-sm py-6">
-                Failed to load project members.
-            </p>
+            <SectionCard title="Members" className={className}>
+                <p className="text-danger text-sm py-6">
+                    Failed to load project members.
+                </p>
+            </SectionCard>
         );
     }
 
@@ -157,7 +166,11 @@ function MembersTab({
         setDirty(true);
         setSearchOpen(false);
         setSearch("");
+        setVisibleCount((prev) => Math.max(prev, rows.length + 1));
     };
+
+    const visibleRows = rows.slice(0, visibleCount);
+    const remainingCount = rows.length - visibleRows.length;
 
     const handleSave = () => {
         updateMembers.mutate({
@@ -170,7 +183,7 @@ function MembersTab({
     };
 
     return (
-        <div className="w-full flex flex-col gap-">
+        <SectionCard title="Members" className={cn("w-full", className)}>
             <div className="border border-border rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
                     <thead className="bg-muted text-muted-foreground text-left">
@@ -182,7 +195,7 @@ function MembersTab({
                         </tr>
                     </thead>
                     <tbody>
-                        {rows.map((row) => {
+                        {visibleRows.map((row) => {
                             const isLastOwner =
                                 row.role === "OWNER" && ownerCount === 1;
                             return (
@@ -262,18 +275,50 @@ function MembersTab({
                                 </tr>
                             );
                         })}
-                        {isOwner && (
+                        {remainingCount > 0 ? (
                             <tr>
                                 <td colSpan={4} className="p-0">
                                     <button
                                         type="button"
-                                        onClick={() => setSearchOpen(true)}
-                                        className="w-full py-2 text-center text-sm text-muted-foreground hover:text-primary hover:bg-muted transition-colors border-t border-dashed border-border"
+                                        onClick={() =>
+                                            setVisibleCount(
+                                                (prev) =>
+                                                    prev + MEMBER_PAGE_SIZE
+                                            )
+                                        }
+                                        className={cn(
+                                            "w-full py-2 text-center text-sm text-muted-foreground transition-colors",
+                                            "border-t border-border",
+                                            "hover:cursor-pointer hover:text-primary hover:bg-muted"
+                                        )}
                                     >
-                                        + Add member
+                                        Show{" "}
+                                        {Math.min(
+                                            MEMBER_PAGE_SIZE,
+                                            remainingCount
+                                        )}{" "}
+                                        more
                                     </button>
                                 </td>
                             </tr>
+                        ) : (
+                            isOwner && (
+                                <tr>
+                                    <td colSpan={4} className="p-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSearchOpen(true)}
+                                            className={cn(
+                                                "w-full py-2 text-center text-sm text-muted-foreground transition-colors ",
+                                                "border-t border-dashed border-border",
+                                                "hover:cursor-pointer hover:text-primary hover:bg-muted"
+                                            )}
+                                        >
+                                            + Add member
+                                        </button>
+                                    </td>
+                                </tr>
+                            )
                         )}
                     </tbody>
                 </table>
@@ -336,7 +381,7 @@ function MembersTab({
                 placeholder="Search by name or email..."
                 emptyMessage="No matching users."
             />
-        </div>
+        </SectionCard>
     );
 }
 
