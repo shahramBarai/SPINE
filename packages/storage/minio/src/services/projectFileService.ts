@@ -130,6 +130,30 @@ async function getProjectFileUploadUrl(
 }
 
 /**
+ * Saves a buffer as a new file in one of a project's folders - a
+ * server-side counterpart to getProjectFileUploadUrl for when the caller
+ * already has the bytes in hand (e.g. a tool's output downloaded from
+ * another service), so no presigned-URL round trip is needed.
+ * @throws {Error} If the file's extension isn't an allowed project file type
+ */
+async function saveProjectFileBuffer(
+    projectId: string,
+    folder: string,
+    fileName: string,
+    content: Buffer
+): Promise<{ fileId: string; fileName: string }> {
+    assertNoPathSeparator(folder, "Folder name");
+    assertNoPathSeparator(fileName, "File name");
+    assertAllowedExtension(fileName, ALLOWED_FILE_EXTENSIONS, "file");
+
+    const fileId = crypto.randomUUID();
+    const objectName = buildObjectName(projectId, folder, fileId, fileName);
+    await BucketService.uploadBuffer(PROJECT_FILES_BUCKET, objectName, content);
+
+    return { fileId, fileName };
+}
+
+/**
  * Generates a presigned upload URL for a project's cover image, after
  * checking its extension against the allowed image types.
  * @throws {Error} If the file's extension isn't an allowed image type
@@ -270,6 +294,7 @@ export {
     buildCoverObjectName,
     createProjectFolder,
     getProjectFileUploadUrl,
+    saveProjectFileBuffer,
     getCoverImageUploadUrl,
     listProjectFiles,
     readProjectFile,

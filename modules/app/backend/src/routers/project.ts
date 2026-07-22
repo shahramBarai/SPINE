@@ -6,12 +6,22 @@ import {
     projectEditorProcedure,
     projectOwnerProcedure
 } from "../procedures/project";
-import { EntityService, UserService } from "@spine/storage-platform";
-import { type MemberRole } from "@spine/storage-platform/types";
+import {
+    EntityService,
+    UserService,
+    JobExecutionService
+} from "@spine/storage-platform";
+import {
+    type MemberRole,
+    type JobExecutionStatus
+} from "@spine/storage-platform/types";
 import { ProjectFileService } from "@spine/storage-minio";
 import { DatasetService } from "@spine/storage-rdf-store";
-import { readStreamToText } from "../utils/stream";
+import { readStreamToBuffer, readStreamToText } from "../utils/stream";
 import { getCoverImageUrl } from "../utils/coverImage";
+import { TOOLS } from "../tools";
+import { BuildingServiceClient } from "../clients";
+import { basename } from "path";
 
 // Turns a plain Error thrown by ProjectFileService's validation (e.g. a
 // disallowed file extension) into a client-facing 400, instead of letting
@@ -21,6 +31,39 @@ function asBadRequest(error: unknown, fallbackMessage: string): TRPCError {
         code: "BAD_REQUEST",
         message: error instanceof Error ? error.message : fallbackMessage
     });
+}
+
+function toJobExecutionStatus(
+    status: BuildingServiceClient.ConversionJobStatus
+): JobExecutionStatus {
+    switch (status) {
+        case "queued":
+            return "QUEUED";
+        case "running":
+            return "RUNNING";
+        case "completed":
+            return "COMPLETED";
+        case "failed":
+            return "FAILED";
+    }
+}
+
+// Looks up a job execution and checks it belongs to the given project, so
+// one project's editors can't poll/save another project's job by guessing
+// its executionId.
+async function getOwnJobExecutionOrThrow(
+    projectId: string,
+    executionId: string
+) {
+    const jobExecution =
+        await JobExecutionService.getJobExecutionById(executionId);
+    if (!jobExecution || jobExecution.entityId !== projectId) {
+        throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Job execution not found"
+        });
+    }
+    return jobExecution;
 }
 
 export const projectRouter = router({
@@ -352,5 +395,171 @@ export const projectRouter = router({
             );
 
             return { graphUri: input.graphUri };
+        }),
+
+    // Hardcoded tool catalog - see the Tools section design discussion.
+    // Not project-scoped: it's a static list, not project data.
+    listTools: protectedProcedure.query(() => TOOLS),
+
+    // A project's history of executed jobs (tool runs today, Flink pipeline
+    // runs later) - see the JobExecution design discussion.
+    listJobExecutions: projectEditorProcedure.query(async ({ input }) => {
+        return await JobExecutionService.listJobExecutions(input.projectId);
+    }),
+
+    runIfcToTtlTool: projectEditorProcedure
+        .input(
+            z.object({
+                folder: z.string(),
+                fileId: z.string(),
+                fileName: z.string()
+            })
+        )
+        .mutation(async ({ ctx, input }) => {
+            if (!input.fileName.toLowerCase().endsWith(".ifc")) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Only .ifc files can be converted to TTL."
+                });
+            }
+
+            const fileStream = await ProjectFileService.readProjectFile(
+                input.projectId,
+                input.folder,
+                input.fileId,
+                input.fileName
+            );
+            if (!fileStream) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: `File not found: ${input.fileName}`
+                });
+            }
+
+            try {
+                const content = await readStreamToBuffer(fileStream);
+                // Prefix with our own fileId so re-running the tool on a
+                // different file that happens to share a name doesn't
+                // collide with an existing building-service job.
+                const uploadName = `${input.fileId}_${input.fileName}`;
+                await BuildingServiceClient.uploadFile(uploadName, content);
+                const jobId =
+                    await BuildingServiceClient.convertIfcToTtl(uploadName);
+
+                const jobExecution =
+                    await JobExecutionService.createJobExecution({
+                        entityId: input.projectId,
+                        executedBy: ctx.user.id,
+                        source: "TOOL",
+                        jobKey: "ifc-to-ttl",
+                        externalJobId: jobId,
+                        input: {
+                            folder: input.folder,
+                            fileId: input.fileId,
+                            fileName: input.fileName
+                        }
+                    });
+                return { executionId: jobExecution.id };
+            } catch (error) {
+                throw asBadRequest(error, "Failed to start conversion");
+            }
+        }),
+
+    getToolJobStatus: projectEditorProcedure
+        .input(z.object({ executionId: z.string() }))
+        .query(async ({ input }) => {
+            const jobExecution = await getOwnJobExecutionOrThrow(
+                input.projectId,
+                input.executionId
+            );
+
+            if (!jobExecution.externalJobId) {
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: "Job execution has no external job id."
+                });
+            }
+
+            try {
+                const job = await BuildingServiceClient.getConversionJob(
+                    jobExecution.externalJobId
+                );
+                const status = toJobExecutionStatus(job.status_info.status);
+
+                await JobExecutionService.updateJobExecution(jobExecution.id, {
+                    status,
+                    error: job.status_info.error
+                });
+
+                return {
+                    executionId: jobExecution.id,
+                    status,
+                    error: job.status_info.error,
+                    updatedAt: job.status_info.updated_at,
+                    resultFileName: basename(job.details.target_ttl)
+                };
+            } catch (error) {
+                if (
+                    error instanceof BuildingServiceClient.BuildingServiceError
+                ) {
+                    throw new TRPCError({
+                        code:
+                            error.status === 404 ? "NOT_FOUND" : "BAD_GATEWAY",
+                        message: error.message
+                    });
+                }
+                throw error;
+            }
+        }),
+
+    // Downloads a completed conversion job's result from building-service
+    // and saves it as a new file in the project's own storage.
+    saveToolResult: projectEditorProcedure
+        .input(
+            z.object({
+                executionId: z.string(),
+                folder: z.string().min(1)
+            })
+        )
+        .mutation(async ({ input }) => {
+            const jobExecution = await getOwnJobExecutionOrThrow(
+                input.projectId,
+                input.executionId
+            );
+
+            if (!jobExecution.externalJobId) {
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: "Job execution has no external job id."
+                });
+            }
+
+            const job = await BuildingServiceClient.getConversionJob(
+                jobExecution.externalJobId
+            );
+            if (job.status_info.status !== "completed") {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: `Job is not complete yet (status: ${job.status_info.status}).`
+                });
+            }
+
+            const resultFileName = basename(job.details.target_ttl);
+            const content =
+                await BuildingServiceClient.downloadFile(resultFileName);
+
+            const saved = await ProjectFileService.saveProjectFileBuffer(
+                input.projectId,
+                input.folder,
+                resultFileName,
+                content
+            );
+
+            await JobExecutionService.updateJobExecution(jobExecution.id, {
+                status: "COMPLETED",
+                result: { folder: input.folder, ...saved }
+            });
+
+            return saved;
         })
 });

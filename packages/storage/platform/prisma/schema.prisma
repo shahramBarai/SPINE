@@ -16,6 +16,7 @@ model User {
     role     UserRole @default(USER)
 
     entityMemberships EntityMember[]
+    jobExecutions     JobExecution[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -43,6 +44,7 @@ model Entity {
 
     kafkaTopics KafkaTopic[]
     flinkTasks  Pipeline[]
+    jobExecutions JobExecution[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -97,7 +99,48 @@ model Pipeline {
     entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 }
 
-// Kafka topic model for Kafka topics 
+// Log of executed async jobs - tool runs today (e.g. building-service's
+// IFC->TTL conversion), Flink pipeline runs later via source. This is the
+// run *instance* (this input, by this user, at this time, with this
+// status); Pipeline above is the saved job *definition*. externalJobId is
+// whatever id the actual executing service hands back - this row tracks
+// it, it doesn't replace it.
+model JobExecution {
+    id            String             @id @default(cuid())
+    source        JobSource
+    jobKey        String // e.g. a tools.ts tool id, or a Pipeline id
+    externalJobId String?
+    status        JobExecutionStatus @default(QUEUED)
+    input         Json?
+    result        Json?
+    error         String?
+
+    entityId   String
+    executedBy String
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+    user   User   @relation(fields: [executedBy], references: [id], onDelete: Cascade)
+
+    @@index([entityId])
+    @@index([executedBy])
+}
+
+enum JobSource {
+    TOOL
+    FLINK
+}
+
+enum JobExecutionStatus {
+    QUEUED
+    RUNNING
+    COMPLETED
+    FAILED
+}
+
+// Kafka topic model for Kafka topics
 model KafkaTopic {
     topicName   String     @id
     description String?

@@ -22,6 +22,7 @@ interface WorkspaceEnv {
     FRONTEND_URL: string;
     BACKEND_URL: string;
     SECRET_COOKIE_PASSWORD: string;
+    BUILDING_SERVICE_URL: string;
 }
 
 function requiredEnv(name: keyof WorkspaceEnv): string {
@@ -58,7 +59,14 @@ const env: WorkspaceEnv = {
         process.env.SCHEMA_REGISTRY_PASSWORD?.trim() || undefined,
     FRONTEND_URL: requiredEnv("FRONTEND_URL"),
     BACKEND_URL: requiredEnv("BACKEND_URL"),
-    SECRET_COOKIE_PASSWORD: requiredEnv("SECRET_COOKIE_PASSWORD")
+    SECRET_COOKIE_PASSWORD: requiredEnv("SECRET_COOKIE_PASSWORD"),
+    // Not required (unlike the others above): building-service is optional,
+    // experimental infra, not part of the core docker-compose stack, so a
+    // missing .env entry shouldn't crash every other package that imports
+    // this shared env - it just falls back to the local dev default.
+    BUILDING_SERVICE_URL:
+        process.env.BUILDING_SERVICE_URL?.trim() ||
+        "http://172.29.248.145:8000"
 };
 
 export type { WorkspaceEnv };

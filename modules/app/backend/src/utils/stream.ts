@@ -1,6 +1,6 @@
 import { Readable } from "stream";
 
-async function readStreamToText(stream: Readable): Promise<string> {
+async function readStreamToBuffer(stream: Readable): Promise<Buffer> {
     const chunks: Buffer[] = [];
 
     for await (const chunk of stream) {
@@ -12,7 +12,11 @@ async function readStreamToText(stream: Readable): Promise<string> {
         chunks.push(Buffer.from(chunk));
     }
 
-    return Buffer.concat(chunks).toString("utf-8");
+    return Buffer.concat(chunks);
 }
 
-export { readStreamToText };
+async function readStreamToText(stream: Readable): Promise<string> {
+    return (await readStreamToBuffer(stream)).toString("utf-8");
+}
+
+export { readStreamToBuffer, readStreamToText };

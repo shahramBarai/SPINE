@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Loader2, Wrench } from "lucide-react";
+import { api } from "utils/trpc";
 import { Button } from "components/basics/Button";
 import { SectionCard } from "components/complex/SectionCard";
-import { useProjectTools } from "../hooks/useProjectTools";
+import { RunIfcToTtlModal } from "../modals/RunIfcToTtlModal";
 
 function TypeBadge({ type }: { type: string }) {
     return (
@@ -11,8 +13,6 @@ function TypeBadge({ type }: { type: string }) {
     );
 }
 
-// projectId isn't used yet since the tool list/run action is mocked, but is
-// kept in the signature since running a tool for real will need it.
 function ToolsSection({
     projectId,
     className
@@ -20,9 +20,14 @@ function ToolsSection({
     projectId: string;
     className?: string;
 }) {
-    void projectId;
+    const [runModalToolId, setRunModalToolId] = useState<string | null>(null);
+    const utils = api.useUtils();
 
-    const { data: tools, isLoading, isError } = useProjectTools();
+    const {
+        data: tools,
+        isLoading,
+        isError
+    } = api.project.listTools.useQuery();
 
     if (isLoading) {
         return (
@@ -58,7 +63,7 @@ function ToolsSection({
                             <span className="font-medium text-foreground">
                                 {tool.name}
                             </span>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground line-clamp-2">
                                 {tool.description}
                             </p>
                             <div className="flex items-center gap-1.5 flex-wrap">
@@ -83,14 +88,31 @@ function ToolsSection({
                         <Button
                             variant="outline"
                             size="sm"
-                            disabled
-                            title="Not yet implemented"
+                            disabled={!tool.available}
+                            title={
+                                tool.available
+                                    ? undefined
+                                    : "Not yet implemented"
+                            }
+                            onClick={() => setRunModalToolId(tool.id)}
                         >
                             Run
                         </Button>
                     </div>
                 ))}
             </div>
+
+            {/* Only ifc-to-ttl has a real backend integration so far - see tools.ts. */}
+            <RunIfcToTtlModal
+                projectId={projectId}
+                open={runModalToolId === "ifc-to-ttl"}
+                setOpen={(open) =>
+                    setRunModalToolId(open ? "ifc-to-ttl" : null)
+                }
+                onSuccess={() =>
+                    utils.project.listFiles.invalidate({ projectId })
+                }
+            />
         </SectionCard>
     );
 }
