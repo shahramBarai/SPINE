@@ -45,7 +45,6 @@ createRoot(document.getElementById("root")!).render(
                                 </AppLayout>
                             }
                         />
-                        <Route path="/digital-twin" element={<DigitalTwin />} />
                         <Route
                             path="/projects/:projectId/digital-twin"
                             element={<DigitalTwin />}
