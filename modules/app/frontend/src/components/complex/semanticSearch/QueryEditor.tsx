@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Loader2, Search } from "lucide-react";
 import { Button } from "components/basics/Button";
 import {
@@ -14,7 +14,6 @@ import { SectionCard } from "components/complex/SectionCard";
 type SemanticSearchExample = {
     id: string;
     label: string;
-    query: string;
 };
 
 function QueryEditor({
@@ -23,6 +22,9 @@ function QueryEditor({
     onRun,
     isLoading,
     examples,
+    selectedExampleId,
+    onSelectExample,
+    isLoadingExample,
     className
 }: {
     query: string;
@@ -30,20 +32,17 @@ function QueryEditor({
     onRun: () => void;
     isLoading: boolean;
     examples: SemanticSearchExample[];
+    selectedExampleId: string;
+    onSelectExample: (exampleId: string) => void;
+    // Whether the selected example's text is still being fetched (e.g. a
+    // saved query being read back from storage), so the textarea can show
+    // a loading state instead of appearing to just go blank/stale.
+    isLoadingExample?: boolean;
     className?: string;
 }) {
-    const [selectedExampleId, setSelectedExampleId] = useState("");
     const gutterRef = useRef<HTMLDivElement>(null);
 
     const lineCount = query.split("\n").length;
-
-    const applyExample = (exampleId: string) => {
-        setSelectedExampleId(exampleId);
-        const example = examples.find((entry) => entry.id === exampleId);
-        if (example) {
-            onQueryChange(example.query);
-        }
-    };
 
     // Line numbers are a separate element from the textarea, so keeping
     // them lined up with their actual rows means mirroring the textarea's
@@ -62,7 +61,8 @@ function QueryEditor({
                 <div className="flex items-center gap-2">
                     <Select
                         value={selectedExampleId}
-                        onValueChange={applyExample}
+                        onValueChange={onSelectExample}
+                        disabled={isLoadingExample}
                     >
                         <SelectTrigger size="sm" className="w-[170px]">
                             <SelectValue placeholder="Examples" />
@@ -94,7 +94,7 @@ function QueryEditor({
             <div className="flex flex-col gap-1">
                 <div
                     className={cn(
-                        "flex-1 min-h-[120px] flex rounded-md border border-input bg-transparent shadow-xs",
+                        "relative flex-1 min-h-[120px] flex rounded-md border border-input bg-transparent shadow-xs",
                         "transition-[color,box-shadow]",
                         "focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]"
                     )}
@@ -115,10 +115,17 @@ function QueryEditor({
                         onChange={(event) => onQueryChange(event.target.value)}
                         onScroll={syncGutterScroll}
                         wrap="off"
+                        readOnly={isLoadingExample}
                         className="flex-1 resize-none bg-transparent px-2 py-2 font-mono text-xs leading-relaxed outline-none"
                         placeholder="SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 200"
                         spellCheck={false}
                     />
+                    {isLoadingExample && (
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-md bg-background/70 text-xs text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Loading query...
+                        </div>
+                    )}
                 </div>
                 <p className="text-xs text-muted-foreground">
                     SELECT must return ?s ?p ?o (or ?subject ?predicate

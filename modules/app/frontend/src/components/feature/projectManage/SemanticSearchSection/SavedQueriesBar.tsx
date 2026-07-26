@@ -15,18 +15,23 @@ const QUERY_NAME_REGEX = /^[a-zA-Z0-9 _-]+$/;
 function SavedQueriesBar({
     projectId,
     query,
+    onSaved,
     className
 }: {
     projectId: string;
     query: string;
+    onSaved: (fileId: string) => void;
     className?: string;
 }) {
     const [saveName, setSaveName] = useState("");
+    const utils = api.useUtils();
 
     const saveQuery = api.project.saveSemanticSearchQuery.useMutation({
-        onSuccess: (_result, variables) => {
+        onSuccess: (result, variables) => {
             setSaveName("");
             toast.success(`Query "${variables.name}" saved.`);
+            utils.project.listSemanticSearchQueries.invalidate({ projectId });
+            onSaved(result.fileId);
         },
         onError: (error) => toast.error(error.message)
     });

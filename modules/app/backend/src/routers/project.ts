@@ -63,6 +63,15 @@ function assertValidQueryName(name: string): string {
     return trimmed;
 }
 
+async function getSavedQueryFiles(projectId: string) {
+    const folders = await ProjectFileService.listProjectFiles(projectId);
+    return (
+        folders.find(
+            (folder) => folder.folder === ProjectFileService.SAVED_QUERIES_FOLDER
+        )?.files ?? []
+    );
+}
+
 function toJobExecutionStatus(
     status: BuildingServiceClient.ConversionJobStatus
 ): JobExecutionStatus {
@@ -444,6 +453,40 @@ export const projectRouter = router({
             }
         }),
 
+    // Lists the project's saved queries by name only - deliberately not
+    // reading each .rq file's contents here, so picking one from the
+    // examples dropdown is what triggers loading its text (see
+    // getSemanticSearchQuery), not this list.
+    listSemanticSearchQueries: projectEditorProcedure.query(
+        async ({ input }) => {
+            const files = await getSavedQueryFiles(input.projectId);
+            return files.map((file) => ({
+                fileId: file.fileId,
+                name: file.fileName.replace(/\.rq$/i, "")
+            }));
+        }
+    ),
+
+    // Reads a single saved query's text, for when the user actually selects
+    // it from the examples dropdown.
+    getSemanticSearchQuery: projectEditorProcedure
+        .input(z.object({ fileId: z.string(), name: z.string() }))
+        .query(async ({ input }) => {
+            const stream = await ProjectFileService.readProjectFile(
+                input.projectId,
+                ProjectFileService.SAVED_QUERIES_FOLDER,
+                input.fileId,
+                `${input.name}.rq`
+            );
+            if (!stream) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: `Saved query not found: ${input.name}`
+                });
+            }
+            return { query: await readStreamToText(stream) };
+        }),
+
     // Persists a SPARQL query as a .rq file in the project's saved-queries
     // folder, rejecting names that are empty/unsafe or already taken so the
     // user gets a chance to rename rather than silently overwriting.
@@ -453,14 +496,7 @@ export const projectRouter = router({
             const name = assertValidQueryName(input.name);
             const fileName = `${name}.rq`;
 
-            const folders = await ProjectFileService.listProjectFiles(
-                input.projectId
-            );
-            const existingFiles =
-                folders.find(
-                    (folder) =>
-                        folder.folder === ProjectFileService.SAVED_QUERIES_FOLDER
-                )?.files ?? [];
+            const existingFiles = await getSavedQueryFiles(input.projectId);
             const isDuplicate = existingFiles.some(
                 (file) => file.fileName.toLowerCase() === fileName.toLowerCase()
             );

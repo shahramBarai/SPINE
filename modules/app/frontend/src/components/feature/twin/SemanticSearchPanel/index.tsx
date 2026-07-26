@@ -30,6 +30,7 @@ function SemanticSearchPanel({
 }) {
     const [query, setQuery] = useState(DEFAULT_SPARQL_QUERY);
     const [submittedQuery, setSubmittedQuery] = useState<string | null>(null);
+    const [selectedExampleId, setSelectedExampleId] = useState("");
 
     const {
         data: triples,
@@ -46,6 +47,16 @@ function SemanticSearchPanel({
             return;
         }
         setSubmittedQuery(trimmed);
+    };
+
+    const selectExample = (exampleId: string) => {
+        setSelectedExampleId(exampleId);
+        const example = SEMANTIC_SEARCH_EXAMPLES.find(
+            (entry) => entry.id === exampleId
+        );
+        if (example) {
+            setQuery(example.query);
+        }
     };
 
     return (
@@ -102,6 +113,8 @@ function SemanticSearchPanel({
                         onRun={runSearch}
                         isLoading={isLoading}
                         examples={SEMANTIC_SEARCH_EXAMPLES}
+                        selectedExampleId={selectedExampleId}
+                        onSelectExample={selectExample}
                     />
                     <ResultsTable
                         triples={triples ?? []}

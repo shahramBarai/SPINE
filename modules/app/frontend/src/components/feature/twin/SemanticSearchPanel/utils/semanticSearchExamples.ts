@@ -1,16 +1,20 @@
-import { type SemanticSearchExample } from "components/complex/semanticSearch/QueryEditor";
-
 export const DEFAULT_SPARQL_QUERY = `SELECT ?s ?p ?o
 WHERE {
   ?s ?p ?o .
 }
 LIMIT 200`;
 
+// QueryEditor's own SemanticSearchExample type is id/label only, since it
+// leaves resolving an example's text to the caller (see onSelectExample) -
+// this panel resolves synchronously against its own fixed list below, so it
+// keeps the query text alongside id/label here instead.
+type MockSemanticSearchExample = { id: string; label: string; query: string };
+
 // Illustrative starting points covering the query shapes this dataset
 // actually supports (see RelationshipGraphService): the plain triple dump,
 // cross-discipline owl:sameAs links, and brick:isPointOf sensor-to-space
 // links.
-export const SEMANTIC_SEARCH_EXAMPLES: SemanticSearchExample[] = [
+export const SEMANTIC_SEARCH_EXAMPLES: MockSemanticSearchExample[] = [
     {
         id: "all-triples",
         label: "All triples",
