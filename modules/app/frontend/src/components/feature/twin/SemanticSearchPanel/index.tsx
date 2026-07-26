@@ -7,10 +7,13 @@ import {
     Minimize2
 } from "lucide-react";
 import { cn } from "utils/index";
-import { QueryEditor } from "./QueryEditor";
-import { ResultsTable } from "./ResultsTable";
+import { QueryEditor } from "components/complex/semanticSearch/QueryEditor";
+import { ResultsTable } from "components/complex/semanticSearch/ResultsTable";
 import { useSemanticSearch } from "./hooks/useSemanticSearch";
-import { DEFAULT_SPARQL_QUERY } from "./utils/semanticSearchExamples";
+import {
+    DEFAULT_SPARQL_QUERY,
+    SEMANTIC_SEARCH_EXAMPLES
+} from "./utils/semanticSearchExamples";
 
 function SemanticSearchPanel({
     maximized,
@@ -98,6 +101,7 @@ function SemanticSearchPanel({
                         onQueryChange={setQuery}
                         onRun={runSearch}
                         isLoading={isLoading}
+                        examples={SEMANTIC_SEARCH_EXAMPLES}
                     />
                     <ResultsTable
                         triples={triples ?? []}

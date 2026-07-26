@@ -1,4 +1,4 @@
-import { type Triple } from "../types/semanticSearch";
+import { type Triple } from "components/complex/semanticSearch/ResultsTable";
 
 const MOCK_TRIPLES: Triple[] = [
     { subject: "ifc:Wall_3f2a91", predicate: "rdf:type", object: "ifc:Wall" },
