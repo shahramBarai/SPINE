@@ -16,7 +16,7 @@ import {
     type JobExecutionStatus
 } from "@spine/storage-platform/types";
 import { ProjectFileService } from "@spine/storage-minio";
-import { DatasetService } from "@spine/storage-rdf-store";
+import { DatasetService, SemanticSearchService } from "@spine/storage-rdf-store";
 import { readStreamToBuffer, readStreamToText } from "../utils/stream";
 import { getCoverImageUrl } from "../utils/coverImage";
 import { TOOLS } from "../tools";
@@ -399,6 +399,19 @@ export const projectRouter = router({
             }
 
             return { graphUri: input.graphUri };
+        }),
+
+    runSemanticSearch: projectEditorProcedure
+        .input(z.object({ query: z.string().min(1) }))
+        .query(async ({ input }) => {
+            try {
+                return await SemanticSearchService.executeSemanticSearchQuery(
+                    input.projectId,
+                    input.query
+                );
+            } catch (error) {
+                throw asBadRequest(error, "Failed to execute SPARQL query");
+            }
         }),
 
     // Hardcoded tool catalog - see the Tools section design discussion.
