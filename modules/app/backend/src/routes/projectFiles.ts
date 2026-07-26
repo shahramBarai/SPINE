@@ -3,7 +3,7 @@ import { EntityService } from "@spine/storage-platform";
 import { ProjectFileService } from "@spine/storage-minio";
 import { serveSecureFile } from "../utils/secureFile";
 
-const { COVER_IMAGE_FOLDER } = ProjectFileService;
+const { ReservedFolder } = ProjectFileService;
 const ROUTE_PREFIX = "/files/";
 
 /**
@@ -12,7 +12,7 @@ const ROUTE_PREFIX = "/files/";
  * a file is just an authorization check followed by a stream, both left to
  * ProjectFileService.
  *
- * Cover images (stored under the reserved COVER_IMAGE_FOLDER) are viewable
+ * Cover images (stored under the reserved ReservedFolder.Cover) are viewable
  * by anyone who can see the project at all - public, or a member. Every
  * other project file requires membership, matching the project-role
  * hierarchy the Files tab already enforces for listing/uploading.
@@ -40,7 +40,7 @@ async function handleProjectFilesRoute(
         return true;
     }
 
-    const isCover = folder === COVER_IMAGE_FOLDER;
+    const isCover = folder === ReservedFolder.Cover;
     const separatorIndex = fullName.indexOf("_");
     const fileId =
         separatorIndex >= 0 ? fullName.slice(0, separatorIndex) : "unknown";

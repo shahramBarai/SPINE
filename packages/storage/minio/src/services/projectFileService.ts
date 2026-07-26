@@ -33,15 +33,13 @@ const PROJECT_FILES_BUCKET: BUCKET_NAMES = "project-files";
 // real file has been uploaded into it.
 const FOLDER_MARKER = ".folder";
 
-// Cover images live under this reserved folder inside a project's own key
-// prefix. The leading dot marks it as internal so listProjectFiles - the
-// Files tab's listing - filters it out.
-const COVER_IMAGE_FOLDER = ".cover";
-
-// Saved SPARQL queries (.rq files) live under this regular project folder,
-// so they show up and are manageable like any other project file in the
-// Files tab - no separate storage path needed.
-const SAVED_QUERIES_FOLDER = "queries";
+// The folder names this service itself owns and reserves meaning for -
+// as opposed to the arbitrary, user-named folders under a project's key
+// prefix (created via createProjectFolder).
+enum ReservedFolder {
+    Cover = ".cover",
+    SavedQueries = "queries"
+}
 
 const ALLOWED_FILE_EXTENSIONS = ["ifc", "ttl", "pdf", "rq"] as const;
 const ALLOWED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"] as const;
@@ -62,7 +60,18 @@ function buildCoverObjectName(
     fileId: string,
     fileName: string
 ): string {
-    return buildObjectName(projectId, COVER_IMAGE_FOLDER, fileId, fileName);
+    return buildObjectName(projectId, ReservedFolder.Cover, fileId, fileName);
+}
+
+// Saved queries are stored as plain .rq files - these two are the single
+// source of truth for that naming convention, so callers work with query
+// names and never construct/parse the .rq filename themselves.
+function buildSavedQueryFileName(name: string): string {
+    return `${name}.rq`;
+}
+
+function parseSavedQueryName(fileName: string): string {
+    return fileName.replace(/\.rq$/i, "");
 }
 
 function assertAllowedExtension(
@@ -187,11 +196,18 @@ async function getCoverImageUploadUrl(
  * Lists a project's files grouped by folder. Folders with no real files yet
  * (only a FOLDER_MARKER) are still included, empty. The reserved cover-image
  * folder is never included.
+ *
+ * Pass `folder` to scope the scan to just that one reserved folder (e.g.
+ * ReservedFolder.SavedQueries) instead of listing the whole project - see
+ * listSavedQueryFiles.
  */
-async function listProjectFiles(projectId: string): Promise<ProjectFolder[]> {
+async function listProjectFiles(
+    projectId: string,
+    folder?: ReservedFolder
+): Promise<ProjectFolder[]> {
     const objects = await BucketService.listFiles({
         bucketName: PROJECT_FILES_BUCKET,
-        prefix: `${projectId}/`,
+        prefix: folder ? `${projectId}/${folder}/` : `${projectId}/`,
         recursive: true
     });
 
@@ -199,14 +215,14 @@ async function listProjectFiles(projectId: string): Promise<ProjectFolder[]> {
 
     for (const object of objects) {
         const parts = object.name?.split("/") ?? [];
-        const folder = parts[1];
+        const folderName = parts[1];
         const fullName = parts[parts.length - 1];
-        if (!folder || !fullName || folder === COVER_IMAGE_FOLDER) {
+        if (!folderName || !fullName || folderName === ReservedFolder.Cover) {
             continue;
         }
 
-        if (!filesByFolder.has(folder)) {
-            filesByFolder.set(folder, []);
+        if (!filesByFolder.has(folderName)) {
+            filesByFolder.set(folderName, []);
         }
         if (fullName === FOLDER_MARKER) {
             continue;
@@ -218,7 +234,7 @@ async function listProjectFiles(projectId: string): Promise<ProjectFolder[]> {
         const fileName =
             separatorIndex >= 0 ? fullName.slice(separatorIndex + 1) : fullName;
 
-        filesByFolder.get(folder)!.push({
+        filesByFolder.get(folderName)!.push({
             fileId,
             fileName,
             size: object.size,
@@ -242,6 +258,23 @@ async function listProjectFiles(projectId: string): Promise<ProjectFolder[]> {
 
         return { folder, files: sortedFiles, totalSize, lastModified };
     });
+}
+
+/**
+ * Lists the files in a project's saved-queries folder (its .rq files),
+ * without reading their contents.
+ */
+async function listSavedQueryFiles(
+    projectId: string
+): Promise<ProjectFileInfo[]> {
+    const folders = await listProjectFiles(
+        projectId,
+        ReservedFolder.SavedQueries
+    );
+    return (
+        folders.find((folder) => folder.folder === ReservedFolder.SavedQueries)
+            ?.files ?? []
+    );
 }
 
 /**
@@ -298,15 +331,17 @@ async function deleteProjectFolder(
 
 export {
     PROJECT_FILES_BUCKET,
-    COVER_IMAGE_FOLDER,
-    SAVED_QUERIES_FOLDER,
+    ReservedFolder,
     buildObjectName,
     buildCoverObjectName,
+    buildSavedQueryFileName,
+    parseSavedQueryName,
     createProjectFolder,
     getProjectFileUploadUrl,
     saveProjectFileBuffer,
     getCoverImageUploadUrl,
     listProjectFiles,
+    listSavedQueryFiles,
     readProjectFile,
     deleteProjectFile,
     deleteProjectFolder,

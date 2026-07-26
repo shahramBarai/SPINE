@@ -16,7 +16,10 @@ import {
     type JobExecutionStatus
 } from "@spine/storage-platform/types";
 import { ProjectFileService } from "@spine/storage-minio";
-import { DatasetService, SemanticSearchService } from "@spine/storage-rdf-store";
+import {
+    DatasetService,
+    SemanticSearchService
+} from "@spine/storage-rdf-store";
 import { readStreamToBuffer, readStreamToText } from "../utils/stream";
 import { getCoverImageUrl } from "../utils/coverImage";
 import { TOOLS } from "../tools";
@@ -61,15 +64,6 @@ function assertValidQueryName(name: string): string {
         });
     }
     return trimmed;
-}
-
-async function getSavedQueryFiles(projectId: string) {
-    const folders = await ProjectFileService.listProjectFiles(projectId);
-    return (
-        folders.find(
-            (folder) => folder.folder === ProjectFileService.SAVED_QUERIES_FOLDER
-        )?.files ?? []
-    );
 }
 
 function toJobExecutionStatus(
@@ -459,10 +453,12 @@ export const projectRouter = router({
     // getSemanticSearchQuery), not this list.
     listSemanticSearchQueries: projectEditorProcedure.query(
         async ({ input }) => {
-            const files = await getSavedQueryFiles(input.projectId);
+            const files = await ProjectFileService.listSavedQueryFiles(
+                input.projectId
+            );
             return files.map((file) => ({
                 fileId: file.fileId,
-                name: file.fileName.replace(/\.rq$/i, "")
+                name: ProjectFileService.parseSavedQueryName(file.fileName)
             }));
         }
     ),
@@ -474,9 +470,9 @@ export const projectRouter = router({
         .query(async ({ input }) => {
             const stream = await ProjectFileService.readProjectFile(
                 input.projectId,
-                ProjectFileService.SAVED_QUERIES_FOLDER,
+                ProjectFileService.ReservedFolder.SavedQueries,
                 input.fileId,
-                `${input.name}.rq`
+                ProjectFileService.buildSavedQueryFileName(input.name)
             );
             if (!stream) {
                 throw new TRPCError({
@@ -494,9 +490,11 @@ export const projectRouter = router({
         .input(z.object({ name: z.string(), query: z.string().min(1) }))
         .mutation(async ({ input }) => {
             const name = assertValidQueryName(input.name);
-            const fileName = `${name}.rq`;
+            const fileName = ProjectFileService.buildSavedQueryFileName(name);
 
-            const existingFiles = await getSavedQueryFiles(input.projectId);
+            const existingFiles = await ProjectFileService.listSavedQueryFiles(
+                input.projectId
+            );
             const isDuplicate = existingFiles.some(
                 (file) => file.fileName.toLowerCase() === fileName.toLowerCase()
             );
@@ -510,12 +508,12 @@ export const projectRouter = router({
             try {
                 const saved = await ProjectFileService.saveProjectFileBuffer(
                     input.projectId,
-                    ProjectFileService.SAVED_QUERIES_FOLDER,
+                    ProjectFileService.ReservedFolder.SavedQueries,
                     fileName,
                     Buffer.from(input.query, "utf-8")
                 );
                 return {
-                    folder: ProjectFileService.SAVED_QUERIES_FOLDER,
+                    folder: ProjectFileService.ReservedFolder.SavedQueries,
                     ...saved
                 };
             } catch (error) {
