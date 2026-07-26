@@ -38,7 +38,12 @@ const FOLDER_MARKER = ".folder";
 // Files tab's listing - filters it out.
 const COVER_IMAGE_FOLDER = ".cover";
 
-const ALLOWED_FILE_EXTENSIONS = ["ifc", "ttl", "pdf"] as const;
+// Saved SPARQL queries (.rq files) live under this regular project folder,
+// so they show up and are manageable like any other project file in the
+// Files tab - no separate storage path needed.
+const SAVED_QUERIES_FOLDER = "queries";
+
+const ALLOWED_FILE_EXTENSIONS = ["ifc", "ttl", "pdf", "rq"] as const;
 const ALLOWED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"] as const;
 
 /* -------------------------------- HELPERS -------------------------------- */
@@ -294,6 +299,7 @@ async function deleteProjectFolder(
 export {
     PROJECT_FILES_BUCKET,
     COVER_IMAGE_FOLDER,
+    SAVED_QUERIES_FOLDER,
     buildObjectName,
     buildCoverObjectName,
     createProjectFolder,

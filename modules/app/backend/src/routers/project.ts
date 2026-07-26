@@ -33,6 +33,36 @@ function asBadRequest(error: unknown, fallbackMessage: string): TRPCError {
     });
 }
 
+// Keeps saved query names safe as object-storage keys and download
+// filenames across platforms - no "/", ".", or other path/extension-like
+// characters that could collide with the .rq suffix or be misread as a
+// nested folder.
+const QUERY_NAME_REGEX = /^[a-zA-Z0-9 _-]+$/;
+
+function assertValidQueryName(name: string): string {
+    const trimmed = name.trim();
+    if (!trimmed) {
+        throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Enter a name for this query."
+        });
+    }
+    if (trimmed.length > 100) {
+        throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Query name must be 100 characters or fewer."
+        });
+    }
+    if (!QUERY_NAME_REGEX.test(trimmed)) {
+        throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+                "Query name can only contain letters, numbers, spaces, hyphens, and underscores."
+        });
+    }
+    return trimmed;
+}
+
 function toJobExecutionStatus(
     status: BuildingServiceClient.ConversionJobStatus
 ): JobExecutionStatus {
@@ -411,6 +441,49 @@ export const projectRouter = router({
                 );
             } catch (error) {
                 throw asBadRequest(error, "Failed to execute SPARQL query");
+            }
+        }),
+
+    // Persists a SPARQL query as a .rq file in the project's saved-queries
+    // folder, rejecting names that are empty/unsafe or already taken so the
+    // user gets a chance to rename rather than silently overwriting.
+    saveSemanticSearchQuery: projectEditorProcedure
+        .input(z.object({ name: z.string(), query: z.string().min(1) }))
+        .mutation(async ({ input }) => {
+            const name = assertValidQueryName(input.name);
+            const fileName = `${name}.rq`;
+
+            const folders = await ProjectFileService.listProjectFiles(
+                input.projectId
+            );
+            const existingFiles =
+                folders.find(
+                    (folder) =>
+                        folder.folder === ProjectFileService.SAVED_QUERIES_FOLDER
+                )?.files ?? [];
+            const isDuplicate = existingFiles.some(
+                (file) => file.fileName.toLowerCase() === fileName.toLowerCase()
+            );
+            if (isDuplicate) {
+                throw new TRPCError({
+                    code: "CONFLICT",
+                    message: `A saved query named "${name}" already exists. Choose a different name.`
+                });
+            }
+
+            try {
+                const saved = await ProjectFileService.saveProjectFileBuffer(
+                    input.projectId,
+                    ProjectFileService.SAVED_QUERIES_FOLDER,
+                    fileName,
+                    Buffer.from(input.query, "utf-8")
+                );
+                return {
+                    folder: ProjectFileService.SAVED_QUERIES_FOLDER,
+                    ...saved
+                };
+            } catch (error) {
+                throw asBadRequest(error, "Failed to save query");
             }
         }),
 

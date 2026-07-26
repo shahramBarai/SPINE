@@ -37,7 +37,7 @@ function SemanticSearchSection({
 
     return (
         <div className={cn("w-full flex flex-col gap-3", className)}>
-            <SavedQueriesBar query={query} />
+            <SavedQueriesBar projectId={projectId} query={query} />
 
             <QueryEditor
                 query={query}

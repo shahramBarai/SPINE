@@ -1,29 +1,35 @@
 import { useState } from "react";
-import { Bookmark, Trash2 } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { toast } from "react-toastify";
 import { Button } from "components/basics/Button";
 import { Input } from "components/basics/input";
 import { SectionCard } from "components/complex/SectionCard";
+import { api } from "utils/trpc";
 import { cn } from "utils/index";
 
-interface SavedQuery {
-    id: string;
-    name: string;
-    query: string;
-}
+// Mirrors the name rule enforced by project.saveSemanticSearchQuery on the
+// backend, so an invalid name is caught before the round trip instead of
+// only after a failed mutation.
+const QUERY_NAME_REGEX = /^[a-zA-Z0-9 _-]+$/;
 
-// Stands in for real persistence: saving a query as a .sparql file via
-// ProjectFileService + the /files proxy, so saved queries survive a browser
-// reload as originally asked. For now this only lives in component state and
-// is lost on refresh.
 function SavedQueriesBar({
+    projectId,
     query,
     className
 }: {
+    projectId: string;
     query: string;
     className?: string;
 }) {
     const [saveName, setSaveName] = useState("");
+
+    const saveQuery = api.project.saveSemanticSearchQuery.useMutation({
+        onSuccess: (_result, variables) => {
+            setSaveName("");
+            toast.success(`Query "${variables.name}" saved.`);
+        },
+        onError: (error) => toast.error(error.message)
+    });
 
     const handleSave = () => {
         const name = saveName.trim();
@@ -31,14 +37,18 @@ function SavedQueriesBar({
             toast.warning("Enter a name for this query.");
             return;
         }
-        //TODO: implement actual save functionality
-        void query; // avoid unused variable warning
-        setSaveName("");
-        toast.success(`Query "${name}" saved.`);
-    };
+        if (!QUERY_NAME_REGEX.test(name)) {
+            toast.warning(
+                "Query name can only contain letters, numbers, spaces, hyphens, and underscores."
+            );
+            return;
+        }
+        if (!query.trim()) {
+            toast.warning("Write a query before saving it.");
+            return;
+        }
 
-    const handleRemove = (id: string) => {
-        //TODO: implement remove functionality
+        saveQuery.mutate({ projectId, name, query });
     };
 
     return (
@@ -52,8 +62,16 @@ function SavedQueriesBar({
                         placeholder="Query name"
                         value={saveName}
                         onChange={(e) => setSaveName(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSave();
+                        }}
                     />
-                    <Button variant="outline" size="sm" onClick={handleSave}>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSave}
+                        disabled={saveQuery.isPending}
+                    >
                         <Bookmark className="h-4 w-4" />
                         Save query
                     </Button>
