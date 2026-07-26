@@ -17,6 +17,7 @@ model User {
 
     entityMemberships EntityMember[]
     jobExecutions     JobExecution[]
+    apiKeys           ApiKey[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -45,6 +46,7 @@ model Entity {
     kafkaTopics KafkaTopic[]
     flinkTasks  Pipeline[]
     jobExecutions JobExecution[]
+    apiKeys ApiKey[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -138,6 +140,32 @@ enum JobExecutionStatus {
     RUNNING
     COMPLETED
     FAILED
+}
+
+// Lets external systems authenticate against a single project (e.g. to run
+// read-only SPARQL queries against its dataset) without a full user
+// session. Only keyHash (a fast SHA-256 digest, not a slow password hash -
+// a random high-entropy key doesn't need one) is ever stored; the raw key
+// is shown to the owner once, at creation, and is unrecoverable after that.
+// keyPrefix is a non-secret slice of the raw key kept only so the owner can
+// tell keys apart in the UI without re-hashing every guess.
+model ApiKey {
+    id         String    @id @default(cuid())
+    name       String
+    keyHash    String    @unique
+    keyPrefix  String
+
+    entityId   String
+    createdBy  String
+
+    lastUsedAt DateTime?
+    createdAt  DateTime  @default(now())
+    updatedAt  DateTime  @updatedAt
+
+    entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+    user   User   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+    @@index([entityId])
 }
 
 // Kafka topic model for Kafka topics

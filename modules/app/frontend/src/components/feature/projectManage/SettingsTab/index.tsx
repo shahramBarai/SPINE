@@ -3,6 +3,7 @@ import { api } from "utils/trpc";
 import { SectionCard } from "components/complex/SectionCard";
 import { CoverImageSection } from "./CoverImageSection";
 import { ProjectDetailsSection } from "./ProjectDetailsSection";
+import { ApiKeysSection } from "./ApiKeysSection";
 import { MembersTab } from "./MembersSection";
 
 function SettingsTab({ projectId }: { projectId: string }) {
@@ -47,11 +48,10 @@ function SettingsTab({ projectId }: { projectId: string }) {
                     isPublic={project.isPublic}
                 />
             </div>
-            <MembersTab
-                projectId={project.id}
-                isOwner={true}
-                className="w-3/5"
-            />
+            <div className="w-3/5 flex flex-col gap-3">
+                <MembersTab projectId={project.id} isOwner={true} />
+                <ApiKeysSection projectId={projectId} />
+            </div>
         </div>
     );
 }

@@ -9,7 +9,8 @@ import {
 import {
     EntityService,
     UserService,
-    JobExecutionService
+    JobExecutionService,
+    ApiKeyService
 } from "@spine/storage-platform";
 import {
     type MemberRole,
@@ -685,5 +686,30 @@ export const projectRouter = router({
             });
 
             return saved;
+        }),
+
+    // API keys let external systems run read-only SPARQL queries against
+    // this project's dataset (see routes/sparqlApi.ts) without a user
+    // session - owner-only since creating one hands out standing query
+    // access to the whole dataset.
+    listApiKeys: projectOwnerProcedure.query(async ({ input }) => {
+        return await ApiKeyService.listApiKeys(input.projectId);
+    }),
+
+    createApiKey: projectOwnerProcedure
+        .input(z.object({ name: z.string().min(1) }))
+        .mutation(async ({ ctx, input }) => {
+            return await ApiKeyService.createApiKey(
+                input.projectId,
+                ctx.user.id,
+                input.name.trim()
+            );
+        }),
+
+    revokeApiKey: projectOwnerProcedure
+        .input(z.object({ keyId: z.string() }))
+        .mutation(async ({ input }) => {
+            await ApiKeyService.revokeApiKey(input.projectId, input.keyId);
+            return { success: true };
         })
 });
