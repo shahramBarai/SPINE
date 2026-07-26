@@ -4,11 +4,13 @@ import { pageGuard } from "utils/pageGuard";
 import { TabBar } from "components/complex/TabBar";
 import { FilesOverviewTab } from "components/feature/projectManage/FilesOverviewTab";
 import { SettingsTab } from "components/feature/projectManage/SettingsTab";
+import { SemanticSearchSection } from "components/feature/projectManage/SemanticSearchSection";
 
-type ManageTab = "files" | "settings";
+type ManageTab = "files" | "semantic-search" | "settings";
 
 const TABS: { id: ManageTab; label: string }[] = [
     { id: "files", label: "Files" },
+    { id: "semantic-search", label: "Semantic Search" },
     { id: "settings", label: "Settings" }
 ];
 
@@ -40,6 +42,9 @@ function ProjectManagePageContent({ project, role }: ProjectManagePageProps) {
 
             <div className="flex flex-col items-center">
                 {tab === "files" && <FilesOverviewTab projectId={project.id} />}
+                {tab === "semantic-search" && (
+                    <SemanticSearchSection projectId={project.id} />
+                )}
                 {tab === "settings" && isOwner && (
                     <SettingsTab projectId={project.id} />
                 )}
