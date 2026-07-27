@@ -1,18 +1,8 @@
 import { useState } from "react";
-import {
-    Building2,
-    Radio,
-    Eye,
-    PanelLeftClose,
-    PanelLeftOpen
-} from "lucide-react";
+import { Building2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "utils/index";
 
 import { ProjectTreeSection } from "./ProjectTreeSection";
-// import { LiveSensorsSection } from "./LiveSensorsSection";
-// import { ViewLayersSection } from "./ViewLayersSection";
-// import { SelectedElementPanel } from "./SelectedElementPanel";
-// import { type ViewerComponentInfo, type ViewerFloorOption } from "./ViewerPane";
 
 const SectionHeader = ({
     icon: Icon,
@@ -20,7 +10,7 @@ const SectionHeader = ({
     count,
     collapsed
 }: {
-    icon: typeof Radio;
+    icon: typeof Building2;
     label: string;
     count?: number;
     collapsed?: boolean;
@@ -81,23 +71,7 @@ export const LeftSidebar = () => {
                     collapsed={isCollapsed}
                 />
                 <ProjectTreeSection className="px-1.5" />
-
-                <SectionHeader
-                    icon={Radio}
-                    label="Live Sensors"
-                    collapsed={isCollapsed}
-                />
-                {/* <LiveSensorsSection sensorsData={sensorsData} sensorIcons={sensorIcon} selectedId={selectedId} onSelect={onSelect} /> */}
-
-                <SectionHeader
-                    icon={Eye}
-                    label="View Layers"
-                    collapsed={isCollapsed}
-                />
-                {/* <ViewLayersSection layers={layers} onToggleLayer={onToggleLayer} /> */}
             </div>
-
-            {/* {selectedComponentInfo && <SelectedElementPanel info={selectedComponentInfo} />} */}
         </aside>
     );
 };

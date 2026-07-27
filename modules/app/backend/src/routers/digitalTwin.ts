@@ -9,7 +9,6 @@ import {
     FusekiSparqlError
 } from "@spine/storage-rdf-store";
 import { EntityService } from "@spine/storage-platform";
-import { readStreamToText } from "../utils/stream";
 import { getCoverImageUrl } from "../utils/coverImage";
 
 // FusekiSparqlError with status 404 covers two "no data yet" cases: the
@@ -159,84 +158,6 @@ export const digitalTwinRouter = router({
                             lastModified: file.lastModified
                         }))
                 );
-        }),
-
-    getPresignedUploadUrl: publicProcedure
-        .input(
-            z.object({
-                projectId: z.string(),
-                discipline: z.string(),
-                fileName: z.string()
-            })
-        )
-        .mutation(async ({ input }) => {
-            try {
-                return await ProjectFileService.getProjectFileUploadUrl(
-                    input.projectId,
-                    input.discipline,
-                    input.fileName
-                );
-            } catch (error) {
-                throw new TRPCError({
-                    code: "BAD_REQUEST",
-                    message:
-                        error instanceof Error ? error.message : "Invalid file"
-                });
-            }
-        }),
-
-    deleteProjectFile: publicProcedure
-        .input(
-            z.object({
-                projectId: z.string(),
-                discipline: z.string(),
-                fileId: z.string(),
-                fileName: z.string()
-            })
-        )
-        .mutation(async ({ input }) => {
-            await ProjectFileService.deleteProjectFile(
-                input.projectId,
-                input.discipline,
-                input.fileId,
-                input.fileName
-            );
-        }),
-
-    syncTtlToFuseki: publicProcedure
-        .input(
-            z.object({
-                projectId: z.string(),
-                discipline: z.string(),
-                fileId: z.string(),
-                fileName: z.string()
-            })
-        )
-        .mutation(async ({ input }) => {
-            const fileStream = await ProjectFileService.readProjectFile(
-                input.projectId,
-                input.discipline,
-                input.fileId,
-                input.fileName
-            );
-            if (!fileStream) {
-                throw new TRPCError({
-                    code: "NOT_FOUND",
-                    message: `TTL file not found: ${input.fileName}`
-                });
-            }
-
-            const ttlContent = await readStreamToText(fileStream);
-            const graphUri = buildTtlGraphUri(input.discipline, input.fileId);
-
-            await DatasetService.uploadTtlToFuseki(
-                input.projectId,
-                Buffer.from(ttlContent, "utf-8"),
-                graphUri,
-                true // replace: re-syncing a file should not duplicate its triples
-            );
-
-            return { graphUri };
         }),
 
     getGraphTree: publicProcedure

@@ -1,51 +1,8 @@
 import { DatabaseX, Loader } from "lucide-react";
 import { TreeHeader } from "components/complex/TreeHeader";
 import { api } from "utils/trpc";
-import { UploadFileButton } from "../UploadFileButton";
 import { cn } from "utils/index";
 import { TtlFileHeader } from "./TtlFileHeader";
-
-const TtlSectionButtons = ({
-    projectId,
-    discipline
-}: {
-    projectId: string;
-    discipline: { id: string; name: string };
-}) => {
-    const utils = api.useUtils();
-    const getUploadUrlMutation =
-        api.digitalTwin.getPresignedUploadUrl.useMutation();
-
-    // Function to get the pre-signed upload URL for a given file name
-    const getUploadUrlString = async (fileName: string): Promise<string> => {
-        const { uploadUrl } = await getUploadUrlMutation.mutateAsync({
-            projectId,
-            fileName: fileName,
-            discipline: discipline.id
-        });
-        return uploadUrl;
-    };
-
-    // Function to handle actions after a successful upload
-    const onUploadSuccess = () => {
-        utils.digitalTwin.getProjectFilesInfo.invalidate({
-            projectId,
-            discipline: discipline.id,
-            fileTypes: ["ttl"]
-        });
-    };
-
-    return (
-        <div className="flex items-center">
-            <UploadFileButton
-                allowedFileTypes={[".ttl"]}
-                maxFileSizeMB={1000} // 1 GB limit
-                getUploadUrlString={getUploadUrlString}
-                onUploadSuccess={onUploadSuccess}
-            />
-        </div>
-    );
-};
 
 function TtlSectionTree({
     discipline,
@@ -107,16 +64,7 @@ function TtlSectionTree({
     );
 
     return (
-        <TreeHeader
-            className={className}
-            label={treeHeaderLabel}
-            button={
-                <TtlSectionButtons
-                    projectId={projectId}
-                    discipline={discipline}
-                />
-            }
-        >
+        <TreeHeader className={className} label={treeHeaderLabel}>
             <div className="ml-12 mr-1 mb-1 flex flex-col">
                 {ttlFiles.length === 0 ? (
                     <div className="flex items-center justify-center py-1 text-sm">

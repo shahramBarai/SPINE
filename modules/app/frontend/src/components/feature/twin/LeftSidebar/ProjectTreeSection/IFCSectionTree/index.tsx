@@ -1,52 +1,7 @@
 import { api } from "utils/trpc";
 import { Loader, DatabaseX } from "lucide-react";
-import { UploadFileButton } from "../UploadFileButton";
 import { TreeHeader } from "components/complex/TreeHeader";
 import { cn } from "utils/index";
-import { DeleteFileButton } from "../DeleteFileButton";
-import { ConvertToTtlButton } from "./ConvertToTtlButton";
-
-const IfcSectionButtons = ({
-    discipline,
-    projectId
-}: {
-    discipline: { id: string; name: string };
-    projectId: string;
-}) => {
-    const utils = api.useUtils();
-    const getUploadUrlMutation =
-        api.digitalTwin.getPresignedUploadUrl.useMutation();
-
-    // Function to get the pre-signed upload URL for a given file name
-    const getUploadUrlString = async (fileName: string): Promise<string> => {
-        const { uploadUrl } = await getUploadUrlMutation.mutateAsync({
-            projectId,
-            fileName: fileName,
-            discipline: discipline.id
-        });
-        return uploadUrl;
-    };
-
-    // Function to handle actions after a successful upload
-    const onUploadSuccess = () => {
-        utils.digitalTwin.getProjectFilesInfo.invalidate({
-            projectId,
-            discipline: discipline.id,
-            fileTypes: ["ifc"]
-        });
-    };
-
-    return (
-        <div className="flex items-center">
-            <UploadFileButton
-                allowedFileTypes={[".ifc"]}
-                maxFileSizeMB={1000} // 1 GB limit
-                getUploadUrlString={getUploadUrlString}
-                onUploadSuccess={onUploadSuccess}
-            />
-        </div>
-    );
-};
 
 function IfcSectionTree({
     discipline,
@@ -108,16 +63,7 @@ function IfcSectionTree({
     );
 
     return (
-        <TreeHeader
-            className={className}
-            label={treeHeaderLabel}
-            button={
-                <IfcSectionButtons
-                    discipline={discipline}
-                    projectId={projectId}
-                />
-            }
-        >
+        <TreeHeader className={className} label={treeHeaderLabel}>
             <div className="ml-12 mr-1 mb-1 flex flex-col">
                 {ifcFiles.length === 0 ? (
                     <div className="flex items-center justify-center py-1 text-sm">
@@ -126,31 +72,17 @@ function IfcSectionTree({
                         </span>
                     </div>
                 ) : (
-                    ifcFiles.map((file) => {
-                        return (
-                            <div
-                                key={file.fileId}
-                                className="border rounded flex items-center gap-1 px-2 py-1 text-[10px] font-mono"
-                                title={file.fileName}
-                            >
-                                <div className="flex-1 truncate text-muted-foreground">
-                                    {file.fileName}
-                                </div>
-                                <ConvertToTtlButton
-                                    projectId={projectId}
-                                    disciplineId={discipline.id}
-                                    fileId={file.fileId}
-                                    fileName={file.fileName}
-                                />
-                                <DeleteFileButton
-                                    projectId={projectId}
-                                    disciplineId={discipline.id}
-                                    fileId={file.fileId}
-                                    fileName={file.fileName}
-                                />
+                    ifcFiles.map((file) => (
+                        <div
+                            key={file.fileId}
+                            className="border rounded flex items-center gap-1 px-2 py-1 text-[10px] font-mono"
+                            title={file.fileName}
+                        >
+                            <div className="flex-1 truncate text-muted-foreground">
+                                {file.fileName}
                             </div>
-                        );
-                    })
+                        </div>
+                    ))
                 )}
             </div>
         </TreeHeader>

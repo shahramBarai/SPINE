@@ -2,8 +2,6 @@ import { useState } from "react";
 import { ChevronRight, Eye, EyeOff } from "lucide-react";
 import { cn } from "utils/index";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
-import { SyncToFusekiButton } from "./SyncToFusekiButton";
-import { DeleteFileButton } from "../DeleteFileButton";
 import { FusekiTreeSection } from "./FusekiTreeSection";
 
 interface TtlFileHeaderProps {
@@ -79,20 +77,6 @@ function TtlFileHeader({
                         <EyeOff className="h-3 w-3" />
                     )}
                 </button>
-
-                <SyncToFusekiButton
-                    projectId={projectId}
-                    disciplineId={disciplineId}
-                    fileId={fileId}
-                    fileName={fileName}
-                />
-
-                <DeleteFileButton
-                    projectId={projectId}
-                    disciplineId={disciplineId}
-                    fileId={fileId}
-                    fileName={fileName}
-                />
             </div>
 
             {treeExpanded && (
