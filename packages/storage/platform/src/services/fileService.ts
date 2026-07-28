@@ -4,10 +4,7 @@ import { prisma } from "../../prisma/client";
 
 /**
  * Registers a project file that has already been uploaded to MinIO - the
- * authoritative record of its existence/metadata. `id` is not generated
- * here: it's the same fileId minted by
- * ProjectFileService.getProjectFileUploadUrl, so MinIO's object key and
- * this row share one identifier.
+ * authoritative record of its existence/metadata.
  */
 async function createFile(data: {
     id: string;
