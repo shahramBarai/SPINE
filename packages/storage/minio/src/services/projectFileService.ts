@@ -4,74 +4,60 @@ import * as PresignedService from "./primitives/presignedService";
 
 /* -------------------------------- INTERFACES -------------------------------- */
 
-interface ProjectFileInfo {
-    fileId: string;
-    fileName: string;
-    size: number;
-    lastModified?: Date;
-}
-
-interface ProjectFolder {
-    folder: string;
-    files: ProjectFileInfo[];
-    totalSize: number;
-    /** The most recent of its files' lastModified, or undefined for an empty folder. */
-    lastModified?: Date;
-}
-
 interface UploadUrlResult {
     uploadUrl: string;
-    objectName: string;
-    fileId: string;
+    objectKey: string;
 }
 
 /* -------------------------------- CONSTANTS -------------------------------- */
 
 const PROJECT_FILES_BUCKET: BUCKET_NAMES = "project-files";
 
-// Empty-object marker that lets a folder exist (and be listed) before any
-// real file has been uploaded into it.
-const FOLDER_MARKER = ".folder";
-
-// The folder names this service itself owns and reserves meaning for -
-// as opposed to the arbitrary, user-named folders under a project's key
-// prefix (created via createProjectFolder).
 enum ReservedFolder {
     Cover = ".cover",
     SavedQueries = "queries"
 }
 
-const ALLOWED_FILE_EXTENSIONS = ["ifc", "ttl", "pdf", "rq"] as const;
-const ALLOWED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"] as const;
+const ALLOWED_EXTENSIONS = {
+    file: ["ifc", "ttl", "pdf", "rq"],
+    image: ["png", "jpg", "jpeg", "webp", "gif"]
+} as const;
 
 /* -------------------------------- HELPERS -------------------------------- */
 
-function buildObjectName(
-    projectId: string,
-    folder: string,
-    fileId: string,
-    fileName: string
-): string {
-    return `${projectId}/${folder}/${fileId}_${fileName}`;
-}
-
-function buildCoverObjectName(
+// Every stored file's key is <projectId>/[folder/]<fileId> - fileId is an
+// opaque last path segment, sometimes a random UUID (project files, cover
+// images), sometimes a human-chosen name (saved queries, keyed by query
+// name + ".rq" - see buildSavedQueryFileName). Omitting folder puts a file
+// at the project's root.
+function buildObjectKey(
     projectId: string,
     fileId: string,
-    fileName: string
+    folder?: string
 ): string {
-    return buildObjectName(projectId, ReservedFolder.Cover, fileId, fileName);
+    return folder
+        ? `${projectId}/${folder}/${fileId}`
+        : `${projectId}/${fileId}`;
 }
 
-// Saved queries are stored as plain .rq files - these two are the single
-// source of truth for that naming convention, so callers work with query
-// names and never construct/parse the .rq filename themselves.
+// There's no folder column on File, so anything needing "which folder is
+// this file in" reads it back out of the one place it's actually stored.
+// Undefined means root.
+function getFolderFromObjectKey(objectKey: string): string | undefined {
+    const parts = objectKey.split("/");
+    return parts.length > 2 ? parts[1] : undefined;
+}
+
+// Saved queries are stored as plain .rq files, keyed by name rather than a
+// random id - these two are the single source of truth for that naming
+// convention, so callers work with query names and never build/parse the
+// fileId themselves.
 function buildSavedQueryFileName(name: string): string {
     return `${name}.rq`;
 }
 
-function parseSavedQueryName(fileName: string): string {
-    return fileName.replace(/\.rq$/i, "");
+function parseSavedQueryName(fileId: string): string {
+    return fileId.replace(/\.rq$/i, "");
 }
 
 function assertAllowedExtension(
@@ -87,10 +73,9 @@ function assertAllowedExtension(
     }
 }
 
-// buildObjectName joins projectId/folder/fileId_fileName with "/" to form
-// the object key - a "/" inside folder or fileName would inject extra path
-// segments, which listProjectFiles' naive parts[1]-as-folder parsing can't
-// tell apart from a real subfolder, silently misgrouping files.
+// A "/" inside folder would inject extra path segments, which
+// getFolderFromObjectKey's positional parsing can't tell apart from a real
+// subfolder.
 function assertNoPathSeparator(value: string, label: string): void {
     if (value.includes("/")) {
         throw new Error(`${label} cannot contain "/".`);
@@ -100,250 +85,87 @@ function assertNoPathSeparator(value: string, label: string): void {
 /* -------------------------------- CREATE -------------------------------- */
 
 /**
- * Creates a folder for a project by writing an empty marker object, so the
- * folder is listable (via listProjectFiles) before any real file exists in it.
+ * Generates a presigned upload URL for a new file, after checking its
+ * extension against `allowedExtensions`.
+ * @throws {Error} If the file's extension isn't in `allowedExtensions`
  */
-async function createProjectFolder(
+async function createUploadUrl(
     projectId: string,
-    folder: string
-): Promise<void> {
-    assertNoPathSeparator(folder, "Folder name");
-
-    const objectName = `${projectId}/${folder}/${FOLDER_MARKER}`;
-    await BucketService.uploadBuffer(
-        PROJECT_FILES_BUCKET,
-        objectName,
-        Buffer.alloc(0)
-    );
-}
-
-/**
- * Generates a presigned upload URL for a new file in one of a project's
- * folders, after checking its extension against the allowed project file
- * types (IFC/TTL/PDF).
- * @throws {Error} If the file's extension isn't an allowed project file type
- */
-async function getProjectFileUploadUrl(
-    projectId: string,
-    folder: string,
-    fileName: string
-): Promise<UploadUrlResult> {
-    assertNoPathSeparator(folder, "Folder name");
-    assertNoPathSeparator(fileName, "File name");
-    assertAllowedExtension(fileName, ALLOWED_FILE_EXTENSIONS, "file");
-
-    const fileId = crypto.randomUUID();
-    const objectName = buildObjectName(projectId, folder, fileId, fileName);
-    const uploadUrl = await PresignedService.generatePresignedUploadUrl({
-        bucketName: PROJECT_FILES_BUCKET,
-        objectName,
-        expiry: 120
-    });
-
-    return { uploadUrl, objectName, fileId };
-}
-
-/**
- * Saves a buffer as a new file in one of a project's folders - a
- * server-side counterpart to getProjectFileUploadUrl for when the caller
- * already has the bytes in hand (e.g. a tool's output downloaded from
- * another service), so no presigned-URL round trip is needed.
- * @throws {Error} If the file's extension isn't an allowed project file type
- */
-async function saveProjectFileBuffer(
-    projectId: string,
-    folder: string,
     fileName: string,
-    content: Buffer
-): Promise<{ fileId: string; fileName: string }> {
-    assertNoPathSeparator(folder, "Folder name");
-    assertNoPathSeparator(fileName, "File name");
-    assertAllowedExtension(fileName, ALLOWED_FILE_EXTENSIONS, "file");
+    allowedExtensions: readonly string[],
+    folder?: string
+): Promise<UploadUrlResult> {
+    if (folder) assertNoPathSeparator(folder, "Folder name");
+    assertAllowedExtension(fileName, allowedExtensions, "file");
 
-    const fileId = crypto.randomUUID();
-    const objectName = buildObjectName(projectId, folder, fileId, fileName);
-    await BucketService.uploadBuffer(PROJECT_FILES_BUCKET, objectName, content);
-
-    return { fileId, fileName };
-}
-
-/**
- * Generates a presigned upload URL for a project's cover image, after
- * checking its extension against the allowed image types.
- * @throws {Error} If the file's extension isn't an allowed image type
- */
-async function getCoverImageUploadUrl(
-    projectId: string,
-    fileName: string
-): Promise<UploadUrlResult & { objectKey: string }> {
-    assertNoPathSeparator(fileName, "File name");
-    assertAllowedExtension(fileName, ALLOWED_IMAGE_EXTENSIONS, "image");
-
-    const fileId = crypto.randomUUID();
-    const objectKey = buildCoverObjectName(projectId, fileId, fileName);
+    const objectKey = buildObjectKey(projectId, fileName, folder);
     const uploadUrl = await PresignedService.generatePresignedUploadUrl({
         bucketName: PROJECT_FILES_BUCKET,
         objectName: objectKey,
         expiry: 120
     });
 
-    return { uploadUrl, objectName: objectKey, objectKey, fileId };
+    return { uploadUrl, objectKey };
+}
+
+/**
+ * Saves a buffer as a new file, after checking its extension against
+ * `allowedExtensions` - a server-side counterpart to createUploadUrl for
+ * when the caller already has the bytes in hand (e.g. a tool's output, or a
+ * saved SPARQL query), so no presigned-URL round trip is needed.
+ * @throws {Error} If the file's extension isn't in `allowedExtensions`
+ */
+async function saveFile(
+    projectId: string,
+    fileName: string,
+    content: Buffer,
+    allowedExtensions: readonly string[],
+    folder?: string
+): Promise<string> {
+    if (folder) assertNoPathSeparator(folder, "Folder name");
+    assertAllowedExtension(fileName, allowedExtensions, "file");
+
+    const objectKey = buildObjectKey(projectId, fileName, folder);
+    await BucketService.uploadBuffer(PROJECT_FILES_BUCKET, objectKey, content);
+
+    return objectKey;
 }
 
 /* -------------------------------- READ -------------------------------- */
 
 /**
- * Lists a project's files grouped by folder. Folders with no real files yet
- * (only a FOLDER_MARKER) are still included, empty. The reserved cover-image
- * folder is never included.
- *
- * Pass `folder` to scope the scan to just that one reserved folder (e.g.
- * ReservedFolder.SavedQueries) instead of listing the whole project - see
- * listSavedQueryFiles.
+ * Reads a file's contents by its object key, or `null` if it doesn't exist.
  */
-async function listProjectFiles(
-    projectId: string,
-    folder?: ReservedFolder
-): Promise<ProjectFolder[]> {
-    const objects = await BucketService.listFiles({
-        bucketName: PROJECT_FILES_BUCKET,
-        prefix: folder ? `${projectId}/${folder}/` : `${projectId}/`,
-        recursive: true
-    });
-
-    const filesByFolder = new Map<string, ProjectFileInfo[]>();
-
-    for (const object of objects) {
-        const parts = object.name?.split("/") ?? [];
-        const folderName = parts[1];
-        const fullName = parts[parts.length - 1];
-        if (!folderName || !fullName || folderName === ReservedFolder.Cover) {
-            continue;
-        }
-
-        if (!filesByFolder.has(folderName)) {
-            filesByFolder.set(folderName, []);
-        }
-        if (fullName === FOLDER_MARKER) {
-            continue;
-        }
-
-        const separatorIndex = fullName.indexOf("_");
-        const fileId =
-            separatorIndex >= 0 ? fullName.slice(0, separatorIndex) : "unknown";
-        const fileName =
-            separatorIndex >= 0 ? fullName.slice(separatorIndex + 1) : fullName;
-
-        filesByFolder.get(folderName)!.push({
-            fileId,
-            fileName,
-            size: object.size,
-            lastModified: object.lastModified
-        });
-    }
-
-    return Array.from(filesByFolder.entries()).map(([folder, files]) => {
-        const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-        const lastModified = files.reduce<Date | undefined>(
-            (latest, file) =>
-                !latest || (file.lastModified && file.lastModified > latest)
-                    ? file.lastModified
-                    : latest,
-            undefined
-        );
-
-        const sortedFiles = files.sort((a, b) =>
-            a.fileName.localeCompare(b.fileName)
-        );
-
-        return { folder, files: sortedFiles, totalSize, lastModified };
-    });
+async function readFile(objectKey: string) {
+    return await BucketService.readFile(PROJECT_FILES_BUCKET, objectKey);
 }
 
 /**
- * Lists the files in a project's saved-queries folder (its .rq files),
- * without reading their contents.
+ * Checks that a presigned-upload actually completed, returning the object's
+ * real size/lastModified (never trust a client-supplied size) - or `null`
+ * if nothing was ever uploaded to that key. Used by confirmUpload so a
+ * File row is only ever created for an upload that genuinely happened.
  */
-async function listSavedQueryFiles(
-    projectId: string
-): Promise<ProjectFileInfo[]> {
-    const folders = await listProjectFiles(
-        projectId,
-        ReservedFolder.SavedQueries
-    );
-    return (
-        folders.find((folder) => folder.folder === ReservedFolder.SavedQueries)
-            ?.files ?? []
-    );
-}
-
-/**
- * Reads a project file's contents as a stream, or `null` if it doesn't exist.
- */
-async function readProjectFile(
-    projectId: string,
-    folder: string,
-    fileId: string,
-    fileName: string
-) {
-    const objectName = buildObjectName(projectId, folder, fileId, fileName);
-    return await BucketService.readFile(PROJECT_FILES_BUCKET, objectName);
+async function statFile(objectKey: string) {
+    return await BucketService.statFile(PROJECT_FILES_BUCKET, objectKey);
 }
 
 /* -------------------------------- DELETE -------------------------------- */
 
-async function deleteProjectFile(
-    projectId: string,
-    folder: string,
-    fileId: string,
-    fileName: string
-): Promise<void> {
-    const objectName = buildObjectName(projectId, folder, fileId, fileName);
-    await BucketService.deleteFile(PROJECT_FILES_BUCKET, objectName);
-}
-
-async function deleteCoverImage(coverImageKey: string): Promise<void> {
-    await BucketService.deleteFile(PROJECT_FILES_BUCKET, coverImageKey);
-}
-
-/**
- * Deletes a folder and everything in it (its files and its FOLDER_MARKER,
- * if present).
- */
-async function deleteProjectFolder(
-    projectId: string,
-    folder: string
-): Promise<void> {
-    const objects = await BucketService.listFiles({
-        bucketName: PROJECT_FILES_BUCKET,
-        prefix: `${projectId}/${folder}/`,
-        recursive: true
-    });
-
-    const objectNames = objects
-        .map((object) => object.name)
-        .filter((name): name is string => Boolean(name));
-
-    if (objectNames.length > 0) {
-        await BucketService.deleteFiles(PROJECT_FILES_BUCKET, objectNames);
-    }
+async function deleteFile(objectKey: string): Promise<void> {
+    await BucketService.deleteFile(PROJECT_FILES_BUCKET, objectKey);
 }
 
 export {
-    PROJECT_FILES_BUCKET,
     ReservedFolder,
-    buildObjectName,
-    buildCoverObjectName,
+    ALLOWED_EXTENSIONS,
+    buildObjectKey,
+    getFolderFromObjectKey,
     buildSavedQueryFileName,
     parseSavedQueryName,
-    createProjectFolder,
-    getProjectFileUploadUrl,
-    saveProjectFileBuffer,
-    getCoverImageUploadUrl,
-    listProjectFiles,
-    listSavedQueryFiles,
-    readProjectFile,
-    deleteProjectFile,
-    deleteProjectFolder,
-    deleteCoverImage
+    createUploadUrl,
+    saveFile,
+    readFile,
+    statFile,
+    deleteFile
 };
