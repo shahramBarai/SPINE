@@ -1,15 +1,14 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Loader2, Folder, File, Download } from "lucide-react";
 import { toast } from "react-toastify";
 import { api } from "utils/trpc";
-import { buildProjectFileUrl } from "utils/projectFileUrl";
-import { Button } from "components/basics/Button";
-import { Input } from "components/basics/input";
 import { TreeHeader } from "components/complex/TreeHeader";
 import { SectionCard } from "components/complex/SectionCard";
 import { UploadFileButton } from "components/feature/twin/LeftSidebar/ProjectTreeSection/UploadFileButton";
 import { DeleteFileButton } from "../DeleteFileButton";
-import { DeleteFolderButton } from "../DeleteFolderButton";
+import { Button } from "components/basics/Button";
+import { Input } from "components/basics/input";
+import { DISCIPLINES } from "utils/disciplines";
 import { cn } from "utils/index";
 
 const ALLOWED_EXTENSIONS = [".ifc", ".ttl", ".pdf"];
@@ -38,25 +37,28 @@ function FileStorageSection({
     className?: string;
 }) {
     const utils = api.useUtils();
-    const [newFolderName, setNewFolderName] = useState("");
+    const uploadFolderRef = useRef<string>("");
+    const uploadFileIdRef = useRef<string | null>(null);
+    // Folder names the user just created but haven't uploaded a file into
+    // yet - listFiles only ever returns folders that actually contain a
+    // file, so a brand new folder needs to be rendered locally until its
+    // first upload lands and the real listing picks it up.
+    const [pendingFolders, setPendingFolders] = useState<string[]>([]);
     const [showNewFolder, setShowNewFolder] = useState(false);
+    const [newFolderName, setNewFolderName] = useState("");
 
     const {
         data: folders,
         isLoading,
         error
-    } = api.project.listFiles.useQuery({ projectId });
+    } = api.project.files.listFiles.useQuery({ projectId });
 
-    const createFolder = api.project.createFolder.useMutation({
-        onSuccess: () => {
-            utils.project.listFiles.invalidate({ projectId });
-            setNewFolderName("");
-            setShowNewFolder(false);
-        },
+    const getUploadUrl = api.project.files.getUploadUrl.useMutation();
+    const confirmUpload = api.project.files.confirmUpload.useMutation({
+        onSuccess: () =>
+            utils.project.files.listFiles.invalidate({ projectId }),
         onError: (err) => toast.error(err.message)
     });
-
-    const getUploadUrl = api.project.getUploadUrl.useMutation();
 
     if (isLoading) {
         return (
@@ -79,10 +81,31 @@ function FileStorageSection({
         );
     }
 
+    const existingFolderNames = new Set(
+        folders.map((f) => f.folder).filter(Boolean)
+    );
+    const emptyPendingGroups = pendingFolders
+        .filter((folder) => !existingFolderNames.has(folder))
+        .map((folder) => ({
+            folder,
+            files: [] as (typeof folders)[number]["files"],
+            totalSize: 0,
+            lastModified: undefined as Date | string | undefined
+        }));
+    const groups = [...folders, ...emptyPendingGroups];
+
+    const addPendingFolder = (name: string) => {
+        setPendingFolders((prev) =>
+            prev.includes(name) ? prev : [...prev, name]
+        );
+        setShowNewFolder(false);
+        setNewFolderName("");
+    };
+
     return (
         <SectionCard title="File Storage" className={className}>
             <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
-                {folders.map(({ folder, files, totalSize, lastModified }) => (
+                {groups.map(({ folder, files, totalSize, lastModified }) => (
                     <TreeHeader
                         key={folder}
                         className="px-2 hover:bg-muted"
@@ -92,7 +115,7 @@ function FileStorageSection({
                                 <span className="flex flex-col min-w-0">
                                     <span className="flex items-center gap-2">
                                         <span className="font-medium text-foreground truncate">
-                                            {folder}
+                                            {folder || "root"}
                                         </span>
                                         <span className="text-xs text-muted-foreground shrink-0">
                                             ({files.length})
@@ -107,38 +130,32 @@ function FileStorageSection({
                             </span>
                         }
                         button={
-                            <div className="flex items-center gap-1">
+                            folder && (
                                 <UploadFileButton
                                     allowedFileTypes={ALLOWED_EXTENSIONS}
                                     maxFileSizeMB={1000}
                                     getUploadUrlString={async (fileName) => {
-                                        const { uploadUrl } =
+                                        const { uploadUrl, fileId } =
                                             await getUploadUrl.mutateAsync({
                                                 projectId,
                                                 folder,
                                                 fileName
                                             });
+                                        uploadFolderRef.current = folder;
+                                        uploadFileIdRef.current = fileId;
                                         return uploadUrl;
                                     }}
-                                    onUploadSuccess={() =>
-                                        utils.project.listFiles.invalidate({
-                                            projectId
-                                        })
-                                    }
+                                    onUploadSuccess={(fileName) => {
+                                        if (!uploadFileIdRef.current) return;
+                                        confirmUpload.mutate({
+                                            projectId,
+                                            folder: uploadFolderRef.current,
+                                            fileId: uploadFileIdRef.current,
+                                            fileName
+                                        });
+                                    }}
                                 />
-                                <DeleteFolderButton
-                                    projectId={projectId}
-                                    folder={folder}
-                                    fileNames={files.map(
-                                        (file) => file.fileName
-                                    )}
-                                    onSuccess={() =>
-                                        utils.project.listFiles.invalidate({
-                                            projectId
-                                        })
-                                    }
-                                />
-                            </div>
+                            )
                         }
                     >
                         <div className="pr-2 pb-2 flex flex-col gap-1">
@@ -164,26 +181,19 @@ function FileStorageSection({
                                                         ` · Uploaded ${formatDate(file.lastModified)}`}
                                                 </span>
                                             </span>
-                                            <a
-                                                href={buildProjectFileUrl(
-                                                    projectId,
-                                                    folder,
-                                                    file.fileId,
-                                                    file.fileName
-                                                )}
-                                                download
+                                            <span
+                                                // TODO: fix this to be a proper lint that allows for downloading files
                                                 title="Download file"
                                                 className="h-8 w-8 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                                             >
                                                 <Download className="h-3.5 w-3.5" />
-                                            </a>
+                                            </span>
                                             <DeleteFileButton
                                                 projectId={projectId}
-                                                folder={folder}
                                                 fileId={file.fileId}
                                                 fileName={file.fileName}
                                                 onSuccess={() =>
-                                                    utils.project.listFiles.invalidate(
+                                                    utils.project.files.listFiles.invalidate(
                                                         { projectId }
                                                     )
                                                 }
@@ -197,50 +207,67 @@ function FileStorageSection({
                 ))}
 
                 {showNewFolder ? (
-                    <div className="flex items-center gap-2 px-2 py-2">
-                        <Input
-                            autoFocus
-                            placeholder="Folder name"
-                            value={newFolderName}
-                            onChange={(e) => setNewFolderName(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && newFolderName.trim()) {
-                                    createFolder.mutate({
-                                        projectId,
-                                        folder: newFolderName.trim()
-                                    });
+                    <div className="flex flex-col gap-2 px-2 py-2">
+                        <div className="flex items-center gap-2">
+                            <Input
+                                autoFocus
+                                list="discipline-suggestions"
+                                placeholder="Folder name"
+                                value={newFolderName}
+                                onChange={(e) =>
+                                    setNewFolderName(e.target.value)
                                 }
-                                if (e.key === "Escape") {
+                                onKeyDown={(e) => {
+                                    if (
+                                        e.key === "Enter" &&
+                                        newFolderName.trim()
+                                    ) {
+                                        addPendingFolder(
+                                            newFolderName.trim()
+                                        );
+                                    }
+                                    if (e.key === "Escape") {
+                                        setShowNewFolder(false);
+                                        setNewFolderName("");
+                                    }
+                                }}
+                            />
+                            <datalist id="discipline-suggestions">
+                                {DISCIPLINES.map((discipline) => (
+                                    <option
+                                        key={discipline.id}
+                                        value={discipline.id}
+                                    >
+                                        {discipline.name}
+                                    </option>
+                                ))}
+                            </datalist>
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                disabled={!newFolderName.trim()}
+                                onClick={() =>
+                                    addPendingFolder(newFolderName.trim())
+                                }
+                            >
+                                Create
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
                                     setShowNewFolder(false);
                                     setNewFolderName("");
-                                }
-                            }}
-                        />
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            disabled={
-                                !newFolderName.trim() || createFolder.isPending
-                            }
-                            onClick={() =>
-                                createFolder.mutate({
-                                    projectId,
-                                    folder: newFolderName.trim()
-                                })
-                            }
-                        >
-                            Create
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                                setShowNewFolder(false);
-                                setNewFolderName("");
-                            }}
-                        >
-                            Cancel
-                        </Button>
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground pl-1">
+                            Tip: name it after a discipline (
+                            {DISCIPLINES.map((d) => d.id).join(", ")}) so its
+                            IFC/TTL files show up in the Digital Twin viewer.
+                        </p>
                     </div>
                 ) : (
                     <button

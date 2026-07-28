@@ -11,7 +11,7 @@ function SettingsTab({ projectId }: { projectId: string }) {
         data: project,
         isLoading,
         error
-    } = api.project.getProjectInfo.useQuery({ projectId });
+    } = api.project.settingsTab.getProjectInfo.useQuery({ projectId });
 
     if (isLoading) {
         return (

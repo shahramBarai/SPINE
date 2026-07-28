@@ -50,9 +50,9 @@ function ProjectDetailsSection({
         form.description !== originalForm.description ||
         form.isPublic !== originalForm.isPublic;
 
-    const updateSettings = api.project.updateSettings.useMutation({
+    const updateSettings = api.project.settingsTab.updateSettings.useMutation({
         onSuccess: () => {
-            utils.project.getProjectInfo.invalidate({ projectId });
+            utils.project.settingsTab.getProjectInfo.invalidate({ projectId });
             utils.digitalTwin.getProjects.invalidate();
             toast.success("Project settings saved.");
         },
@@ -81,9 +81,7 @@ function ProjectDetailsSection({
                 <Input
                     id="project-name"
                     value={form.name}
-                    onChange={(e) =>
-                        setForm({ ...form, name: e.target.value })
-                    }
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
             </SectionCard>
 

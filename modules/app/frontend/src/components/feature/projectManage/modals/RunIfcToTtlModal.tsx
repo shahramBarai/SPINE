@@ -14,7 +14,7 @@ import {
 } from "components/basics/select";
 
 interface IfcFileOption {
-    folder: string;
+    folder: string | undefined;
     fileId: string;
     fileName: string;
 }
@@ -32,7 +32,7 @@ function RunIfcToTtlModal({
 }) {
     const utils = api.useUtils();
     const { data: folders, isLoading: isLoadingFiles } =
-        api.project.listFiles.useQuery({ projectId });
+        api.project.files.listFiles.useQuery({ projectId });
 
     const ifcFiles: IfcFileOption[] = (folders ?? []).flatMap((folder) =>
         folder.files
@@ -43,7 +43,9 @@ function RunIfcToTtlModal({
                 fileName: file.fileName
             }))
     );
-    const folderNames = (folders ?? []).map((folder) => folder.folder);
+    const folderNames = (folders ?? [])
+        .map((folder) => folder.folder)
+        .filter((folder): folder is string => Boolean(folder));
 
     const [selectedFileKey, setSelectedFileKey] = useState("");
     const [destFolder, setDestFolder] = useState("");
@@ -53,10 +55,10 @@ function RunIfcToTtlModal({
         (file) => `${file.folder}/${file.fileId}` === selectedFileKey
     );
 
-    const runTool = api.project.runIfcToTtlTool.useMutation();
-    const saveResult = api.project.saveToolResult.useMutation();
+    const runTool = api.project.tools.runIfcToTtlTool.useMutation();
+    const saveResult = api.project.tools.saveToolResult.useMutation();
 
-    const { data: jobStatus } = api.project.getToolJobStatus.useQuery(
+    const { data: jobStatus } = api.project.tools.getToolJobStatus.useQuery(
         { projectId, executionId: executionId ?? "" },
         {
             enabled: Boolean(executionId),
@@ -84,13 +86,11 @@ function RunIfcToTtlModal({
         try {
             const { executionId: newExecutionId } = await runTool.mutateAsync({
                 projectId,
-                folder: selectedFile.folder,
-                fileId: selectedFile.fileId,
-                fileName: selectedFile.fileName
+                fileId: selectedFile.fileId
             });
-            setDestFolder(selectedFile.folder);
+            setDestFolder(selectedFile.folder ?? "");
             setExecutionId(newExecutionId);
-            utils.project.listJobExecutions.invalidate({ projectId });
+            utils.project.tools.listJobExecutions.invalidate({ projectId });
         } catch (error) {
             console.error(error);
             toast.error("Failed to start the IFC to TTL conversion.");
@@ -109,8 +109,8 @@ function RunIfcToTtlModal({
                 executionId,
                 folder: destFolder.trim()
             });
-            await utils.project.listFiles.invalidate({ projectId });
-            utils.project.listJobExecutions.invalidate({ projectId });
+            await utils.project.files.listFiles.invalidate({ projectId });
+            utils.project.tools.listJobExecutions.invalidate({ projectId });
             onSuccess?.();
             toast.success("TTL result saved to project storage.");
             setOpen(false);
@@ -156,7 +156,8 @@ function RunIfcToTtlModal({
                                     key={`${file.folder}/${file.fileId}`}
                                     value={`${file.folder}/${file.fileId}`}
                                 >
-                                    {file.folder}/{file.fileName}
+                                    {file.folder ? `${file.folder}/` : ""}
+                                    {file.fileName}
                                 </SelectItem>
                             ))}
                         </SelectContent>

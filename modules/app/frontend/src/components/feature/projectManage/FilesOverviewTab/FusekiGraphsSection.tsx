@@ -32,7 +32,7 @@ function FusekiGraphsSection({
         data: graphs,
         isLoading,
         error
-    } = api.project.listGraphs.useQuery({ projectId });
+    } = api.project.graphs.listGraphs.useQuery({ projectId });
 
     const [showAddGraph, setShowAddGraph] = useState(false);
     const [newGraphUri, setNewGraphUri] = useState("");
@@ -43,9 +43,9 @@ function FusekiGraphsSection({
     const [visibleCount, setVisibleCount] = useState(GRAPH_PAGE_SIZE);
 
     const invalidateGraphs = () =>
-        utils.project.listGraphs.invalidate({ projectId });
+        utils.project.graphs.listGraphs.invalidate({ projectId });
 
-    const createGraph = api.project.createGraph.useMutation({
+    const createGraph = api.project.graphs.createGraph.useMutation({
         onSuccess: (result) => {
             invalidateGraphs();
             setNewGraphUri("");
@@ -55,7 +55,7 @@ function FusekiGraphsSection({
         onError: (err) => toast.error(err.message)
     });
 
-    const renameGraph = api.project.renameGraph.useMutation({
+    const renameGraph = api.project.graphs.renameGraph.useMutation({
         onSuccess: () => {
             invalidateGraphs();
             setEditingUri(null);
@@ -64,7 +64,7 @@ function FusekiGraphsSection({
         onError: (err) => toast.error(err.message)
     });
 
-    const deleteGraph = api.project.deleteGraph.useMutation({
+    const deleteGraph = api.project.graphs.deleteGraph.useMutation({
         onSuccess: () => {
             invalidateGraphs();
             setDeleteTarget(null);

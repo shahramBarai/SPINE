@@ -18,25 +18,29 @@ function CoverImageSection({
     const utils = api.useUtils();
     const uploadedKeyRef = useRef<string | null>(null);
 
-    const getCoverUploadUrl = api.project.getCoverUploadUrl.useMutation();
+    const getCoverUploadUrl =
+        api.project.settingsTab.getCoverUploadUrl.useMutation();
 
-    const setCoverImage = api.project.setCoverImage.useMutation({
+    const setCoverImage = api.project.settingsTab.setCoverImage.useMutation({
         onSuccess: () => {
-            utils.project.getProjectInfo.invalidate({ projectId });
+            utils.project.settingsTab.getProjectInfo.invalidate({ projectId });
             utils.digitalTwin.getProjects.invalidate();
             toast.success("Cover image updated.");
         },
         onError: (err) => toast.error(err.message)
     });
 
-    const removeCoverImage = api.project.removeCoverImage.useMutation({
-        onSuccess: () => {
-            utils.project.getProjectInfo.invalidate({ projectId });
-            utils.digitalTwin.getProjects.invalidate();
-            toast.success("Cover image removed.");
-        },
-        onError: (err) => toast.error(err.message)
-    });
+    const removeCoverImage =
+        api.project.settingsTab.removeCoverImage.useMutation({
+            onSuccess: () => {
+                utils.project.settingsTab.getProjectInfo.invalidate({
+                    projectId
+                });
+                utils.digitalTwin.getProjects.invalidate();
+                toast.success("Cover image removed.");
+            },
+            onError: (err) => toast.error(err.message)
+        });
 
     return (
         <SectionCard title="Cover Image">

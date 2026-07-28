@@ -42,7 +42,7 @@ function MembersTab({
         data: members,
         isLoading,
         error
-    } = api.project.getMembers.useQuery({ projectId });
+    } = api.project.settingsTab.getMembers.useQuery({ projectId });
 
     // Local draft of the member table - seeded from the server once, then
     // edited freely (role changes, additions, removals) until Save reconciles
@@ -84,9 +84,9 @@ function MembersTab({
             { enabled: searchOpen && query.length > 0 }
         );
 
-    const updateMembers = api.project.updateMembers.useMutation({
+    const updateMembers = api.project.settingsTab.updateMembers.useMutation({
         onSuccess: () => {
-            utils.project.getMembers.invalidate({ projectId });
+            utils.project.settingsTab.getMembers.invalidate({ projectId });
             setRows(null);
             setDirty(false);
             toast.success("Members updated.");

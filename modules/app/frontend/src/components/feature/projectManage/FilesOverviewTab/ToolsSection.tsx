@@ -27,7 +27,7 @@ function ToolsSection({
         data: tools,
         isLoading,
         isError
-    } = api.project.listTools.useQuery();
+    } = api.project.tools.listTools.useQuery();
 
     if (isLoading) {
         return (
@@ -110,7 +110,7 @@ function ToolsSection({
                     setRunModalToolId(open ? "ifc-to-ttl" : null)
                 }
                 onSuccess={() =>
-                    utils.project.listFiles.invalidate({ projectId })
+                    utils.project.files.listFiles.invalidate({ projectId })
                 }
             />
         </SectionCard>

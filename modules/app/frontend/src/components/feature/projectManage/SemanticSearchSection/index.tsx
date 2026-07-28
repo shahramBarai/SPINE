@@ -39,13 +39,15 @@ function SemanticSearchSection({
         isLoading,
         isError,
         error
-    } = api.project.runSemanticSearch.useQuery(
+    } = api.project.semanticSearch.runSemanticSearch.useQuery(
         { projectId, query: submittedQuery ?? "" },
         { enabled: submittedQuery !== null }
     );
 
     const { data: savedQueries } =
-        api.project.listSemanticSearchQueries.useQuery({ projectId });
+        api.project.semanticSearch.listSemanticSearchQueries.useQuery({
+            projectId
+        });
     const utils = api.useUtils();
 
     const examples: SemanticSearchExample[] =
@@ -78,11 +80,12 @@ function SemanticSearchSection({
         setIsLoadingExample(true);
         try {
             const { query: text } =
-                await utils.project.getSemanticSearchQuery.fetch({
-                    projectId,
-                    fileId: saved.fileId,
-                    name: saved.name
-                });
+                await utils.project.semanticSearch.getSemanticSearchQuery.fetch(
+                    {
+                        projectId,
+                        fileId: saved.fileId
+                    }
+                );
             setQuery(text);
         } catch (error) {
             toast.error(

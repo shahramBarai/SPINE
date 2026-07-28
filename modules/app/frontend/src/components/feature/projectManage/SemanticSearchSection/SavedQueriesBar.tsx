@@ -26,15 +26,18 @@ function SavedQueriesBar({
     const [saveName, setSaveName] = useState("");
     const utils = api.useUtils();
 
-    const saveQuery = api.project.saveSemanticSearchQuery.useMutation({
-        onSuccess: (result, variables) => {
-            setSaveName("");
-            toast.success(`Query "${variables.name}" saved.`);
-            utils.project.listSemanticSearchQueries.invalidate({ projectId });
-            onSaved(result.fileId);
-        },
-        onError: (error) => toast.error(error.message)
-    });
+    const saveQuery =
+        api.project.semanticSearch.saveSemanticSearchQuery.useMutation({
+            onSuccess: (result, variables) => {
+                setSaveName("");
+                toast.success(`Query "${variables.name}" saved.`);
+                utils.project.semanticSearch.listSemanticSearchQueries.invalidate(
+                    { projectId }
+                );
+                onSaved(result.fileId);
+            },
+            onError: (error) => toast.error(error.message)
+        });
 
     const handleSave = () => {
         const name = saveName.trim();

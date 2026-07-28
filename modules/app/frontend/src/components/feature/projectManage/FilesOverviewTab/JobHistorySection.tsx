@@ -68,9 +68,9 @@ function JobHistorySection({
     projectId: string;
     className?: string;
 }) {
-    const { data: tools } = api.project.listTools.useQuery();
+    const { data: tools } = api.project.tools.listTools.useQuery();
     const { data: executions, isLoading } =
-        api.project.listJobExecutions.useQuery({ projectId });
+        api.project.tools.listJobExecutions.useQuery({ projectId });
 
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
     const [visibleCount, setVisibleCount] = useState(JOB_HISTORY_PAGE_SIZE);

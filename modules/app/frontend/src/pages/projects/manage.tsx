@@ -60,13 +60,13 @@ const ProjectManagePage = pageGuard(ProjectManagePageContent, {
             data: project,
             isLoading: isProjectLoading,
             error: projectError
-        } = api.project.getProjectInfo.useQuery({ projectId });
+        } = api.project.settingsTab.getProjectInfo.useQuery({ projectId });
 
         const {
             data: role,
             isLoading: isRoleLoading,
             error: roleError
-        } = api.project.getMyRole.useQuery({ projectId });
+        } = api.project.settingsTab.getMyRole.useQuery({ projectId });
 
         const canManage = role === "OWNER" || role === "EDITOR";
 

@@ -23,7 +23,7 @@ const GRAPH_CHOICE_TABS: { id: GraphChoice; label: string }[] = [
 ];
 
 interface TtlFileOption {
-    folder: string;
+    folder: string | undefined;
     fileId: string;
     fileName: string;
 }
@@ -43,7 +43,7 @@ function UploadTtlToGraphModal({
 }) {
     const utils = api.useUtils();
     const { data: folders, isLoading: isLoadingFiles } =
-        api.project.listFiles.useQuery({ projectId });
+        api.project.files.listFiles.useQuery({ projectId });
 
     const ttlFiles: TtlFileOption[] = (folders ?? []).flatMap((folder) =>
         folder.files
@@ -67,7 +67,7 @@ function UploadTtlToGraphModal({
     const graphUri =
         choice === "existing" ? existingGraphUri : newGraphUri.trim();
 
-    const loadTtl = api.project.loadTtlToFuseki.useMutation();
+    const loadTtl = api.project.graphs.loadTtlToFuseki.useMutation();
 
     const onSubmit = async () => {
         if (!selectedFile) {
@@ -82,13 +82,11 @@ function UploadTtlToGraphModal({
         try {
             await loadTtl.mutateAsync({
                 projectId,
-                folder: selectedFile.folder,
                 fileId: selectedFile.fileId,
-                fileName: selectedFile.fileName,
                 graphUri,
                 replace: choice === "existing" ? replace : true
             });
-            await utils.project.listGraphs.invalidate({ projectId });
+            await utils.project.graphs.listGraphs.invalidate({ projectId });
             onSuccess?.();
             toast.success(`${selectedFile.fileName} loaded into ${graphUri}.`);
             setOpen(false);
@@ -133,7 +131,8 @@ function UploadTtlToGraphModal({
                                     key={`${file.folder}/${file.fileId}`}
                                     value={`${file.folder}/${file.fileId}`}
                                 >
-                                    {file.folder}/{file.fileName}
+                                    {file.folder ? `${file.folder}/` : ""}
+                                    {file.fileName}
                                 </SelectItem>
                             ))}
                         </SelectContent>

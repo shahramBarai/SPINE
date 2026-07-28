@@ -31,7 +31,7 @@ function ApiKeysSection({
         data: keys,
         isLoading,
         error
-    } = api.project.listApiKeys.useQuery({ projectId });
+    } = api.project.settingsTab.listApiKeys.useQuery({ projectId });
 
     const [showNewKey, setShowNewKey] = useState(false);
     const [newKeyName, setNewKeyName] = useState("");
@@ -45,9 +45,9 @@ function ApiKeysSection({
     } | null>(null);
 
     const invalidateKeys = () =>
-        utils.project.listApiKeys.invalidate({ projectId });
+        utils.project.settingsTab.listApiKeys.invalidate({ projectId });
 
-    const createKey = api.project.createApiKey.useMutation({
+    const createKey = api.project.settingsTab.createApiKey.useMutation({
         onSuccess: (result) => {
             invalidateKeys();
             setShowNewKey(false);
@@ -57,7 +57,7 @@ function ApiKeysSection({
         onError: (err) => toast.error(err.message)
     });
 
-    const revokeKey = api.project.revokeApiKey.useMutation({
+    const revokeKey = api.project.settingsTab.revokeApiKey.useMutation({
         onSuccess: () => {
             invalidateKeys();
             setRevokeTarget(null);
@@ -105,8 +105,8 @@ function ApiKeysSection({
         <SectionCard title="API Access" className={className}>
             <p className="text-xs text-muted-foreground">
                 API keys let external systems run read-only SPARQL queries
-                against this project's dataset. Anyone with a key can query
-                it - treat keys like passwords.
+                against this project's dataset. Anyone with a key can query it -
+                treat keys like passwords.
             </p>
 
             <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">

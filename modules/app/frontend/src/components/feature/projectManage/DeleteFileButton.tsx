@@ -7,7 +7,6 @@ import { ConfirmModal } from "components/complex/ConfirmModal";
 
 interface DeleteFileButtonProps {
     projectId: string;
-    folder: string;
     fileId: string;
     fileName: string;
     onSuccess?: () => void;
@@ -15,14 +14,13 @@ interface DeleteFileButtonProps {
 
 function DeleteFileButton({
     projectId,
-    folder,
     fileId,
     fileName,
     onSuccess
 }: DeleteFileButtonProps) {
     const [open, setOpen] = useState(false);
 
-    const deleteFile = api.project.deleteFile.useMutation({
+    const deleteFile = api.project.files.deleteFile.useMutation({
         onSuccess: () => {
             setOpen(false);
             onSuccess?.();
@@ -56,9 +54,7 @@ function DeleteFileButton({
                     onConfirm={() =>
                         deleteFile.mutate({
                             projectId,
-                            folder,
-                            fileId,
-                            fileName
+                            fileId
                         })
                     }
                 />
