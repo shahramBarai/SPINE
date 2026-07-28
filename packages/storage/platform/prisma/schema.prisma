@@ -47,6 +47,7 @@ model Entity {
     flinkTasks  Pipeline[]
     jobExecutions JobExecution[]
     apiKeys ApiKey[]
+    files File[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -233,5 +234,27 @@ model SensorTag {
     updatedAt DateTime @updatedAt
 
     sensorData SensorData[]
+}
+
+// ------PROJECT FILES------
+
+// id is not auto-generated - it's the same fileId minted by
+// ProjectFileService.getProjectFileUploadUrl.
+model File {
+    id        String  @id
+    fileName  String
+    size      Int
+    mimeType  String
+    objectKey String  @unique
+
+    entityId    String
+    createdBy   String
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    entity     Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+    @@index([entityId])
 }
 

@@ -143,6 +143,26 @@ async function getStorageStats(
 }
 
 /**
+ * Checks whether an object exists and returns its size/last-modified time,
+ * without downloading its content.
+ *
+ * @param bucketName - The name of the bucket containing the file.
+ * @param objectName - The object key / path within the bucket.
+ * @returns A promise that resolves to the object's size/lastModified, or `null` if it doesn't exist.
+ */
+async function statFile(
+    bucketName: BUCKET_NAMES,
+    objectName: string
+): Promise<{ size: number; lastModified: Date } | null> {
+    try {
+        const stat = await minioClient.statObject(bucketName, objectName);
+        return { size: stat.size, lastModified: stat.lastModified };
+    } catch (_error) {
+        return null;
+    }
+}
+
+/**
  * Downloads a file from MinIO and returns it as a `Readable` stream.
  *
  * @param bucketName - The name of the bucket containing the file.
@@ -268,6 +288,7 @@ export {
     uploadBuffer,
     copyFile,
     getStorageStats,
+    statFile,
     readFile,
     listFiles,
     deleteFile,
