@@ -335,9 +335,7 @@ function IfcViewerPane({
         const subscription = utils.client.digitalTwin.streamIfcGeometry.subscribe(
             {
                 projectId: projectInfo.id,
-                discipline: selectedIfcFile.discipline,
-                fileId: selectedIfcFile.fileId,
-                fileName: selectedIfcFile.fileName
+                fileId: selectedIfcFile.fileId
             },
             {
                 onData(event) {

@@ -8,7 +8,7 @@ import {
     RelationshipGraphService,
     FusekiSparqlError
 } from "@spine/storage-rdf-store";
-import { EntityService } from "@spine/storage-platform";
+import { EntityService, FileService } from "@spine/storage-platform";
 import { getCoverImageUrl } from "../utils/coverImage";
 import { readStreamToBuffer } from "../utils/stream";
 import { IfcLiteServerClient } from "../clients";
@@ -129,37 +129,37 @@ export const digitalTwinRouter = router({
             })
         )
         .query(async ({ input }): Promise<FileInfo[]> => {
-            const folders = await ProjectFileService.listProjectFiles(
-                input.projectId
-            );
+            const files = await FileService.listFiles(input.projectId);
             const fileTypesLower = input.fileTypes.map((type) =>
                 type.toLowerCase()
             );
 
-            return folders
-                .filter(
-                    (folder) =>
-                        !input.discipline || folder.folder === input.discipline
-                )
-                .flatMap((folder) =>
-                    folder.files
-                        .filter((file) => {
-                            const extension = file.fileName
-                                .split(".")
-                                .pop()
-                                ?.toLowerCase();
-                            return extension
-                                ? fileTypesLower.includes(extension)
-                                : false;
-                        })
-                        .map((file) => ({
-                            discipline: folder.folder,
-                            fileId: file.fileId,
-                            fileName: file.fileName,
-                            size: file.size,
-                            lastModified: file.lastModified
-                        }))
-                );
+            return files
+                .filter((file) => {
+                    const folder = ProjectFileService.getFolderFromObjectKey(
+                        file.objectKey
+                    );
+                    return !input.discipline || folder === input.discipline;
+                })
+                .filter((file) => {
+                    const extension = file.fileName
+                        .split(".")
+                        .pop()
+                        ?.toLowerCase();
+                    return extension
+                        ? fileTypesLower.includes(extension)
+                        : false;
+                })
+                .map((file) => ({
+                    discipline:
+                        ProjectFileService.getFolderFromObjectKey(
+                            file.objectKey
+                        ) ?? "",
+                    fileId: file.id,
+                    fileName: file.fileName,
+                    size: file.size,
+                    lastModified: file.updatedAt
+                }));
         }),
 
     // Streams an IFC file's geometry via the self-hosted ifc-lite-server so
@@ -172,22 +172,28 @@ export const digitalTwinRouter = router({
         .input(
             z.object({
                 projectId: z.string(),
-                discipline: z.string(),
-                fileId: z.string(),
-                fileName: z.string()
+                fileId: z.string()
             })
         )
         .subscription(async function* ({ input }) {
-            const fileStream = await ProjectFileService.readProjectFile(
+            const file = await FileService.getFile(
                 input.projectId,
-                input.discipline,
-                input.fileId,
-                input.fileName
+                input.fileId
+            );
+            if (!file) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "File not found"
+                });
+            }
+
+            const fileStream = await ProjectFileService.readFile(
+                file.objectKey
             );
             if (!fileStream) {
                 throw new TRPCError({
                     code: "NOT_FOUND",
-                    message: `File not found: ${input.fileName}`
+                    message: `File not found: ${file.fileName}`
                 });
             }
 
