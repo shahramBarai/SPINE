@@ -6,6 +6,7 @@ const MIME_TYPES: Record<string, string> = {
     ifc: "application/octet-stream",
     ttl: "text/turtle",
     pdf: "application/pdf",
+    rq: "application/sparql-query",
     png: "image/png",
     jpg: "image/jpeg",
     jpeg: "image/jpeg",
@@ -70,4 +71,4 @@ async function serveSecureFile({
     stream.pipe(res);
 }
 
-export { serveSecureFile };
+export { serveSecureFile, getMimeType };
