@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Box } from "lucide-react";
 import { type ImperativePanelHandle } from "react-resizable-panels";
 import { LeftSidebar } from "components/feature/twin/LeftSidebar";
 import { TopNav } from "components/feature/twin/TopNav/index";
-import { PlaceholderPane } from "components/feature/twin/PlaceholderPane";
+import { IfcViewerPane } from "components/feature/twin/IfcViewerPane";
 import { GraphPane } from "components/feature/twin/GraphPane";
 import { SemanticSearchPanel } from "components/feature/twin/SemanticSearchPanel";
 import {
@@ -96,9 +95,7 @@ const DigitalTwinLayout = () => {
                                                 : ""
                                         )}
                                     >
-                                        <PlaceholderPane
-                                            icon={Box}
-                                            label="3D Viewer"
+                                        <IfcViewerPane
                                             hidden={viewerHidden}
                                             maximized={maximized === "viewer"}
                                             onToggleMaximize={() =>

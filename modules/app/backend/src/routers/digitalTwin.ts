@@ -10,6 +10,8 @@ import {
 } from "@spine/storage-rdf-store";
 import { EntityService } from "@spine/storage-platform";
 import { getCoverImageUrl } from "../utils/coverImage";
+import { readStreamToBuffer } from "../utils/stream";
+import { IfcLiteServerClient } from "../clients";
 
 // FusekiSparqlError with status 404 covers two "no data yet" cases: the
 // project's dataset hasn't been provisioned, or the dataset exists but this
@@ -158,6 +160,48 @@ export const digitalTwinRouter = router({
                             lastModified: file.lastModified
                         }))
                 );
+        }),
+
+    // Streams an IFC file's geometry via the self-hosted ifc-lite-server so
+    // the raw IFC bytes never need to reach the browser, and large files
+    // render progressively instead of the viewer staying blank until the
+    // whole file is parsed. publicProcedure to match this router's existing
+    // public-project viewing model (getProject, getGraphTree, etc.) rather
+    // than project.ts's member-only procedures.
+    streamIfcGeometry: publicProcedure
+        .input(
+            z.object({
+                projectId: z.string(),
+                discipline: z.string(),
+                fileId: z.string(),
+                fileName: z.string()
+            })
+        )
+        .subscription(async function* ({ input }) {
+            const fileStream = await ProjectFileService.readProjectFile(
+                input.projectId,
+                input.discipline,
+                input.fileId,
+                input.fileName
+            );
+            if (!fileStream) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: `File not found: ${input.fileName}`
+                });
+            }
+
+            const buffer = await readStreamToBuffer(fileStream);
+
+            try {
+                yield* IfcLiteServerClient.streamIfcFile(buffer);
+            } catch (error) {
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: "Failed to stream IFC file geometry",
+                    cause: error
+                });
+            }
         }),
 
     getGraphTree: publicProcedure

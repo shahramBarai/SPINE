@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Loader2, Folder, File, Download } from "lucide-react";
 import { toast } from "react-toastify";
 import { api } from "utils/trpc";
-import { BACKEND_URL } from "utils/backendUrl";
+import { buildProjectFileUrl } from "utils/projectFileUrl";
 import { Button } from "components/basics/Button";
 import { Input } from "components/basics/input";
 import { TreeHeader } from "components/complex/TreeHeader";
@@ -28,18 +28,6 @@ function formatDate(date: Date | string): string {
         dateStyle: "medium",
         timeStyle: "short"
     }).format(new Date(date));
-}
-
-function buildDownloadUrl(
-    projectId: string,
-    folder: string,
-    fileId: string,
-    fileName: string
-): string {
-    const objectKey = [projectId, folder, `${fileId}_${fileName}`]
-        .map(encodeURIComponent)
-        .join("/");
-    return `${BACKEND_URL}/files/${objectKey}`;
 }
 
 function FileStorageSection({
@@ -177,7 +165,7 @@ function FileStorageSection({
                                                 </span>
                                             </span>
                                             <a
-                                                href={buildDownloadUrl(
+                                                href={buildProjectFileUrl(
                                                     projectId,
                                                     folder,
                                                     file.fileId,

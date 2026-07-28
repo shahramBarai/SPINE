@@ -14,6 +14,12 @@ type ProjectInfo = {
     name: string;
 };
 
+export type SelectedIfcFile = {
+    discipline: string;
+    fileId: string;
+    fileName: string;
+};
+
 // Everything a digital-twin window (sidebar, graph pane, and future 3D
 // viewer / semantic data panels) needs to share so an action in one window
 // (select a node, search, hide a type) is reflected in every other one.
@@ -29,6 +35,9 @@ type DigitalTwinContextValue = {
 
     focusId: string;
     setFocusId: Dispatch<SetStateAction<string>>;
+
+    selectedIfcFile: SelectedIfcFile | null;
+    setSelectedIfcFile: Dispatch<SetStateAction<SelectedIfcFile | null>>;
 
     ttlFilesHidden: string[];
     setTtlFilesHidden: Dispatch<SetStateAction<string[]>>;
@@ -57,14 +66,14 @@ export function DigitalTwinProvider({
 }) {
     const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
     const [focusId, setFocusId] = useState<string>(initialFocusId);
+    const [selectedIfcFile, setSelectedIfcFile] =
+        useState<SelectedIfcFile | null>(null);
     const [ttlFilesHidden, setTtlFilesHidden] = useState<string[]>([]);
     const [searchText, setSearchText] = useState("");
-    const [selectedNodeTypes, setSelectedNodeTypes] = useState<Set<
-        string
-    > | null>(null);
-    const [selectedPredicates, setSelectedPredicates] = useState<Set<
-        string
-    > | null>(null);
+    const [selectedNodeTypes, setSelectedNodeTypes] =
+        useState<Set<string> | null>(null);
+    const [selectedPredicates, setSelectedPredicates] =
+        useState<Set<string> | null>(null);
 
     const selectObject = useCallback(
         (id: string, sameAsIds: string[] = []) =>
@@ -82,6 +91,8 @@ export function DigitalTwinProvider({
             clearSelection,
             focusId,
             setFocusId,
+            selectedIfcFile,
+            setSelectedIfcFile,
             ttlFilesHidden,
             setTtlFilesHidden,
             searchText,
@@ -97,6 +108,7 @@ export function DigitalTwinProvider({
             selectObject,
             clearSelection,
             focusId,
+            selectedIfcFile,
             ttlFilesHidden,
             searchText,
             selectedNodeTypes,

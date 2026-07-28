@@ -58,5 +58,18 @@ services:
                 condition: service_healthy
         restart: unless-stopped
 
+    # ------ IFC-Lite Server (IFC parsing/geometry extraction) ------- #
+    ifc-lite-server:
+        build: ./ifc-lite-server
+        container_name: ifc-lite-server
+        environment:
+            CACHE_DIR: /app/cache
+        ports:
+            - "3001:8080"
+        volumes:
+            - ifc_lite_cache:/app/cache
+        restart: unless-stopped
+
 volumes:
     citydb_data:
+    ifc_lite_cache:

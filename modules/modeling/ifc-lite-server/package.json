@@ -1,0 +1,7 @@
+{
+    "name": "ifc-lite-server-runner",
+    "private": true,
+    "dependencies": {
+        "@ifc-lite/server-bin": "1.16.6"
+    }
+}
