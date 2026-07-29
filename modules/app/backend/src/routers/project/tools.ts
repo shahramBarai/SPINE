@@ -7,10 +7,11 @@ import { type JobExecutionStatus } from "@spine/storage-platform/types";
 import { ProjectFileService } from "@spine/storage-minio";
 import { readStreamToBuffer } from "../../utils/stream";
 import { getMimeType } from "../../utils/secureFile";
+import { generateFileId } from "../../utils/fileId";
 import { TOOLS } from "../../tools";
 import { BuildingServiceClient } from "../../clients";
 import { basename } from "path";
-import { asBadRequest, generateFileId } from "./shared";
+import { asBadRequest } from "./shared";
 
 function toJobExecutionStatus(
     status: BuildingServiceClient.ConversionJobStatus

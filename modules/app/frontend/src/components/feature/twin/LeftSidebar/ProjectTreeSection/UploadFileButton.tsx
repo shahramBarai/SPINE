@@ -3,31 +3,72 @@ import { useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { cn } from "utils/index";
 
-interface UploadFileButtonProps {
+interface UploadFileButtonProps<T> {
     allowedFileTypes?: string[];
     maxFileSizeMB?: number;
-    getUploadUrlString: (fileName: string) => Promise<string>;
-    onUploadSuccess?: (fileName: string) => void;
+    /** Builds the backend URL to PUT the file to - synchronous, since the
+     * backend mints any id it needs itself once the upload lands. */
+    buildUploadUrl: (fileName: string) => string;
+    onUploadSuccess?: (result: T) => void;
     onUploadError?: (error: Error) => void;
 }
 
-function UploadFileButton({
+// PUTs straight to the backend (which streams the body into MinIO itself -
+// it never hands out a URL for MinIO directly), using XMLHttpRequest rather
+// than fetch: XHR still streams the file from disk without buffering it in
+// JS memory, but unlike fetch it also fires upload progress events, which
+// is the only way to get a real byte-level progress bar.
+function putFileWithProgress(
+    url: string,
+    file: File,
+    onProgress: (fraction: number) => void
+): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", url, true);
+        xhr.withCredentials = true;
+
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) onProgress(event.loaded / event.total);
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    resolve(
+                        xhr.responseText
+                            ? JSON.parse(xhr.responseText)
+                            : undefined
+                    );
+                } catch {
+                    resolve(undefined);
+                }
+                return;
+            }
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+        };
+        xhr.onerror = () => reject(new Error("Upload failed"));
+
+        xhr.send(file);
+    });
+}
+
+function UploadFileButton<T = unknown>({
     allowedFileTypes,
     maxFileSizeMB,
-    getUploadUrlString,
+    buildUploadUrl,
     onUploadSuccess,
     onUploadError
-}: UploadFileButtonProps) {
+}: UploadFileButtonProps<T>) {
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [isUploading, setIsUploading] = useState(false);
+    const [progress, setProgress] = useState<number | null>(null);
+    const isUploading = progress !== null;
 
     const handleFileChange = async (
         event: React.ChangeEvent<HTMLInputElement>
     ) => {
         const file = event.target.files?.[0];
         if (!file) return;
-
-        toast.info(`Uploading ${file.name}...`, { autoClose: 2000 });
 
         // Optional safety boundary checks
         if (
@@ -50,53 +91,32 @@ function UploadFileButton({
         }
 
         try {
-            setIsUploading(true);
+            setProgress(0);
 
-            // 1. Fetch pre-signed upload URL from backend
-            const uploadUrl = await getUploadUrlString(file.name);
-
-            // 2. Upload file directly to S3 / Cloud Storage bucket
-            const uploadResponse = await fetch(uploadUrl, {
-                method: "PUT",
-                body: file,
-                headers: {
-                    "Content-Type": "application/octet-stream"
-                }
-            });
-
-            // 3. Handle upload response
-            if (!uploadResponse.ok) {
-                toast.error(`Failed to upload ${file.name}.`);
-                onUploadError?.(
-                    new Error(
-                        `Upload failed with status ${uploadResponse.status}`
-                    )
-                );
-                return;
-            }
+            const result = await putFileWithProgress(
+                buildUploadUrl(file.name),
+                file,
+                setProgress
+            );
 
             toast.success(`${file.name} uploaded successfully.`);
-            onUploadSuccess?.(file.name);
+            onUploadSuccess?.(result as T);
         } catch (error) {
             console.error(error);
-            if (error instanceof Error) {
-                toast.error(
-                    `Upload pipeline failed: ${error.message || "Unknown error"}`
-                );
-                onUploadError?.(error);
-            } else {
-                toast.error("Upload pipeline failed: Unknown error");
-                onUploadError?.(
-                    new Error("Upload pipeline failed: Unknown error")
-                );
-            }
+            const err =
+                error instanceof Error
+                    ? error
+                    : new Error("Upload pipeline failed: Unknown error");
+            toast.error(`Failed to upload ${file.name}: ${err.message}`);
+            onUploadError?.(err);
         } finally {
-            setIsUploading(false);
+            setProgress(null);
             if (fileInputRef.current) fileInputRef.current.value = ""; // reset picker input
         }
     };
 
     const acceptedFileTypes = allowedFileTypes?.join(",") || "*";
+    const progressPercent = Math.round((progress ?? 0) * 100);
 
     return (
         <>
@@ -112,21 +132,27 @@ function UploadFileButton({
             <button
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(
-                    "group h-6 px-2 gap-1 rounded flex items-center transition-all text-muted-foreground",
+                    "group relative h-6 px-2 gap-1 rounded flex items-center overflow-hidden transition-all text-muted-foreground",
                     isUploading
-                        ? "text-success bg-success/10"
-                        : "hover:cursor-pointer hover:text-foreground hover:bg-accent",
-                    isUploading && "cursor-not-allowed opacity-50"
+                        ? "text-success bg-success/10 cursor-not-allowed"
+                        : "hover:cursor-pointer hover:text-foreground hover:bg-accent"
                 )}
                 aria-label="Upload file"
                 title="Upload file"
                 disabled={isUploading}
             >
+                {isUploading && (
+                    <span
+                        aria-hidden="true"
+                        className="absolute inset-y-0 left-0 bg-success/25 transition-[width] duration-150 ease-out"
+                        style={{ width: `${progressPercent}%` }}
+                    />
+                )}
                 {isUploading ? (
                     <>
-                        <CloudUpload className="h-3.5 w-3.5" />
-                        <span className="max-w-12 whitespace-nowrap text-[10px] font-medium">
-                            Uploading
+                        <CloudUpload className="relative z-10 h-3.5 w-3.5 animate-pulse" />
+                        <span className="relative z-10 max-w-12 whitespace-nowrap text-[10px] font-medium tabular-nums">
+                            {progressPercent}%
                         </span>
                     </>
                 ) : (

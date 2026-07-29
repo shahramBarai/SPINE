@@ -1,13 +1,6 @@
+import { type Readable } from "stream";
 import { type BUCKET_NAMES } from "../db/minio";
 import * as BucketService from "./primitives/bucketService";
-import * as PresignedService from "./primitives/presignedService";
-
-/* -------------------------------- INTERFACES -------------------------------- */
-
-interface UploadUrlResult {
-    uploadUrl: string;
-    objectKey: string;
-}
 
 /* -------------------------------- CONSTANTS -------------------------------- */
 
@@ -85,48 +78,37 @@ function assertNoPathSeparator(value: string, label: string): void {
 /* -------------------------------- CREATE -------------------------------- */
 
 /**
- * Generates a presigned upload URL for a new file, after checking its
- * extension against `allowedExtensions`.
- * @throws {Error} If the file's extension isn't in `allowedExtensions`
- */
-async function createUploadUrl(
-    projectId: string,
-    fileName: string,
-    allowedExtensions: readonly string[],
-    folder?: string
-): Promise<UploadUrlResult> {
-    if (folder) assertNoPathSeparator(folder, "Folder name");
-    assertAllowedExtension(fileName, allowedExtensions, "file");
-
-    const objectKey = buildObjectKey(projectId, fileName, folder);
-    const uploadUrl = await PresignedService.generatePresignedUploadUrl({
-        bucketName: PROJECT_FILES_BUCKET,
-        objectName: objectKey,
-        expiry: 120
-    });
-
-    return { uploadUrl, objectKey };
-}
-
-/**
- * Saves a buffer as a new file, after checking its extension against
- * `allowedExtensions` - a server-side counterpart to createUploadUrl for
- * when the caller already has the bytes in hand (e.g. a tool's output, or a
- * saved SPARQL query), so no presigned-URL round trip is needed.
+ * Saves a file's content as a new object, after checking its extension
+ * against `allowedExtensions`. `content` is either a `Buffer` (server-
+ * mediated saves, e.g. a tool's output or a saved SPARQL query - the caller
+ * already has the bytes in hand) or a `Readable` (a client upload, piped
+ * straight through to MinIO without buffering the whole file in memory -
+ * pass `size` from the request's Content-Length when known, for a more
+ * efficient single-part upload).
+ *
+ * MinIO is never exposed directly to a browser: this is the only path a
+ * file's bytes take into storage, whether the caller is the upload route or
+ * server-side code.
  * @throws {Error} If the file's extension isn't in `allowedExtensions`
  */
 async function saveFile(
     projectId: string,
     fileName: string,
-    content: Buffer,
+    content: Buffer | Readable,
     allowedExtensions: readonly string[],
-    folder?: string
+    folder?: string,
+    size?: number
 ): Promise<string> {
     if (folder) assertNoPathSeparator(folder, "Folder name");
     assertAllowedExtension(fileName, allowedExtensions, "file");
 
     const objectKey = buildObjectKey(projectId, fileName, folder);
-    await BucketService.uploadBuffer(PROJECT_FILES_BUCKET, objectKey, content);
+    await BucketService.uploadFile({
+        bucketName: PROJECT_FILES_BUCKET,
+        objectName: objectKey,
+        stream: content,
+        size
+    });
 
     return objectKey;
 }
@@ -141,10 +123,9 @@ async function readFile(objectKey: string) {
 }
 
 /**
- * Checks that a presigned-upload actually completed, returning the object's
- * real size/lastModified (never trust a client-supplied size) - or `null`
- * if nothing was ever uploaded to that key. Used by confirmUpload so a
- * File row is only ever created for an upload that genuinely happened.
+ * Returns an object's real size/lastModified (never trust a client-supplied
+ * size), or `null` if it doesn't exist. Used right after an upload so a
+ * File row is only ever created for bytes that actually landed in storage.
  */
 async function statFile(objectKey: string) {
     return await BucketService.statFile(PROJECT_FILES_BUCKET, objectKey);
@@ -163,7 +144,6 @@ export {
     getFolderFromObjectKey,
     buildSavedQueryFileName,
     parseSavedQueryName,
-    createUploadUrl,
     saveFile,
     readFile,
     statFile,

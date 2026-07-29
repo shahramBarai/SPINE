@@ -13,7 +13,6 @@ import {
 import { type MemberRole } from "@spine/storage-platform/types";
 import { ProjectFileService } from "@spine/storage-minio";
 import { getCoverImageUrl } from "../../utils/coverImage";
-import { asBadRequest, generateFileId } from "./shared";
 
 // Backs SettingsTab's four sections (ProjectDetailsSection, MembersSection,
 // CoverImageSection, ApiKeysSection) - each too small for its own file, but
@@ -140,40 +139,6 @@ export const settingsTabRouter = router({
             ]);
 
             return await EntityService.getMembers(input.projectId);
-        }),
-
-    getCoverUploadUrl: projectOwnerProcedure
-        .input(z.object({ fileName: z.string() }))
-        .mutation(async ({ input }) => {
-            try {
-                return await ProjectFileService.createUploadUrl(
-                    input.projectId,
-                    generateFileId(input.fileName),
-                    ProjectFileService.ALLOWED_EXTENSIONS.image,
-                    ProjectFileService.ReservedFolder.Cover
-                );
-            } catch (error) {
-                throw asBadRequest(error, "Invalid cover image");
-            }
-        }),
-
-    // Points the project at a newly-uploaded cover image and cleans up the
-    // previous one, so replacing a cover doesn't leave orphaned files behind.
-    setCoverImage: projectOwnerProcedure
-        .input(z.object({ objectKey: z.string() }))
-        .mutation(async ({ input }) => {
-            const project = await EntityService.getEntityById(input.projectId);
-            const previousKey = project?.coverImageKey;
-
-            await EntityService.updateEntity(input.projectId, {
-                coverImageKey: input.objectKey
-            });
-
-            if (previousKey && previousKey !== input.objectKey) {
-                await ProjectFileService.deleteFile(previousKey);
-            }
-
-            return { coverImageUrl: getCoverImageUrl(input.objectKey) };
         }),
 
     removeCoverImage: projectOwnerProcedure.mutation(async ({ input }) => {

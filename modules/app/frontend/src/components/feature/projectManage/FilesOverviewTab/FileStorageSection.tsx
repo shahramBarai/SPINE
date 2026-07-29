@@ -1,7 +1,10 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Loader2, Folder, File, Download } from "lucide-react";
-import { toast } from "react-toastify";
 import { api } from "utils/trpc";
+import {
+    buildProjectFileUrl,
+    buildProjectFileUploadUrl
+} from "utils/projectFileUrl";
 import { TreeHeader } from "components/complex/TreeHeader";
 import { SectionCard } from "components/complex/SectionCard";
 import { UploadFileButton } from "components/feature/twin/LeftSidebar/ProjectTreeSection/UploadFileButton";
@@ -37,8 +40,6 @@ function FileStorageSection({
     className?: string;
 }) {
     const utils = api.useUtils();
-    const uploadFolderRef = useRef<string>("");
-    const uploadFileIdRef = useRef<string | null>(null);
     // Folder names the user just created but haven't uploaded a file into
     // yet - listFiles only ever returns folders that actually contain a
     // file, so a brand new folder needs to be rendered locally until its
@@ -52,13 +53,6 @@ function FileStorageSection({
         isLoading,
         error
     } = api.project.files.listFiles.useQuery({ projectId });
-
-    const getUploadUrl = api.project.files.getUploadUrl.useMutation();
-    const confirmUpload = api.project.files.confirmUpload.useMutation({
-        onSuccess: () =>
-            utils.project.files.listFiles.invalidate({ projectId }),
-        onError: (err) => toast.error(err.message)
-    });
 
     if (isLoading) {
         return (
@@ -134,26 +128,18 @@ function FileStorageSection({
                                 <UploadFileButton
                                     allowedFileTypes={ALLOWED_EXTENSIONS}
                                     maxFileSizeMB={1000}
-                                    getUploadUrlString={async (fileName) => {
-                                        const { uploadUrl, fileId } =
-                                            await getUploadUrl.mutateAsync({
-                                                projectId,
-                                                folder,
-                                                fileName
-                                            });
-                                        uploadFolderRef.current = folder;
-                                        uploadFileIdRef.current = fileId;
-                                        return uploadUrl;
-                                    }}
-                                    onUploadSuccess={(fileName) => {
-                                        if (!uploadFileIdRef.current) return;
-                                        confirmUpload.mutate({
+                                    buildUploadUrl={(fileName) =>
+                                        buildProjectFileUploadUrl(
                                             projectId,
-                                            folder: uploadFolderRef.current,
-                                            fileId: uploadFileIdRef.current,
+                                            folder,
                                             fileName
-                                        });
-                                    }}
+                                        )
+                                    }
+                                    onUploadSuccess={() =>
+                                        utils.project.files.listFiles.invalidate(
+                                            { projectId }
+                                        )
+                                    }
                                 />
                             )
                         }
@@ -181,13 +167,19 @@ function FileStorageSection({
                                                         ` · Uploaded ${formatDate(file.lastModified)}`}
                                                 </span>
                                             </span>
-                                            <span
-                                                // TODO: fix this to be a proper lint that allows for downloading files
+                                            <a
+                                                href={buildProjectFileUrl(
+                                                    file.objectKey
+                                                )}
+                                                download
                                                 title="Download file"
-                                                className="h-8 w-8 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                                                className={cn(
+                                                    "h-8 w-8 rounded flex items-center justify-center text-muted-foreground transition-colors",
+                                                    "hover:cursor-pointer hover:text-foreground hover:bg-accent"
+                                                )}
                                             >
                                                 <Download className="h-3.5 w-3.5" />
-                                            </span>
+                                            </a>
                                             <DeleteFileButton
                                                 projectId={projectId}
                                                 fileId={file.fileId}
@@ -222,9 +214,7 @@ function FileStorageSection({
                                         e.key === "Enter" &&
                                         newFolderName.trim()
                                     ) {
-                                        addPendingFolder(
-                                            newFolderName.trim()
-                                        );
+                                        addPendingFolder(newFolderName.trim());
                                     }
                                     if (e.key === "Escape") {
                                         setShowNewFolder(false);

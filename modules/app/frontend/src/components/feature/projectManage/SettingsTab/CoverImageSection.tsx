@@ -1,7 +1,7 @@
-import { useRef } from "react";
 import { ImageIcon, Loader2, X } from "lucide-react";
 import { toast } from "react-toastify";
 import { api } from "utils/trpc";
+import { buildCoverImageUploadUrl } from "utils/projectFileUrl";
 import { Button } from "components/basics/Button";
 import { SectionCard } from "components/complex/SectionCard";
 import { UploadFileButton } from "components/feature/twin/LeftSidebar/ProjectTreeSection/UploadFileButton";
@@ -16,27 +16,16 @@ function CoverImageSection({
     coverImageUrl: string | null;
 }) {
     const utils = api.useUtils();
-    const uploadedKeyRef = useRef<string | null>(null);
 
-    const getCoverUploadUrl =
-        api.project.settingsTab.getCoverUploadUrl.useMutation();
-
-    const setCoverImage = api.project.settingsTab.setCoverImage.useMutation({
-        onSuccess: () => {
-            utils.project.settingsTab.getProjectInfo.invalidate({ projectId });
-            utils.digitalTwin.getProjects.invalidate();
-            toast.success("Cover image updated.");
-        },
-        onError: (err) => toast.error(err.message)
-    });
+    const invalidateProject = () => {
+        utils.project.settingsTab.getProjectInfo.invalidate({ projectId });
+        utils.digitalTwin.getProjects.invalidate();
+    };
 
     const removeCoverImage =
         api.project.settingsTab.removeCoverImage.useMutation({
             onSuccess: () => {
-                utils.project.settingsTab.getProjectInfo.invalidate({
-                    projectId
-                });
-                utils.digitalTwin.getProjects.invalidate();
+                invalidateProject();
                 toast.success("Cover image removed.");
             },
             onError: (err) => toast.error(err.message)
@@ -57,7 +46,7 @@ function CoverImageSection({
                     </div>
                 )}
 
-                {removeCoverImage.isPending || setCoverImage.isPending ? (
+                {removeCoverImage.isPending ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-background/60">
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
@@ -66,21 +55,12 @@ function CoverImageSection({
                         <UploadFileButton
                             allowedFileTypes={ALLOWED_IMAGE_EXTENSIONS}
                             maxFileSizeMB={10}
-                            getUploadUrlString={async (fileName) => {
-                                const { uploadUrl, objectKey } =
-                                    await getCoverUploadUrl.mutateAsync({
-                                        projectId,
-                                        fileName
-                                    });
-                                uploadedKeyRef.current = objectKey;
-                                return uploadUrl;
-                            }}
+                            buildUploadUrl={(fileName) =>
+                                buildCoverImageUploadUrl(projectId, fileName)
+                            }
                             onUploadSuccess={() => {
-                                if (!uploadedKeyRef.current) return;
-                                setCoverImage.mutate({
-                                    projectId,
-                                    objectKey: uploadedKeyRef.current
-                                });
+                                invalidateProject();
+                                toast.success("Cover image updated.");
                             }}
                         />
                         {coverImageUrl && (

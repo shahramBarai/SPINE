@@ -14,11 +14,11 @@ interface StorageStats {
     filesByType: Record<string, number>;
 }
 
-/** Options for uploading a file stream to MinIO. */
+/** Options for uploading a file to MinIO, from either a stream or a buffer. */
 interface UploadFileOptions {
     bucketName: BUCKET_NAMES;
     objectName: string;
-    stream: Readable;
+    stream: Readable | Buffer;
     size?: number;
     metaData?: Record<string, string>;
 }
@@ -34,13 +34,17 @@ interface ListFilesOptions {
 /* -------------------------------- CREATE -------------------------------- */
 
 /**
- * Uploads a readable stream as a file to a MinIO bucket.
+ * Uploads a file to a MinIO bucket, from either a `Readable` stream (piped
+ * through without buffering the whole thing in memory - for large,
+ * client-supplied uploads) or a `Buffer` (for smaller, already-in-memory
+ * server-mediated saves).
  *
- * @param options - Upload configuration including bucket name, object name, stream, size, and optional metadata.
+ * @param options - Upload configuration including bucket name, object name, stream/buffer, size, and optional metadata.
  * @returns A promise that resolves to the ETag string of the uploaded object or `null` if the upload failed.
  */
 async function uploadFile(options: UploadFileOptions): Promise<string | null> {
-    const { bucketName, objectName, stream, size, metaData } = options;
+    const { bucketName, objectName, stream, metaData } = options;
+    const size = options.size ?? (Buffer.isBuffer(stream) ? stream.length : undefined);
 
     try {
         const result = await minioClient.putObject(
@@ -50,36 +54,6 @@ async function uploadFile(options: UploadFileOptions): Promise<string | null> {
             size,
             metaData
         );
-        return result.etag;
-    } catch (_error) {
-        return null;
-    }
-}
-
-/**
- * Uploads a `Buffer` as a file to a MinIO bucket.
- *
- * @param bucketName - The name of the target bucket.
- * @param objectName - The object key / path within the bucket.
- * @param buffer - The file content as a `Buffer`.
- * @param metaData - Optional key-value metadata to attach to the object.
- * @returns A promise that resolves to the ETag string of the uploaded object or `null` if the upload failed.
- */
-async function uploadBuffer(
-    bucketName: BUCKET_NAMES,
-    objectName: string,
-    buffer: Buffer,
-    metaData?: Record<string, string>
-): Promise<string | null> {
-    try {
-        const result = await minioClient.putObject(
-            bucketName,
-            objectName,
-            buffer,
-            buffer.length,
-            metaData
-        );
-
         return result.etag;
     } catch (_error) {
         return null;
@@ -285,7 +259,6 @@ async function cleanupOldFiles(
 
 export {
     uploadFile,
-    uploadBuffer,
     copyFile,
     getStorageStats,
     statFile,
