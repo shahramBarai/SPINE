@@ -6,7 +6,8 @@ import {
     Check,
     X,
     Loader2,
-    Upload
+    Upload,
+    Eraser
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { api } from "utils/trpc";
@@ -39,6 +40,7 @@ function FusekiGraphsSection({
     const [editingUri, setEditingUri] = useState<string | null>(null);
     const [editValue, setEditValue] = useState("");
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+    const [clearDefaultOpen, setClearDefaultOpen] = useState(false);
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
     const [visibleCount, setVisibleCount] = useState(GRAPH_PAGE_SIZE);
 
@@ -72,6 +74,17 @@ function FusekiGraphsSection({
         },
         onError: (err) => toast.error(err.message)
     });
+
+    const clearDefaultGraph = api.project.graphs.clearDefaultGraph.useMutation(
+        {
+            onSuccess: () => {
+                invalidateGraphs();
+                setClearDefaultOpen(false);
+                toast.success("Default graph cleared.");
+            },
+            onError: (err) => toast.error(err.message)
+        }
+    );
 
     const startEdit = (uri: string) => {
         setEditingUri(uri);
@@ -195,9 +208,22 @@ function FusekiGraphsSection({
                                         {graph.count} triples
                                     </span>
                                     {isDefault ? (
-                                        <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                                            Default
-                                        </span>
+                                        <>
+                                            <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                                Default
+                                            </span>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                title="Clear default graph"
+                                                disabled={graph.count === 0}
+                                                onClick={() =>
+                                                    setClearDefaultOpen(true)
+                                                }
+                                            >
+                                                <Eraser className="h-4 w-4 text-danger" />
+                                            </Button>
+                                        </>
                                     ) : (
                                         <>
                                             <Button
@@ -305,6 +331,19 @@ function FusekiGraphsSection({
                             graphUri: deleteTarget
                         })
                     }
+                />
+            )}
+
+            {clearDefaultOpen && (
+                <ConfirmModal
+                    title="Clear default graph"
+                    description="Are you sure you want to clear all triples from the default graph? This action cannot be undone."
+                    open={clearDefaultOpen}
+                    setOpen={setClearDefaultOpen}
+                    confirmLabel="Clear"
+                    confirmingLabel="Clearing..."
+                    isConfirming={clearDefaultGraph.isPending}
+                    onConfirm={() => clearDefaultGraph.mutate({ projectId })}
                 />
             )}
 

@@ -79,6 +79,14 @@ export const graphsRouter = router({
             return { success: true };
         }),
 
+    // Unlike deleteGraph, the default graph always exists and can't be
+    // removed - this only empties it (DatasetService.deleteGraph's
+    // DROP DEFAULT branch, reached by omitting graphUri).
+    clearDefaultGraph: projectEditorProcedure.mutation(async ({ input }) => {
+        await DatasetService.deleteGraph(input.projectId);
+        return { success: true };
+    }),
+
     loadTtlToFuseki: projectEditorProcedure
         .input(
             z.object({

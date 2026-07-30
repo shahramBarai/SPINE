@@ -8,14 +8,11 @@ interface ConfirmModalProps {
     setOpen: (open: boolean) => void;
     onConfirm: () => void;
     confirmLabel?: string;
+    confirmingLabel?: string;
     isConfirming?: boolean;
     children?: React.ReactNode;
 }
 
-// A reusable "are you sure?" dialog for destructive actions - file/folder
-// deletion today, anything else that needs a confirm-before-you-commit step
-// later. Extra context (e.g. a list of what else will be deleted) goes in
-// `children`.
 function ConfirmModal({
     title,
     description,
@@ -23,11 +20,17 @@ function ConfirmModal({
     setOpen,
     onConfirm,
     confirmLabel = "Delete",
+    confirmingLabel = "Deleting...",
     isConfirming = false,
     children
 }: ConfirmModalProps) {
     return (
-        <Modal title={title} description={description} open={open} setOpen={setOpen}>
+        <Modal
+            title={title}
+            description={description}
+            open={open}
+            setOpen={setOpen}
+        >
             <div className="flex flex-col gap-4">
                 {children}
                 <div className="flex justify-end gap-2">
@@ -43,7 +46,7 @@ function ConfirmModal({
                         disabled={isConfirming}
                         onClick={onConfirm}
                     >
-                        {isConfirming ? "Deleting..." : confirmLabel}
+                        {isConfirming ? confirmingLabel : confirmLabel}
                     </Button>
                 </div>
             </div>

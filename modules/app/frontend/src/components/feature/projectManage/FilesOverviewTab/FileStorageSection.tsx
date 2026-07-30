@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Folder, File, Download } from "lucide-react";
+import { Loader2, Folder, File, Download, CornerDownRight } from "lucide-react";
 import { api } from "utils/trpc";
 import {
     buildProjectFileUrl,
@@ -144,9 +144,9 @@ function FileStorageSection({
                             )
                         }
                     >
-                        <div className="pr-2 pb-2 flex flex-col gap-1">
+                        <div className="pb-2 flex flex-col gap-1">
                             {files.length === 0 ? (
-                                <p className="pl-8 text-xs text-muted-foreground text-center py-2">
+                                <p className="pl-10 pr-2 text-xs text-muted-foreground text-center py-2">
                                     No files in this folder yet.
                                 </p>
                             ) : (
@@ -154,8 +154,9 @@ function FileStorageSection({
                                     return (
                                         <div
                                             key={file.fileId}
-                                            className="pl-8 flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted text-sm"
+                                            className="pl-10 pr-4 flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted text-sm"
                                         >
+                                            <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                             <File className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                             <span className="flex-1 flex flex-col min-w-0">
                                                 <span className="truncate text-foreground">
