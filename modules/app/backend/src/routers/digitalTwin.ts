@@ -175,7 +175,7 @@ export const digitalTwinRouter = router({
                 fileId: z.string()
             })
         )
-        .subscription(async function* ({ input }) {
+        .subscription(async function* ({ input, signal }) {
             const file = await FileService.getFile(
                 input.projectId,
                 input.fileId
@@ -200,7 +200,7 @@ export const digitalTwinRouter = router({
             const buffer = await readStreamToBuffer(fileStream);
 
             try {
-                yield* IfcLiteServerClient.streamIfcFile(buffer);
+                yield* IfcLiteServerClient.streamIfcFile(buffer, signal);
             } catch (error) {
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",

@@ -83,9 +83,6 @@ importers:
 
   modules/app/backend:
     dependencies:
-      '@ifc-lite/server-client':
-        specifier: ^1.20.0
-        version: 1.20.0(apache-arrow@21.2.0)(parquet-wasm@0.7.2)
       '@spine/shared':
         specifier: workspace:*
         version: link:../../../packages/shared
@@ -177,6 +174,9 @@ importers:
       '@trpc/react-query':
         specifier: ^11.18.0
         version: 11.18.0(@tanstack/react-query@5.101.1(react@19.2.7))(@trpc/client@11.18.0(@trpc/server@11.18.0(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.18.0(typescript@6.0.3))(react@19.2.7)(typescript@6.0.3)
+      apache-arrow:
+        specifier: ^21.2.0
+        version: 21.2.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -186,6 +186,9 @@ importers:
       lucide-react:
         specifier: ^1.22.0
         version: 1.22.0(react@19.2.7)
+      parquet-wasm:
+        specifier: ^0.7.2
+        version: 0.7.2
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -1883,17 +1886,6 @@ packages:
     cpu: [x64, arm64]
     os: [darwin, linux, win32]
     hasBin: true
-
-  '@ifc-lite/server-client@1.20.0':
-    resolution: {integrity: sha512-O/VSwTh58KGp4ns0ZDpq6S5jdvq886E/kP+pGsw3VGalE9Zgl/XwG5Jlya3O7/ZBIL8bua7f08p/mH1I1CqmIA==}
-    peerDependencies:
-      apache-arrow: '>=14.0.0'
-      parquet-wasm: '>=0.5.0'
-    peerDependenciesMeta:
-      apache-arrow:
-        optional: true
-      parquet-wasm:
-        optional: true
 
   '@ifc-lite/spatial@1.14.12':
     resolution: {integrity: sha512-5n3nP9k6s9067TI7xpCBbkSfEMSz2CZ6R99dBU6N/5dhsMY/TMGLtMq3YNsvgqO6WEDw3c/9dpVwsWfhcu0jJA==}
@@ -8058,11 +8050,6 @@ snapshots:
     dependencies:
       tar: 7.5.22
 
-  '@ifc-lite/server-client@1.20.0(apache-arrow@21.2.0)(parquet-wasm@0.7.2)':
-    optionalDependencies:
-      apache-arrow: 21.2.0
-      parquet-wasm: 0.7.2
-
   '@ifc-lite/spatial@1.14.12':
     dependencies:
       '@ifc-lite/geometry': 3.4.0
@@ -10736,7 +10723,6 @@ snapshots:
       flatbuffers: 25.9.23
       json-with-bigint: 3.5.10
       tslib: 2.8.1
-    optional: true
 
   archiver-utils@2.1.0:
     dependencies:
@@ -11929,8 +11915,7 @@ snapshots:
       flatted: 3.3.3
       keyv: 4.5.4
 
-  flatbuffers@25.9.23:
-    optional: true
+  flatbuffers@25.9.23: {}
 
   flatted@3.3.3: {}
 
@@ -12292,8 +12277,7 @@ snapshots:
 
   json-stable-stringify-without-jsonify@1.0.1: {}
 
-  json-with-bigint@3.5.10:
-    optional: true
+  json-with-bigint@3.5.10: {}
 
   jsonfile@6.2.0:
     dependencies:
@@ -12782,8 +12766,7 @@ snapshots:
     dependencies:
       callsites: 3.1.0
 
-  parquet-wasm@0.7.2:
-    optional: true
+  parquet-wasm@0.7.2: {}
 
   parse5@7.3.0:
     dependencies:

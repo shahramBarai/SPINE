@@ -73,8 +73,8 @@ function GraphFilterPanel({
                             onChange={onToggleBulkNodeTypes}
                             className="h-3 w-3"
                         />
-                        Include {DEFAULT_EXCLUDED_NODE_TYPES.join(", ")} (can
-                        be thousands of nodes)
+                        Include {DEFAULT_EXCLUDED_NODE_TYPES.join(", ")} (can be
+                        thousands of nodes)
                     </label>
                 </div>
 
@@ -95,7 +95,11 @@ function GraphFilterPanel({
                                         onChange={() => onToggleNodeType(type)}
                                         className="h-3 w-3"
                                     />
-                                    <svg width={8} height={8} className="shrink-0">
+                                    <svg
+                                        width={8}
+                                        height={8}
+                                        className="shrink-0"
+                                    >
                                         <circle
                                             cx={4}
                                             cy={4}
@@ -124,7 +128,9 @@ function GraphFilterPanel({
                                     <input
                                         type="checkbox"
                                         checked={isPredicateChecked(predicate)}
-                                        onChange={() => onTogglePredicate(predicate)}
+                                        onChange={() =>
+                                            onTogglePredicate(predicate)
+                                        }
                                         className="h-3 w-3"
                                     />
                                     {predicate}

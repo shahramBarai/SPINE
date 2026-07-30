@@ -1,42 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Loader2, AlertTriangle, X, Maximize2, Minimize2 } from "lucide-react";
+import { Box, Maximize2, Minimize2 } from "lucide-react";
 import { Renderer } from "@ifc-lite/renderer";
-import type { MeshData } from "@ifc-lite/geometry";
 import { cn } from "utils/index";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
 import { api } from "utils/trpc";
-
-type LoadState =
-    | { status: "connecting" }
-    | { status: "streaming"; processed: number; total: number }
-    | { status: "error"; message: string };
+import { createIfcParquetDecoder } from "../utils/ifcParquetDecoder";
+import { IfcLoadStatusBar, type LoadState } from "./IfcLoadStatusBar";
 
 interface SelectedElement {
     expressId: number;
     ifcType?: string;
-}
-
-// Shape of a mesh returned by the streamIfcGeometry tRPC subscription -
-// typed arrays don't survive the tRPC/JSON wire, so fields cross as plain
-// number[].
-interface ServerMeshData {
-    expressId: number;
-    ifcType?: string;
-    positions: number[];
-    normals: number[];
-    indices: number[];
-    color: [number, number, number, number];
-}
-
-function toMeshData(mesh: ServerMeshData): MeshData {
-    return {
-        expressId: mesh.expressId,
-        ifcType: mesh.ifcType,
-        positions: Float32Array.from(mesh.positions),
-        normals: Float32Array.from(mesh.normals),
-        indices: Uint32Array.from(mesh.indices),
-        color: mesh.color
-    };
 }
 
 // Ground reference grid, built by hand since the renderer has no built-in
@@ -96,12 +69,16 @@ function clearViewerModel(viewer: ViewerState) {
 // camera, lighting) mounts once and always stays visible, independent of
 // whether a file is selected. Loading a file subscribes to the
 // streamIfcGeometry procedure, which asks the backend to parse it via the
-// self-hosted ifc-lite-server and streams meshes back in batches as they're
-// processed - raw IFC bytes never reach the browser, and large files render
-// progressively instead of the viewer staying blank until the whole file is
-// parsed. No client-side parsing fallback: if the server is unavailable,
-// show an error rather than shipping the file to the browser (see
-// ifcLiteServerClient.ts). Rendering is on @ifc-lite/renderer (WebGPU) - no
+// self-hosted ifc-lite-server and relays parsed geometry batches back as
+// they're produced - raw IFC bytes never reach the browser, and large files
+// render progressively instead of the viewer staying blank until the whole
+// file is parsed. The backend only relays these batches (still
+// Parquet-encoded); decoding happens here via decodeIfcGeometryBatch, so
+// each tab's WASM memory use is its own rather than piling up in one shared
+// backend process (see ifcLiteServerClient.ts's module comment). No
+// client-side parsing fallback: if the server is unavailable, show an error
+// rather than shipping the raw file to the browser. Rendering is on
+// @ifc-lite/renderer (WebGPU) - no
 // WebGL fallback, so this requires a WebGPU-capable browser. No property
 // panel or per-element visibility toggles yet (a later pass); this is
 // click-to-select (highlights the clicked element and shows its
@@ -317,6 +294,11 @@ function IfcViewerPane({
         setSelectedElement(null);
 
         let disposed = false;
+        // Fragments of a cache-hit's geometry, keyed by chunkIndex - the
+        // backend splits a cache hit's (potentially huge) single blob into
+        // fixed-size chunks to avoid holding the whole thing as one string
+        // server-side; reassembled here before decoding as one unit.
+        const cachedGeometryChunks: string[] = [];
 
         const viewer = viewerRef.current;
         if (!viewer) {
@@ -332,74 +314,176 @@ function IfcViewerPane({
 
         setLoadState({ status: "connecting" });
 
-        const subscription = utils.client.digitalTwin.streamIfcGeometry.subscribe(
-            {
-                projectId: projectInfo.id,
-                fileId: selectedIfcFile.fileId
-            },
-            {
-                onData(event) {
-                    if (disposed) {
-                        return;
+        // A fresh worker per file load, not a shared one for the whole
+        // tab's lifetime - see createIfcParquetDecoder's doc comment for
+        // why (WASM memory only grows, never shrinks, so a long-lived
+        // worker's footprint accumulates across every file ever decoded in
+        // this tab). Terminated in this effect's cleanup below.
+        const decoder = createIfcParquetDecoder();
+
+        // The "complete" SSE event only means the backend is done sending -
+        // for a cache hit, decode runs client-side afterward and is the
+        // slower part, so clearing the loading indicator as soon as
+        // "complete" arrives would hide it while the model is still being
+        // built. Track in-flight decodes and only actually finish once both
+        // "complete" has arrived and every decode has resolved.
+        let pendingDecodes = 0;
+        let receivedComplete = false;
+        // Only meaningful for the cache-hit path - see streamFromCache on
+        // the backend, whose "start" event's totalEstimate is a real mesh
+        // count (unlike a live parse's, which is ifc-lite-server's own
+        // entity-count estimate).
+        let knownTotalMeshes = 0;
+
+        function finishIfDone() {
+            if (!disposed && receivedComplete && pendingDecodes === 0) {
+                setLoadState(null);
+            }
+        }
+
+        // `showDecodingPhase` is only true for the cache-hit path (one
+        // decode of the entire model) - a live parse's batches decode
+        // quickly enough, interleaved with more batches still arriving,
+        // that a separate visible phase per batch would just flicker.
+        const decodeAndAddBatch = (
+            base64Data: string,
+            showDecodingPhase: boolean
+        ) => {
+            pendingDecodes++;
+            let decodedCount = 0;
+            if (showDecodingPhase) {
+                setLoadState({
+                    status: "decoding",
+                    processed: 0,
+                    total: knownTotalMeshes
+                });
+            }
+
+            decoder
+                .decodeIfcGeometryBatch(base64Data, (meshes) => {
+                    if (disposed) return;
+                    decodedCount += meshes.length;
+                    if (showDecodingPhase) {
+                        setLoadState({
+                            status: "decoding",
+                            processed: decodedCount,
+                            total: knownTotalMeshes
+                        });
                     }
-                    switch (event.type) {
-                        case "start":
-                            setLoadState({
-                                status: "streaming",
-                                processed: 0,
-                                total: event.totalEstimate
-                            });
-                            break;
-                        case "progress":
-                            setLoadState({
-                                status: "streaming",
-                                processed: event.processed,
-                                total: event.total
-                            });
-                            break;
-                        case "batch": {
-                            const meshes = event.meshes.map(toMeshData);
-                            for (const mesh of meshes) {
-                                viewer.ifcTypeByExpressId.set(
-                                    mesh.expressId,
-                                    mesh.ifcType
-                                );
-                            }
-                            viewer.renderer.addMeshes(meshes, true);
-                            if (!viewer.hasFramedCamera) {
-                                viewer.hasFramedCamera = true;
-                                viewer.renderer.fitToView();
-                            }
-                            break;
-                        }
-                        case "complete":
-                            setLoadState(null);
-                            break;
-                        case "error":
-                            setLoadState({
-                                status: "error",
-                                message: event.message
-                            });
-                            break;
+                    for (const mesh of meshes) {
+                        viewer.ifcTypeByExpressId.set(
+                            mesh.expressId,
+                            mesh.ifcType
+                        );
                     }
-                },
-                onError(error) {
-                    console.error(error);
+                    viewer.renderer.addMeshes(meshes, true);
+                    if (!viewer.hasFramedCamera) {
+                        viewer.hasFramedCamera = true;
+                        viewer.renderer.fitToView();
+                    }
+                })
+                .then(() => {
+                    pendingDecodes--;
+                    finishIfDone();
+                })
+                .catch((error) => {
+                    pendingDecodes--;
+                    console.error(
+                        "Failed to decode IFC geometry batch:",
+                        error
+                    );
                     if (!disposed) {
                         setLoadState({
                             status: "error",
-                            message: error.message || "Failed to load 3D geometry."
+                            message:
+                                error instanceof Error
+                                    ? error.message
+                                    : "Failed to decode 3D geometry."
                         });
                     }
+                });
+        };
+
+        const subscription =
+            utils.client.digitalTwin.streamIfcGeometry.subscribe(
+                {
+                    projectId: projectInfo.id,
+                    fileId: selectedIfcFile.fileId
+                },
+                {
+                    onData(event) {
+                        if (disposed) {
+                            return;
+                        }
+                        switch (event.type) {
+                            case "start":
+                                knownTotalMeshes = event.totalEstimate;
+                                setLoadState({
+                                    status: "loading",
+                                    processed: 0,
+                                    total: event.totalEstimate
+                                });
+                                break;
+                            case "progress":
+                                setLoadState({
+                                    status: "loading",
+                                    processed: event.processed,
+                                    total: event.total
+                                });
+                                break;
+                            case "batch":
+                                decodeAndAddBatch(event.data, false);
+                                break;
+                            case "cachedGeometryChunk":
+                                setLoadState({
+                                    status: "loading",
+                                    processed: event.chunkIndex + 1,
+                                    total: event.totalChunks
+                                });
+                                cachedGeometryChunks[event.chunkIndex] =
+                                    event.data;
+                                if (
+                                    event.chunkIndex ===
+                                    event.totalChunks - 1
+                                ) {
+                                    decodeAndAddBatch(
+                                        cachedGeometryChunks.join(""),
+                                        true
+                                    );
+                                }
+                                break;
+                            case "complete":
+                                receivedComplete = true;
+                                finishIfDone();
+                                break;
+                            case "error":
+                                setLoadState({
+                                    status: "error",
+                                    message: event.message
+                                });
+                                break;
+                        }
+                    },
+                    onError(error) {
+                        console.error(error);
+                        if (!disposed) {
+                            setLoadState({
+                                status: "error",
+                                message:
+                                    error.message ||
+                                    "Failed to load 3D geometry."
+                            });
+                        }
+                    }
                 }
-            }
-        );
+            );
         subscriptionRef.current = subscription;
 
         return () => {
             disposed = true;
             subscriptionRef.current?.unsubscribe();
             subscriptionRef.current = null;
+            decoder.terminate();
         };
     }, [selectedIfcFile, projectInfo.id]);
 
@@ -463,59 +547,11 @@ function IfcViewerPane({
                 </div>
             )}
 
-            {loadState && (
-                <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center gap-2 rounded-md border border-border/60 bg-surface/90 px-3 py-2 text-surface-foreground">
-                    {loadState.status === "error" ? (
-                        <>
-                            <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-danger" />
-                            <span className="flex-1 truncate text-[10px] font-mono text-danger">
-                                {loadState.message}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={handleDismissError}
-                                className="shrink-0 rounded p-0.5 hover:cursor-pointer hover:bg-secondary/60"
-                                aria-label="Dismiss error"
-                            >
-                                <X className="h-3.5 w-3.5" />
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                            <span className="shrink-0 text-[10px] font-mono text-muted-foreground">
-                                {selectedIfcFile?.fileName}
-                                {loadState.status === "streaming" &&
-                                    loadState.total > 0 &&
-                                    ` — ${Math.min(
-                                        100,
-                                        Math.round(
-                                            (loadState.processed /
-                                                loadState.total) *
-                                                100
-                                        )
-                                    )}%`}
-                            </span>
-                            {loadState.status === "streaming" &&
-                                loadState.total > 0 && (
-                                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary/60">
-                                        <div
-                                            className="h-full rounded-full bg-primary transition-[width]"
-                                            style={{
-                                                width: `${Math.min(
-                                                    100,
-                                                    (loadState.processed /
-                                                        loadState.total) *
-                                                        100
-                                                )}%`
-                                            }}
-                                        />
-                                    </div>
-                                )}
-                        </>
-                    )}
-                </div>
-            )}
+            <IfcLoadStatusBar
+                loadState={loadState}
+                fileName={selectedIfcFile?.fileName}
+                onDismissError={handleDismissError}
+            />
         </div>
     );
 }
