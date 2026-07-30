@@ -23,7 +23,6 @@ interface WorkspaceEnv {
     BACKEND_URL: string;
     SECRET_COOKIE_PASSWORD: string;
     BUILDING_SERVICE_URL: string;
-    IFC_LITE_SERVER_URL: string;
 }
 
 function requiredEnv(name: keyof WorkspaceEnv): string {
@@ -67,13 +66,7 @@ const env: WorkspaceEnv = {
     // this shared env - it just falls back to the local dev default.
     BUILDING_SERVICE_URL:
         process.env.BUILDING_SERVICE_URL?.trim() ||
-        "http://172.29.248.145:8000",
-    // Not required, same reasoning as BUILDING_SERVICE_URL: the ifc-lite-server
-    // container (see modules/modeling/docker-compose.yml) is optional
-    // server-assisted IFC parsing infra - the viewer falls back to parsing
-    // client-side when it's unset or unreachable.
-    IFC_LITE_SERVER_URL:
-        process.env.IFC_LITE_SERVER_URL?.trim() || "http://localhost:3001"
+        "http://172.29.248.145:8000"
 };
 
 export type { WorkspaceEnv };
