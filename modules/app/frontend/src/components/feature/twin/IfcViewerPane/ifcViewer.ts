@@ -1,8 +1,13 @@
 import { GeometryProcessor, decodeInstancedShard } from "@ifc-lite/geometry";
 import { Renderer } from "@ifc-lite/renderer";
+import {
+    buildSunPathLines,
+    computeDomeGeometry,
+    parseSiteLatLong,
+    type SiteLocation
+} from "./sunPath";
 
 export type LoadProgress = { phase: "parsing"; processed: number };
-
 const ID_BLOCK_SIZE = 100_000_000;
 
 interface LoadedModel {
@@ -10,15 +15,19 @@ interface LoadedModel {
     readonly expressIds: Set<number>;
     readonly ifcTypeByExpressId: Map<number, string | undefined>;
     complete: boolean;
+    siteLocation: SiteLocation | null;
 }
-
 class IfcViewer {
+    private static readonly MAX_TEXT_PARSE_BYTES = 480_000_000;
+
     private readonly renderer: Renderer;
     private readonly geometry: GeometryProcessor;
     private readonly loadedModels = new Map<string, LoadedModel>();
     private nextModelSlot = 0;
     private activeFileId: string | null = null;
     private activeIsolatedIds: Set<number> | null = null;
+    private lastSunPathRequest: { site: SiteLocation; date: Date } | null =
+        null;
 
     onProgress?: (progress: LoadProgress) => void;
 
@@ -66,14 +75,110 @@ class IfcViewer {
         this.activeFileId = fileId;
         this.activeIsolatedIds = new Set(model.expressIds);
         this.renderer.fitToView();
+        // Any sun path shown for the previously active model isn't
+        // meaningful for this one (different bounds, usually different
+        // site) - the UI re-opens it explicitly if the user wants one here.
+        this.hideSunPath();
     }
 
     /** Hides every loaded model (e.g. no file selected). */
     showNone(): void {
         this.activeFileId = null;
         this.activeIsolatedIds = new Set();
+        this.hideSunPath();
     }
 
+    /** The active model's real-world site location, if IfcSite had one -
+     *  purely for the UI to prefill its lat/lon inputs with a sensible
+     *  default. null doesn't block showSunPathAt: the user can type in any
+     *  location regardless of what (if anything) the file carries. */
+    getSiteLocation(): SiteLocation | null {
+        const model = this.activeFileId
+            ? this.loadedModels.get(this.activeFileId)
+            : undefined;
+        return model?.siteLocation ?? null;
+    }
+
+    /** Shows the sun-path dome (graticule + day arc + a marker at the
+     *  sun's exact position) for `site` as of `date`, sized to the active
+     *  model's CURRENT bounds - which, if a model is still streaming in (or
+     *  none has loaded at all yet), won't be its final size. Recomputed
+     *  fresh on every call rather than cached (cheap: a few hundred line
+     *  segments), and remembered so loadFile() can silently redo this once
+     *  real bounds are ready - see `lastSunPathRequest`. */
+    showSunPathAt(site: SiteLocation, date: Date): void {
+        this.lastSunPathRequest = { site, date };
+        const { radius, origin } = computeDomeGeometry(
+            this.renderer.getModelBounds()
+        );
+        this.renderer.uploadAlignmentLines3D(
+            buildSunPathLines(site, radius, origin, date)
+        );
+    }
+
+    /** Hides the sun-path dome. Also forgets any pending request from
+     *  showSunPathAt, so switching models (showOnly/showNone both call
+     *  this) doesn't leave a stale one to replay against the new model. */
+    hideSunPath(): void {
+        this.lastSunPathRequest = null;
+        this.renderer.uploadAlignmentLines3D(new Float32Array(0));
+    }
+
+    /** Parses the site's real-world lat/long out of the raw file text. Runs
+     *  concurrently with mesh geometry streaming (never awaited before it),
+     *  since it decodes the whole buffer as a string and re-parses it -
+     *  gating first-batch render on this would undo the whole point of
+     *  progressive streaming for a feature that's cosmetic on top. Resolves
+     *  to null (not a throw) on any failure, since a missing/broken sun-path
+     *  overlay should never take down the rest of the load.
+     *
+     * The lat/long regex match needs the whole file as one JS string, and
+     * every V8-based engine (Node, Chrome, Edge - so this isn't Node-
+     * specific) caps a string at ~536.8M UTF-16 code units (`0x1fffffe8`).
+     * IFC STEP files are close enough to pure ASCII that byteLength is a
+     * safe proxy for the resulting character count, so a file above
+     * MAX_TEXT_PARSE_BYTES is skipped outright rather than attempted-and-
+     * caught - this is a hard engine ceiling, not something a retry or
+     * different decode would fix, so it gets a clear log line instead of
+     * surfacing as a generic error. */
+    private async loadSiteLocation(
+        buffer: Uint8Array
+    ): Promise<SiteLocation | null> {
+        if (buffer.byteLength > IfcViewer.MAX_TEXT_PARSE_BYTES) {
+            console.warn(
+                `Skipping IfcSite location parsing: file is ` +
+                    `${Math.round(buffer.byteLength / 1e6)}MB, over the ` +
+                    `~${Math.round(IfcViewer.MAX_TEXT_PARSE_BYTES / 1e6)}MB ` +
+                    "limit for decoding a whole file as one JS string."
+            );
+            return null;
+        }
+        try {
+            const content = new TextDecoder().decode(buffer);
+            return parseSiteLatLong(content);
+        } catch (error) {
+            console.error("Failed to parse IfcSite lat/long:", error);
+            return null;
+        }
+    }
+
+    /**
+     * Parses `buffer` (a full IFC file) client-side and streams the result
+     * into the renderer progressively via GeometryProcessor.processAdaptive -
+     * small files parse synchronously and render in one batch, large files
+     * stream batches from a worker pool as they're produced. `fileId` becomes
+     * the active (visible/pickable) model immediately, so geometry appears as
+     * it streams in rather than only once the whole file is parsed.
+     *
+     * `signal` has no direct hook into processAdaptive (it takes no abort
+     * signal itself), so this checks it once per event and `break`s out of
+     * the for-await loop - which calls the async generator's `.return()`,
+     * the same mechanism a `for await...of` uses on any early exit. Without
+     * this, switching files while a big model is still parsing would leave
+     * its worker pool running to decode/upload batches for a file nobody's
+     * viewing anymore (the same class of bug documented on the old
+     * server-streaming subscription, just on the client side now).
+     */
     async loadFile(
         fileId: string,
         buffer: Uint8Array,
@@ -84,11 +189,14 @@ class IfcViewer {
             offset,
             expressIds: new Set(),
             ifcTypeByExpressId: new Map(),
-            complete: false
+            complete: false,
+            siteLocation: null
         };
         this.loadedModels.set(fileId, model);
         this.activeFileId = fileId;
         this.activeIsolatedIds = new Set();
+
+        const siteLocationPromise = this.loadSiteLocation(buffer);
 
         let hasFramedThisModel = false;
 
@@ -156,8 +264,16 @@ class IfcViewer {
             }
         }
 
+        model.siteLocation = await siteLocationPromise;
+
         if (!signal?.aborted) {
             model.complete = true;
+            if (this.activeFileId === fileId && this.lastSunPathRequest) {
+                this.showSunPathAt(
+                    this.lastSunPathRequest.site,
+                    this.lastSunPathRequest.date
+                );
+            }
         }
     }
 

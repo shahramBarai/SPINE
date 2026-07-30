@@ -1,35 +1,54 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Maximize2, Minimize2 } from "lucide-react";
+import {
+    Box,
+    Maximize2,
+    Minimize2,
+    EyeOff,
+    Eye,
+    Focus,
+    Sun
+} from "lucide-react";
 import { cn } from "utils/index";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
+import { useTheme } from "hooks/useTheme";
 import { buildProjectFileUrl } from "utils/projectFileUrl";
 import { IfcViewer } from "./ifcViewer";
 import { IfcLoadStatusBar, type LoadState } from "./IfcLoadStatusBar";
+import { SunPanel } from "./SunPanel";
+import type { SiteLocation } from "./sunPath";
 
 interface SelectedElement {
     expressId: number;
     ifcType?: string;
 }
 
-// Ground reference grid, built by hand since the renderer has no built-in
-// helper for one (unlike Three.js's GridHelper) - fed through
-// uploadGridLines3D(), which the renderer otherwise reserves for IfcGridAxis
-// data. Doesn't affect model bounds/fitToView (see that method's docs), so
-// it's safe to upload once and leave in place permanently.
-function buildGroundGridLines(size: number, divisions: number): Float32Array {
-    const half = size / 2;
-    const step = size / divisions;
-    const lines: number[] = [];
-    for (let i = 0; i <= divisions; i++) {
-        const pos = -half + i * step;
-        lines.push(-half, 0, pos, half, 0, pos);
-        lines.push(pos, 0, -half, pos, 0, half);
-    }
-    return Float32Array.from(lines);
+function hexToRgba(hex: string, alpha = 1): [number, number, number, number] {
+    const normalized = hex.replace("#", "");
+    const r = parseInt(normalized.slice(0, 2), 16) / 255;
+    const g = parseInt(normalized.slice(2, 4), 16) / 255;
+    const b = parseInt(normalized.slice(4, 6), 16) / 255;
+    return [r, g, b, alpha];
 }
 
-const CLEAR_COLOR: [number, number, number, number] = [0.165, 0.176, 0.204, 1];
-const GRID_COLOR: [number, number, number, number] = [0.35, 0.37, 0.42, 1];
+// Mirrors globals.css's --background / --muted-foreground tokens for each
+// theme. WebGPU needs raw RGBA floats (not CSS custom properties), so this
+// is a hand-kept parallel to those two values rather than reading the DOM -
+// keep them in sync if the theme's palette changes. `lineColor` covers the
+// renderer's overlay lines generally (annotation/alignment/grid share one
+// setter) - currently only the sun-path dome (on the alignment channel)
+// uses it.
+function getViewerColors(theme: "light" | "dark"): {
+    clearColor: [number, number, number, number];
+    lineColor: [number, number, number, number];
+} {
+    return theme === "dark"
+        ? { clearColor: hexToRgba("#1d1f25"), lineColor: hexToRgba("#98a1bc") }
+        : {
+              clearColor: hexToRgba("#ffffff"),
+              lineColor: hexToRgba("#8087a8")
+          };
+}
+
 // Ignore the click that ends a drag (orbit/pan) - without this, releasing
 // the mouse after orbiting spuriously picks whatever ended up under the
 // cursor.
@@ -73,6 +92,18 @@ async function downloadWithProgress(
     return buffer;
 }
 
+// User-driven isolation (a single hand-picked "isolate this element" set)
+// always wins over IfcViewer's own per-model isolatedIds (the "only show
+// the active model" mechanism from IfcViewer.showOnly) - safe because
+// anything the user can isolate is already within the active model, so
+// it's always a subset, never a conflicting third set.
+function getEffectiveIsolatedIds(
+    viewer: IfcViewer,
+    userIsolatedIds: Set<number> | null
+): Set<number> | undefined {
+    return userIsolatedIds ?? viewer.getIsolatedIds() ?? undefined;
+}
+
 function IfcViewerPane({
     hidden,
     maximized,
@@ -83,6 +114,12 @@ function IfcViewerPane({
     onToggleMaximize: () => void;
 }) {
     const { projectInfo, selectedIfcFile } = useDigitalTwin();
+    const { theme } = useTheme();
+    // Read fresh by the animate loop (captured once, at mount, in a
+    // closure) rather than plain state - same reason selectionRef/
+    // visibilityRef are refs. Kept in sync by the effect below whenever
+    // `theme` changes.
+    const themeColorsRef = useRef(getViewerColors(theme));
     const mountRef = useRef<HTMLDivElement>(null);
     const viewerRef = useRef<IfcViewer | null>(null);
     // Selection lives outside React state (read directly by the animate
@@ -91,13 +128,32 @@ function IfcViewerPane({
     const selectionRef = useRef<{ selectedExpressId: number | null }>({
         selectedExpressId: null
     });
+    // User-driven hide/isolate, read directly by the animate loop's
+    // render() call and by pick() each frame - like selectionRef, this
+    // can't be plain React state without the animate closure (captured
+    // once, at mount) going stale. `userIsolatedIds`, when set, always
+    // takes over from IfcViewer's own per-model isolatedIds (see
+    // getEffectiveIsolatedIds below) - safe because anything the user can
+    // select/isolate is by definition already within the active model's
+    // set, so it's always a subset, never a conflicting third set.
+    const visibilityRef = useRef<{
+        hiddenIds: Set<number>;
+        userIsolatedIds: Set<number> | null;
+    }>({ hiddenIds: new Set(), userIsolatedIds: null });
     const [loadState, setLoadState] = useState<LoadState | null>(null);
     const [selectedElement, setSelectedElement] =
         useState<SelectedElement | null>(null);
+    // Mirrors visibilityRef purely so the toolbar can show/hide its "Show
+    // all" reset button and a hidden-count badge - the ref above is what
+    // actually drives rendering/picking.
+    const [hiddenCount, setHiddenCount] = useState(0);
+    const [isIsolating, setIsIsolating] = useState(false);
+    const [sunPanelOpen, setSunPanelOpen] = useState(false);
+    const [siteLocation, setSiteLocation] = useState<SiteLocation | null>(null);
 
     // Scene lifecycle: mounts the renderer once and keeps it alive (and
-    // rendering) for as long as the pane exists, so the grid is always
-    // there even before/after a file is selected.
+    // rendering) for as long as the pane exists, independent of whether a
+    // file is selected.
     useEffect(() => {
         const mount = mountRef.current;
         if (!mount) {
@@ -196,13 +252,21 @@ function IfcViewerPane({
             const rect = canvas.getBoundingClientRect();
             // pick() doesn't inherit render()'s hidden/isolated state
             // automatically (only section/clip state is auto-mirrored), so
-            // the same isolatedIds has to be passed here too - otherwise a
-            // click could select an element belonging to a hidden (inactive)
-            // cached model right through the visible one.
+            // the same hiddenIds/isolatedIds have to be passed here too -
+            // otherwise a click could select an element belonging to a
+            // hidden (inactive cached model, or user-hidden) element right
+            // through whatever's actually visible.
             const hit = await viewer
                 .getRenderer()
                 .pick(event.clientX - rect.left, event.clientY - rect.top, {
-                    isolatedIds: viewer.getIsolatedIds() ?? undefined
+                    hiddenIds:
+                        visibilityRef.current.hiddenIds.size > 0
+                            ? visibilityRef.current.hiddenIds
+                            : undefined,
+                    isolatedIds: getEffectiveIsolatedIds(
+                        viewer,
+                        visibilityRef.current.userIsolatedIds
+                    )
                 });
             if (disposed) {
                 return;
@@ -236,8 +300,15 @@ function IfcViewerPane({
             const renderer = viewer.getRenderer();
             renderer.getCamera().update(deltaTime);
             renderer.render({
-                clearColor: CLEAR_COLOR,
-                isolatedIds: viewer.getIsolatedIds() ?? undefined,
+                clearColor: themeColorsRef.current.clearColor,
+                hiddenIds:
+                    visibilityRef.current.hiddenIds.size > 0
+                        ? visibilityRef.current.hiddenIds
+                        : undefined,
+                isolatedIds: getEffectiveIsolatedIds(
+                    viewer,
+                    visibilityRef.current.userIsolatedIds
+                ),
                 selectedIds:
                     selectionRef.current.selectedExpressId !== null
                         ? new Set([selectionRef.current.selectedExpressId])
@@ -252,10 +323,9 @@ function IfcViewerPane({
                     viewer.destroy();
                     return;
                 }
-                viewer.getRenderer().setOverlayLineColor(GRID_COLOR);
                 viewer
                     .getRenderer()
-                    .uploadGridLines3D(buildGroundGridLines(100, 100));
+                    .setOverlayLineColor(themeColorsRef.current.lineColor);
                 viewerRef.current = viewer;
                 animate();
             } catch (error) {
@@ -290,6 +360,17 @@ function IfcViewerPane({
         };
     }, []);
 
+    // Keeps the viewport background/overlay-line color in sync with the
+    // app's light/dark theme toggle. clearColor is picked up fresh from the
+    // ref by the animate loop's own render() call every frame, so no extra
+    // re-render is needed for that half; setOverlayLineColor is a one-shot
+    // call that only needs re-running when the color actually changes.
+    useEffect(() => {
+        const colors = getViewerColors(theme);
+        themeColorsRef.current = colors;
+        viewerRef.current?.getRenderer().setOverlayLineColor(colors.lineColor);
+    }, [theme]);
+
     // Model selection: switches which already-mounted renderer's model is
     // visible/pickable whenever the selected file changes. A file already
     // loaded this session is never re-downloaded or re-parsed - it's just a
@@ -299,6 +380,10 @@ function IfcViewerPane({
     useEffect(() => {
         setSelectedElement(null);
         selectionRef.current.selectedExpressId = null;
+        visibilityRef.current.hiddenIds.clear();
+        visibilityRef.current.userIsolatedIds = null;
+        setHiddenCount(0);
+        setIsIsolating(false);
 
         let disposed = false;
         const controller = new AbortController();
@@ -308,15 +393,23 @@ function IfcViewerPane({
             return;
         }
 
+        // The sun-path popover is specific to whichever model it was opened
+        // for (IfcViewer.showOnly/showNone already clear the dome itself on
+        // switch); closing it here keeps the panel's open/closed state from
+        // silently drifting out of sync with that.
+        setSunPanelOpen(false);
+
         if (!selectedIfcFile) {
             viewer.showNone();
             setLoadState(null);
+            setSiteLocation(null);
             return;
         }
 
         if (viewer.isLoaded(selectedIfcFile.fileId)) {
             viewer.showOnly(selectedIfcFile.fileId);
             setLoadState(null);
+            setSiteLocation(viewer.getSiteLocation());
             return;
         }
 
@@ -361,6 +454,7 @@ function IfcViewerPane({
                 );
                 if (!disposed) {
                     setLoadState(null);
+                    setSiteLocation(viewer.getSiteLocation());
                 }
             } catch (error) {
                 if (disposed || controller.signal.aborted) {
@@ -388,6 +482,45 @@ function IfcViewerPane({
         setLoadState(null);
     }
 
+    function handleHideSelected() {
+        const expressId = selectionRef.current.selectedExpressId;
+        if (expressId === null) {
+            return;
+        }
+        visibilityRef.current.hiddenIds.add(expressId);
+        setHiddenCount(visibilityRef.current.hiddenIds.size);
+        selectionRef.current.selectedExpressId = null;
+        setSelectedElement(null);
+    }
+
+    function handleIsolateSelected() {
+        const expressId = selectionRef.current.selectedExpressId;
+        if (expressId === null) {
+            return;
+        }
+        visibilityRef.current.userIsolatedIds = new Set([expressId]);
+        setIsIsolating(true);
+    }
+
+    function handleShowAll() {
+        visibilityRef.current.hiddenIds.clear();
+        visibilityRef.current.userIsolatedIds = null;
+        setHiddenCount(0);
+        setIsIsolating(false);
+    }
+
+    function handlePresetView(
+        view: "top" | "bottom" | "front" | "back" | "left" | "right"
+    ) {
+        const renderer = viewerRef.current?.getRenderer();
+        if (!renderer) {
+            return;
+        }
+        renderer
+            .getCamera()
+            .setPresetView(view, renderer.getModelBounds() ?? undefined);
+    }
+
     return (
         <div
             className={cn(
@@ -410,30 +543,138 @@ function IfcViewerPane({
                     3D Viewer
                 </span>
                 {selectedElement && (
-                    <span className="normal-case tracking-normal text-[10px] font-mono text-muted-foreground bg-secondary/80 px-1.5 py-0.5 rounded">
-                        {selectedElement.ifcType ?? "Element"} #
-                        {selectedElement.expressId}
-                    </span>
+                    <>
+                        <span className="normal-case tracking-normal text-[10px] font-mono text-muted-foreground bg-secondary/80 px-1.5 py-0.5 rounded">
+                            {selectedElement.ifcType ?? "Element"} #
+                            {selectedElement.expressId}
+                        </span>
+                        <button
+                            onClick={handleHideSelected}
+                            className="shrink-0 rounded p-1 hover:cursor-pointer hover:text-primary hover:bg-primary/10"
+                            aria-label="Hide selected element"
+                            title="Hide selected element"
+                        >
+                            <EyeOff className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            onClick={handleIsolateSelected}
+                            className="shrink-0 rounded p-1 hover:cursor-pointer hover:text-primary hover:bg-primary/10"
+                            aria-label="Isolate selected element"
+                            title="Isolate selected element"
+                        >
+                            <Focus className="h-3.5 w-3.5" />
+                        </button>
+                    </>
+                )}
+                {(hiddenCount > 0 || isIsolating) && (
+                    <button
+                        onClick={handleShowAll}
+                        className="shrink-0 flex items-center gap-1 rounded p-1 normal-case tracking-normal text-[10px] hover:cursor-pointer hover:text-primary hover:bg-primary/10"
+                        aria-label="Show all"
+                        title="Clear hide/isolate"
+                    >
+                        <Eye className="h-3.5 w-3.5" />
+                        Show all
+                        {hiddenCount > 0 && ` (${hiddenCount})`}
+                    </button>
                 )}
             </div>
 
-            <button
-                onClick={onToggleMaximize}
-                className={cn(
-                    "absolute top-3 right-3 z-20",
-                    "h-7 w-7 flex items-center justify-center",
-                    "bg-surface/50 text-surface-foreground rounded",
-                    "border border-border/60",
-                    "hover:cursor-pointer hover:text-primary hover:bg-primary/10"
-                )}
-                aria-label={maximized ? "Restore" : "Maximize"}
-            >
-                {maximized ? (
-                    <Minimize2 className="h-3.5 w-3.5" />
-                ) : (
-                    <Maximize2 className="h-3.5 w-3.5" />
-                )}
-            </button>
+            <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-1">
+                <button
+                    onClick={onToggleMaximize}
+                    className={cn(
+                        "h-7 w-7 flex items-center justify-center",
+                        "bg-surface/50 text-surface-foreground rounded",
+                        "border border-border/60",
+                        "hover:cursor-pointer hover:text-primary hover:bg-primary/10"
+                    )}
+                    aria-label={maximized ? "Restore" : "Maximize"}
+                >
+                    {maximized ? (
+                        <Minimize2 className="h-3.5 w-3.5" />
+                    ) : (
+                        <Maximize2 className="h-3.5 w-3.5" />
+                    )}
+                </button>
+
+                <div className="grid grid-cols-3 gap-0.5 rounded-md border border-border/60 bg-surface/50 p-1">
+                    {(
+                        [
+                            ["top", "Top"],
+                            ["front", "Front"],
+                            ["right", "Right"],
+                            ["bottom", "Bottom"],
+                            ["back", "Back"],
+                            ["left", "Left"]
+                        ] as const
+                    ).map(([view, label]) => (
+                        <button
+                            key={view}
+                            onClick={() => handlePresetView(view)}
+                            className="h-6 w-9 rounded text-[9px] font-mono uppercase text-surface-foreground hover:cursor-pointer hover:text-primary hover:bg-primary/10"
+                            aria-label={`${label} view`}
+                            title={`${label} view`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="relative">
+                    <button
+                        onClick={() => {
+                            setSunPanelOpen((open) => {
+                                const next = !open;
+                                // Closing the panel should stop showing the
+                                // dome too - otherwise it lingers with
+                                // whatever it last showed until the user
+                                // switches files (the only other place
+                                // hideSunPath() gets called).
+                                if (!next) {
+                                    viewerRef.current?.hideSunPath();
+                                }
+                                return next;
+                            });
+                        }}
+                        className={cn(
+                            "h-7 w-7 flex items-center justify-center rounded",
+                            "border border-border/60",
+                            "hover:cursor-pointer hover:bg-primary/10",
+                            sunPanelOpen
+                                ? "bg-primary/20 text-primary"
+                                : "bg-surface/50 text-surface-foreground hover:text-primary"
+                        )}
+                        aria-label={
+                            sunPanelOpen
+                                ? "Close sun path settings"
+                                : "Open sun path settings"
+                        }
+                        aria-pressed={sunPanelOpen}
+                        aria-expanded={sunPanelOpen}
+                        title="Sun path"
+                    >
+                        <Sun className="h-3.5 w-3.5" />
+                    </button>
+
+                    {sunPanelOpen && (
+                        <SunPanel
+                            siteLocation={siteLocation}
+                            onClose={() => {
+                                setSunPanelOpen(false);
+                                viewerRef.current?.hideSunPath();
+                            }}
+                            onSubmit={(latLon, dateTime) => {
+                                const viewer = viewerRef.current;
+                                if (!viewer) {
+                                    return;
+                                }
+                                viewer.showSunPathAt(latLon, dateTime);
+                            }}
+                        />
+                    )}
+                </div>
+            </div>
 
             <div ref={mountRef} className="h-full w-full" />
 

@@ -144,6 +144,9 @@ importers:
       '@ifc-lite/renderer':
         specifier: ^1.39.0
         version: 1.39.0
+      '@ifc-lite/solar':
+        specifier: ^1.15.2
+        version: 1.15.2
       '@radix-ui/react-accordion':
         specifier: ^1.2.8
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -1880,6 +1883,9 @@ packages:
     cpu: [x64, arm64]
     os: [darwin, linux, win32]
     hasBin: true
+
+  '@ifc-lite/solar@1.15.2':
+    resolution: {integrity: sha512-RDg8t3PYgqTrRcRJWNXsIFz5aaKqAt+hNfZI7kBIetgIbWiYFIuPwRRq/nYyX4Ayeo1c7crU3cUkTTg5Hv8BRA==}
 
   '@ifc-lite/spatial@1.14.12':
     resolution: {integrity: sha512-5n3nP9k6s9067TI7xpCBbkSfEMSz2CZ6R99dBU6N/5dhsMY/TMGLtMq3YNsvgqO6WEDw3c/9dpVwsWfhcu0jJA==}
@@ -8030,6 +8036,8 @@ snapshots:
   '@ifc-lite/server-bin@1.16.6':
     dependencies:
       tar: 7.5.22
+
+  '@ifc-lite/solar@1.15.2': {}
 
   '@ifc-lite/spatial@1.14.12':
     dependencies:
