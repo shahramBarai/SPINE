@@ -23,11 +23,9 @@ interface ServeSecureFileOptions {
     req: IncomingMessage;
     res: ServerResponse;
     fileName: string;
-    /** "inline" renders in-browser (e.g. an <img>); "attachment" prompts a download. Defaults to "attachment". */
     disposition?: "inline" | "attachment";
-    /** Decide whether the requesting session may read this object - the only gate between object storage and the browser. */
+    contentLength?: number;
     authorize: (user: UserSession | undefined) => Promise<boolean> | boolean;
-    /** Opens the file once `authorize` approves - deliberately storage-agnostic; the caller's domain service decides where the bytes actually live. */
     getStream: () => Promise<Readable | null>;
 }
 
@@ -44,6 +42,7 @@ async function serveSecureFile({
     res,
     fileName,
     disposition = "attachment",
+    contentLength,
     authorize,
     getStream
 }: ServeSecureFileOptions): Promise<void> {
@@ -66,7 +65,11 @@ async function serveSecureFile({
     res.writeHead(200, {
         "Content-Type": getMimeType(fileName),
         "Content-Disposition": `${disposition}; filename="${encodeURIComponent(fileName)}"`,
-        "Cache-Control": "private, max-age=0, must-revalidate"
+        "Cache-Control": "private, max-age=0, must-revalidate",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+        ...(contentLength !== undefined && {
+            "Content-Length": String(contentLength)
+        })
     });
     stream.pipe(res);
 }

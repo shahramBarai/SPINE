@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Box, Maximize2, Minimize2 } from "lucide-react";
-import { Renderer } from "@ifc-lite/renderer";
 import { cn } from "utils/index";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
-import { api } from "utils/trpc";
-import { createIfcParquetDecoder } from "../utils/ifcParquetDecoder";
+import { buildProjectFileUrl } from "utils/projectFileUrl";
+import { IfcViewer } from "./ifcViewer";
 import { IfcLoadStatusBar, type LoadState } from "./IfcLoadStatusBar";
 
 interface SelectedElement {
@@ -36,53 +35,44 @@ const GRID_COLOR: [number, number, number, number] = [0.35, 0.37, 0.42, 1];
 // cursor.
 const CLICK_DRAG_THRESHOLD_PX = 4;
 
-// Mutable renderer state shared between the scene-lifecycle effect (mounts
-// once, tears down on unmount) and the model-loading effect (re-runs per
-// selected file) - so loading a new file doesn't recreate the renderer, it
-// just clears and repopulates this.
-interface ViewerState {
-    renderer: Renderer;
-    ifcTypeByExpressId: Map<number, string | undefined>;
-    hasFramedCamera: boolean;
-    selectedExpressId: number | null;
+async function downloadWithProgress(
+    url: string,
+    signal: AbortSignal,
+    onProgress: (loadedBytes: number, totalBytes: number | null) => void
+): Promise<Uint8Array> {
+    const response = await fetch(url, { credentials: "include", signal });
+    if (!response.ok || !response.body) {
+        throw new Error(
+            `Failed to download IFC file (status ${response.status})`
+        );
+    }
+
+    const contentLength = response.headers.get("Content-Length");
+    const total = contentLength ? Number(contentLength) : null;
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let loaded = 0;
+
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) {
+            break;
+        }
+        chunks.push(value);
+        loaded += value.byteLength;
+        onProgress(loaded, total);
+    }
+
+    const buffer = new Uint8Array(loaded);
+    let offset = 0;
+    for (const chunk of chunks) {
+        buffer.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+    return buffer;
 }
 
-function clearViewerModel(viewer: ViewerState) {
-    // Scene.clear() frees the GPU buffers; addMeshes()/loadGeometry() have no
-    // "replace" mode (they only append). Model bounds are tracked separately
-    // on the renderer and only ever expand (see updateModelBounds), so they
-    // need resetting to the same [Infinity, -Infinity] sentinel the renderer
-    // itself starts from - otherwise fitToView() on the next file would frame
-    // a box that still includes the previous model's extents.
-    viewer.renderer.getScene().clear();
-    viewer.renderer.setModelBounds({
-        min: { x: Infinity, y: Infinity, z: Infinity },
-        max: { x: -Infinity, y: -Infinity, z: -Infinity }
-    });
-    viewer.renderer.getCamera().setSceneBounds(null);
-    viewer.ifcTypeByExpressId.clear();
-    viewer.hasFramedCamera = false;
-    viewer.selectedExpressId = null;
-}
-
-// Real "3D Viewer" pane, replacing PlaceholderPane. The renderer (grid,
-// camera, lighting) mounts once and always stays visible, independent of
-// whether a file is selected. Loading a file subscribes to the
-// streamIfcGeometry procedure, which asks the backend to parse it via the
-// self-hosted ifc-lite-server and relays parsed geometry batches back as
-// they're produced - raw IFC bytes never reach the browser, and large files
-// render progressively instead of the viewer staying blank until the whole
-// file is parsed. The backend only relays these batches (still
-// Parquet-encoded); decoding happens here via decodeIfcGeometryBatch, so
-// each tab's WASM memory use is its own rather than piling up in one shared
-// backend process (see ifcLiteServerClient.ts's module comment). No
-// client-side parsing fallback: if the server is unavailable, show an error
-// rather than shipping the raw file to the browser. Rendering is on
-// @ifc-lite/renderer (WebGPU) - no
-// WebGL fallback, so this requires a WebGPU-capable browser. No property
-// panel or per-element visibility toggles yet (a later pass); this is
-// click-to-select (highlights the clicked element and shows its
-// type/expressId) plus orbit/pan/zoom.
 function IfcViewerPane({
     hidden,
     maximized,
@@ -93,10 +83,14 @@ function IfcViewerPane({
     onToggleMaximize: () => void;
 }) {
     const { projectInfo, selectedIfcFile } = useDigitalTwin();
-    const utils = api.useUtils();
     const mountRef = useRef<HTMLDivElement>(null);
-    const viewerRef = useRef<ViewerState | null>(null);
-    const subscriptionRef = useRef<{ unsubscribe(): void } | null>(null);
+    const viewerRef = useRef<IfcViewer | null>(null);
+    // Selection lives outside React state (read directly by the animate
+    // loop's render() call each frame) so highlighting a click doesn't need
+    // to tear down/recreate the render loop's closure.
+    const selectionRef = useRef<{ selectedExpressId: number | null }>({
+        selectedExpressId: null
+    });
     const [loadState, setLoadState] = useState<LoadState | null>(null);
     const [selectedElement, setSelectedElement] =
         useState<SelectedElement | null>(null);
@@ -118,13 +112,7 @@ function IfcViewerPane({
         canvas.style.display = "block";
         mount.appendChild(canvas);
 
-        const renderer = new Renderer(canvas);
-        const viewer: ViewerState = {
-            renderer,
-            ifcTypeByExpressId: new Map(),
-            hasFramedCamera: false,
-            selectedExpressId: null
-        };
+        const viewer = new IfcViewer(canvas);
 
         function resize() {
             const { clientWidth, clientHeight } = mount!;
@@ -132,10 +120,12 @@ function IfcViewerPane({
                 return;
             }
             const dpr = Math.min(window.devicePixelRatio, 2);
-            renderer.resize(
-                Math.round(clientWidth * dpr),
-                Math.round(clientHeight * dpr)
-            );
+            viewer
+                .getRenderer()
+                .resize(
+                    Math.round(clientWidth * dpr),
+                    Math.round(clientHeight * dpr)
+                );
         }
         const resizeObserver = new ResizeObserver(resize);
         resizeObserver.observe(mount);
@@ -169,10 +159,11 @@ function IfcViewerPane({
             lastX = event.clientX;
             lastY = event.clientY;
             dragDistance += Math.abs(deltaX) + Math.abs(deltaY);
+            const camera = viewer.getRenderer().getCamera();
             if (isOrbiting) {
-                renderer.getCamera().orbit(deltaX, deltaY);
+                camera.orbit(deltaX, deltaY);
             } else {
-                renderer.getCamera().pan(deltaX, deltaY);
+                camera.pan(deltaX, deltaY);
             }
         }
         function handlePointerUp(event: PointerEvent) {
@@ -183,7 +174,8 @@ function IfcViewerPane({
         function handleWheel(event: WheelEvent) {
             event.preventDefault();
             const rect = canvas.getBoundingClientRect();
-            renderer
+            viewer
+                .getRenderer()
                 .getCamera()
                 .zoom(
                     event.deltaY,
@@ -202,21 +194,27 @@ function IfcViewerPane({
                 return;
             }
             const rect = canvas.getBoundingClientRect();
-            const hit = await renderer.pick(
-                event.clientX - rect.left,
-                event.clientY - rect.top
-            );
+            // pick() doesn't inherit render()'s hidden/isolated state
+            // automatically (only section/clip state is auto-mirrored), so
+            // the same isolatedIds has to be passed here too - otherwise a
+            // click could select an element belonging to a hidden (inactive)
+            // cached model right through the visible one.
+            const hit = await viewer
+                .getRenderer()
+                .pick(event.clientX - rect.left, event.clientY - rect.top, {
+                    isolatedIds: viewer.getIsolatedIds() ?? undefined
+                });
             if (disposed) {
                 return;
             }
             if (hit) {
-                viewer.selectedExpressId = hit.expressId;
+                selectionRef.current.selectedExpressId = hit.expressId;
                 setSelectedElement({
                     expressId: hit.expressId,
-                    ifcType: viewer.ifcTypeByExpressId.get(hit.expressId)
+                    ifcType: viewer.getIfcType(hit.expressId)
                 });
             } else {
-                viewer.selectedExpressId = null;
+                selectionRef.current.selectedExpressId = null;
                 setSelectedElement(null);
             }
         }
@@ -235,25 +233,29 @@ function IfcViewerPane({
             const now = performance.now();
             const deltaTime = (now - lastTime) / 1000;
             lastTime = now;
+            const renderer = viewer.getRenderer();
             renderer.getCamera().update(deltaTime);
             renderer.render({
                 clearColor: CLEAR_COLOR,
+                isolatedIds: viewer.getIsolatedIds() ?? undefined,
                 selectedIds:
-                    viewer.selectedExpressId !== null
-                        ? new Set([viewer.selectedExpressId])
+                    selectionRef.current.selectedExpressId !== null
+                        ? new Set([selectionRef.current.selectedExpressId])
                         : undefined
             });
         }
 
         (async () => {
             try {
-                await renderer.init();
+                await viewer.init();
                 if (disposed) {
-                    renderer.destroy();
+                    viewer.destroy();
                     return;
                 }
-                renderer.setOverlayLineColor(GRID_COLOR);
-                renderer.uploadGridLines3D(buildGroundGridLines(100, 100));
+                viewer.getRenderer().setOverlayLineColor(GRID_COLOR);
+                viewer
+                    .getRenderer()
+                    .uploadGridLines3D(buildGroundGridLines(100, 100));
                 viewerRef.current = viewer;
                 animate();
             } catch (error) {
@@ -281,214 +283,108 @@ function IfcViewerPane({
             canvas.removeEventListener("contextmenu", handleContextMenu);
             canvas.removeEventListener("click", handleClick);
             viewerRef.current = null;
-            renderer.destroy();
+            viewer.destroy();
             if (canvas.parentElement === mount) {
                 mount.removeChild(canvas);
             }
         };
     }, []);
 
-    // Model loading: swaps out the geometry in the (already-mounted)
-    // renderer whenever the selected file changes.
+    // Model selection: switches which already-mounted renderer's model is
+    // visible/pickable whenever the selected file changes. A file already
+    // loaded this session is never re-downloaded or re-parsed - it's just a
+    // different isolatedIds Set (see IfcViewer.showOnly) - so reselecting a
+    // previously viewed file is instant. Only a genuinely new file goes
+    // through the download+parse path below.
     useEffect(() => {
         setSelectedElement(null);
+        selectionRef.current.selectedExpressId = null;
 
         let disposed = false;
-        // Fragments of a cache-hit's geometry, keyed by chunkIndex - the
-        // backend splits a cache hit's (potentially huge) single blob into
-        // fixed-size chunks to avoid holding the whole thing as one string
-        // server-side; reassembled here before decoding as one unit.
-        const cachedGeometryChunks: string[] = [];
+        const controller = new AbortController();
 
         const viewer = viewerRef.current;
         if (!viewer) {
             return;
         }
 
-        clearViewerModel(viewer);
-
         if (!selectedIfcFile) {
+            viewer.showNone();
+            setLoadState(null);
+            return;
+        }
+
+        if (viewer.isLoaded(selectedIfcFile.fileId)) {
+            viewer.showOnly(selectedIfcFile.fileId);
             setLoadState(null);
             return;
         }
 
         setLoadState({ status: "connecting" });
 
-        // A fresh worker per file load, not a shared one for the whole
-        // tab's lifetime - see createIfcParquetDecoder's doc comment for
-        // why (WASM memory only grows, never shrinks, so a long-lived
-        // worker's footprint accumulates across every file ever decoded in
-        // this tab). Terminated in this effect's cleanup below.
-        const decoder = createIfcParquetDecoder();
-
-        // The "complete" SSE event only means the backend is done sending -
-        // for a cache hit, decode runs client-side afterward and is the
-        // slower part, so clearing the loading indicator as soon as
-        // "complete" arrives would hide it while the model is still being
-        // built. Track in-flight decodes and only actually finish once both
-        // "complete" has arrived and every decode has resolved.
-        let pendingDecodes = 0;
-        let receivedComplete = false;
-        // Only meaningful for the cache-hit path - see streamFromCache on
-        // the backend, whose "start" event's totalEstimate is a real mesh
-        // count (unlike a live parse's, which is ifc-lite-server's own
-        // entity-count estimate).
-        let knownTotalMeshes = 0;
-
-        function finishIfDone() {
-            if (!disposed && receivedComplete && pendingDecodes === 0) {
-                setLoadState(null);
+        viewer.onProgress = (progress) => {
+            if (disposed) {
+                return;
             }
-        }
-
-        // `showDecodingPhase` is only true for the cache-hit path (one
-        // decode of the entire model) - a live parse's batches decode
-        // quickly enough, interleaved with more batches still arriving,
-        // that a separate visible phase per batch would just flicker.
-        const decodeAndAddBatch = (
-            base64Data: string,
-            showDecodingPhase: boolean
-        ) => {
-            pendingDecodes++;
-            let decodedCount = 0;
-            if (showDecodingPhase) {
-                setLoadState({
-                    status: "decoding",
-                    processed: 0,
-                    total: knownTotalMeshes
-                });
-            }
-
-            decoder
-                .decodeIfcGeometryBatch(base64Data, (meshes) => {
-                    if (disposed) return;
-                    decodedCount += meshes.length;
-                    if (showDecodingPhase) {
-                        setLoadState({
-                            status: "decoding",
-                            processed: decodedCount,
-                            total: knownTotalMeshes
-                        });
-                    }
-                    for (const mesh of meshes) {
-                        viewer.ifcTypeByExpressId.set(
-                            mesh.expressId,
-                            mesh.ifcType
-                        );
-                    }
-                    viewer.renderer.addMeshes(meshes, true);
-                    if (!viewer.hasFramedCamera) {
-                        viewer.hasFramedCamera = true;
-                        viewer.renderer.fitToView();
-                    }
-                })
-                .then(() => {
-                    pendingDecodes--;
-                    finishIfDone();
-                })
-                .catch((error) => {
-                    pendingDecodes--;
-                    console.error(
-                        "Failed to decode IFC geometry batch:",
-                        error
-                    );
-                    if (!disposed) {
-                        setLoadState({
-                            status: "error",
-                            message:
-                                error instanceof Error
-                                    ? error.message
-                                    : "Failed to decode 3D geometry."
-                        });
-                    }
-                });
+            setLoadState({
+                status: "processing",
+                processed: progress.processed
+            });
         };
 
-        const subscription =
-            utils.client.digitalTwin.streamIfcGeometry.subscribe(
-                {
-                    projectId: projectInfo.id,
-                    fileId: selectedIfcFile.fileId
-                },
-                {
-                    onData(event) {
+        (async () => {
+            try {
+                const objectKey = `${projectInfo.id}/${selectedIfcFile.discipline}/${selectedIfcFile.fileId}`;
+                const buffer = await downloadWithProgress(
+                    buildProjectFileUrl(objectKey),
+                    controller.signal,
+                    (loadedBytes, totalBytes) => {
                         if (disposed) {
                             return;
                         }
-                        switch (event.type) {
-                            case "start":
-                                knownTotalMeshes = event.totalEstimate;
-                                setLoadState({
-                                    status: "loading",
-                                    processed: 0,
-                                    total: event.totalEstimate
-                                });
-                                break;
-                            case "progress":
-                                setLoadState({
-                                    status: "loading",
-                                    processed: event.processed,
-                                    total: event.total
-                                });
-                                break;
-                            case "batch":
-                                decodeAndAddBatch(event.data, false);
-                                break;
-                            case "cachedGeometryChunk":
-                                setLoadState({
-                                    status: "loading",
-                                    processed: event.chunkIndex + 1,
-                                    total: event.totalChunks
-                                });
-                                cachedGeometryChunks[event.chunkIndex] =
-                                    event.data;
-                                if (
-                                    event.chunkIndex ===
-                                    event.totalChunks - 1
-                                ) {
-                                    decodeAndAddBatch(
-                                        cachedGeometryChunks.join(""),
-                                        true
-                                    );
-                                }
-                                break;
-                            case "complete":
-                                receivedComplete = true;
-                                finishIfDone();
-                                break;
-                            case "error":
-                                setLoadState({
-                                    status: "error",
-                                    message: event.message
-                                });
-                                break;
-                        }
-                    },
-                    onError(error) {
-                        console.error(error);
-                        if (!disposed) {
-                            setLoadState({
-                                status: "error",
-                                message:
-                                    error.message ||
-                                    "Failed to load 3D geometry."
-                            });
-                        }
+                        setLoadState({
+                            status: "downloading",
+                            processed: loadedBytes,
+                            total: totalBytes
+                        });
                     }
+                );
+                if (disposed) {
+                    return;
                 }
-            );
-        subscriptionRef.current = subscription;
+
+                setLoadState({ status: "processing", processed: 0 });
+                await viewer.loadFile(
+                    selectedIfcFile.fileId,
+                    buffer,
+                    controller.signal
+                );
+                if (!disposed) {
+                    setLoadState(null);
+                }
+            } catch (error) {
+                if (disposed || controller.signal.aborted) {
+                    return;
+                }
+                console.error("Failed to load IFC file:", error);
+                setLoadState({
+                    status: "error",
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : "Failed to load 3D geometry."
+                });
+            }
+        })();
 
         return () => {
             disposed = true;
-            subscriptionRef.current?.unsubscribe();
-            subscriptionRef.current = null;
-            decoder.terminate();
+            controller.abort();
+            viewer.onProgress = undefined;
         };
     }, [selectedIfcFile, projectInfo.id]);
 
     function handleDismissError() {
-        subscriptionRef.current?.unsubscribe();
         setLoadState(null);
     }
 

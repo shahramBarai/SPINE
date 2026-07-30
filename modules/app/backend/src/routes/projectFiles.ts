@@ -197,6 +197,7 @@ async function handleProjectFileDownload(
         res,
         fileName: file.fileName,
         disposition: "attachment",
+        contentLength: file.size,
         getStream: () => ProjectFileService.readFile(file.objectKey),
         authorize: async (user) =>
             Boolean(user && (await EntityService.getMember(projectId, user.id)))

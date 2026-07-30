@@ -9,9 +9,19 @@ export default defineConfig(() => {
         define: {
             __BACKEND_URL__: JSON.stringify(env.BACKEND_URL)
         },
+        worker: {
+            format: "es" as const
+        },
+        optimizeDeps: {
+            exclude: ["@ifc-lite/wasm"]
+        },
         server: {
             host: "0.0.0.0",
-            port: 3000
+            port: 3000,
+            headers: {
+                "Cross-Origin-Opener-Policy": "same-origin",
+                "Cross-Origin-Embedder-Policy": "require-corp"
+            }
         },
         resolve: {
             alias: {
