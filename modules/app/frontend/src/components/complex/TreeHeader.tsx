@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "utils/index";
 
 interface TreeHeaderProps {
@@ -21,6 +21,14 @@ function TreeHeader({
 }: TreeHeaderProps) {
     const [sectionExpanded, setSectionExpanded] =
         useState<boolean>(defaultExpanded);
+
+    /** Collapses when disabled - otherwise a row expanded before going
+     *  disabled would stay expanded with no way left to collapse it. */
+    useEffect(() => {
+        if (disable) {
+            setSectionExpanded(false);
+        }
+    }, [disable]);
 
     return (
         <>

@@ -1,5 +1,5 @@
 import { api } from "utils/trpc";
-import { Loader, DatabaseX } from "lucide-react";
+import { Loader, DatabaseX, Eye, EyeOff } from "lucide-react";
 import { TreeHeader } from "components/complex/TreeHeader";
 import { cn } from "utils/index";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
@@ -13,7 +13,7 @@ function IfcSectionTree({
     projectId: string;
     className?: string;
 }) {
-    const { selectedIfcFile, setSelectedIfcFile } = useDigitalTwin();
+    const { visibleIfcFiles, toggleIfcFile } = useDigitalTwin();
 
     // --- Backend tRPC calls ---
     const {
@@ -59,58 +59,72 @@ function IfcSectionTree({
         );
     }
 
-    const treeHeaderLabel = (
-        <div className="text-[11px] text-foreground font-mono truncate">
-            IFC ({ifcFiles.length})
+    const treeHeaderLabel = (fileName: string) => (
+        <div className={cn("text-[11px] font-mono text-foreground truncate")}>
+            {fileName.replace(/\.ifc$/i, "")}
         </div>
     );
 
     return (
-        <TreeHeader className={className} label={treeHeaderLabel}>
-            <div className="ml-12 mr-1 mb-1 flex flex-col gap-0.5">
-                {ifcFiles.length === 0 ? (
-                    <div className="flex items-center justify-center py-1 text-sm">
-                        <span className="text-[10px] text-muted-foreground">
-                            No files found.
-                        </span>
-                    </div>
-                ) : (
-                    ifcFiles.map((file) => {
-                        const isSelected =
-                            selectedIfcFile?.fileId === file.fileId;
-                        return (
-                            <button
-                                key={file.fileId}
-                                type="button"
-                                onClick={() =>
-                                    setSelectedIfcFile(
-                                        isSelected
-                                            ? null
-                                            : {
-                                                  discipline: discipline.id,
-                                                  fileId: file.fileId,
-                                                  fileName: file.fileName
-                                              }
-                                    )
-                                }
-                                title={file.fileName}
-                                className={cn(
-                                    "border rounded flex items-center gap-1 px-2 py-1 text-[10px] font-mono text-left",
-                                    "hover:cursor-pointer",
-                                    isSelected
-                                        ? "bg-primary/15 text-primary border-primary/40"
-                                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                                )}
-                            >
-                                <div className="flex-1 truncate">
-                                    {file.fileName}
-                                </div>
-                            </button>
-                        );
-                    })
-                )}
-            </div>
-        </TreeHeader>
+        <>
+            {ifcFiles.length === 0 ? (
+                <div
+                    className={cn(
+                        "flex items-center justify-center py-1 text-sm",
+                        className
+                    )}
+                >
+                    <span className="text-[10px] text-muted-foreground">
+                        No files found.
+                    </span>
+                </div>
+            ) : (
+                ifcFiles.map((file) => {
+                    const isVisible = visibleIfcFiles.some(
+                        (f) => f.fileId === file.fileId
+                    );
+                    return (
+                        <TreeHeader
+                            key={file.fileId}
+                            className={cn("pl-12 pr-2", className)}
+                            label={treeHeaderLabel(file.fileName)}
+                            disable={!isVisible}
+                            button={
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleIfcFile({
+                                            discipline: discipline.id,
+                                            fileId: file.fileId,
+                                            fileName: file.fileName
+                                        });
+                                    }}
+                                    title={
+                                        isVisible
+                                            ? "Exclude from 3D view"
+                                            : "Include in 3D view"
+                                    }
+                                    className={cn(
+                                        "h-5 w-5 rounded flex items-center justify-center text-muted-foreground",
+                                        "hover:cursor-pointer hover:text-primary hover:bg-primary/10 transition-all"
+                                    )}
+                                >
+                                    {isVisible ? (
+                                        <Eye className="h-3 w-3" />
+                                    ) : (
+                                        <EyeOff className="h-3 w-3" />
+                                    )}
+                                </button>
+                            }
+                        >
+                            <span className="pl-16 text-[10px] text-muted-foreground font-mono">
+                                TODO: Add IFC file components here
+                            </span>
+                        </TreeHeader>
+                    );
+                })
+            )}
+        </>
     );
 }
 

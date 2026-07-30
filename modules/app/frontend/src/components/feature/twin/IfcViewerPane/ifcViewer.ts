@@ -8,6 +8,7 @@ import {
 } from "./sunPath";
 
 export type LoadProgress = { phase: "parsing"; processed: number };
+
 const ID_BLOCK_SIZE = 100_000_000;
 
 interface LoadedModel {
@@ -17,6 +18,21 @@ interface LoadedModel {
     complete: boolean;
     siteLocation: SiteLocation | null;
 }
+
+/**
+ * Wraps the renderer + geometry-processing lifecycle for one canvas.
+ * Parsing runs client-side via GeometryProcessor's WASM worker pool, which
+ * is what makes GPU instancing available at all (instanced shards are only
+ * ever produced by this in-browser pipeline, never by ifc-lite-server's
+ * HTTP API).
+ *
+ * Loaded models stay resident for the viewer's lifetime - re-showing a file
+ * already seen this session is instant (no re-download, no re-parse), just
+ * a different isolatedIds union handed to render()/pick(). Any number of
+ * loaded models can be visible at once; expressIds are offset into disjoint
+ * per-model ranges (see ID_BLOCK_SIZE) so overlapping IDs from different
+ * files never collide once several are resident together.
+ */
 class IfcViewer {
     private static readonly MAX_TEXT_PARSE_BYTES = 480_000_000;
 
@@ -24,7 +40,7 @@ class IfcViewer {
     private readonly geometry: GeometryProcessor;
     private readonly loadedModels = new Map<string, LoadedModel>();
     private nextModelSlot = 0;
-    private activeFileId: string | null = null;
+    private visibleFileIds = new Set<string>();
     private activeIsolatedIds: Set<number> | null = null;
     private lastSunPathRequest: { site: SiteLocation; date: Date } | null =
         null;
@@ -45,67 +61,73 @@ class IfcViewer {
         return this.renderer;
     }
 
+    /** Looks up an expressId across every loaded model (offsets keep them
+     *  unambiguous - only one model can ever own a given id). */
     getIfcType(expressId: number): string | undefined {
-        if (!this.activeFileId) {
-            return undefined;
+        for (const model of this.loadedModels.values()) {
+            const type = model.ifcTypeByExpressId.get(expressId);
+            if (type !== undefined) {
+                return type;
+            }
         }
-        return this.loadedModels
-            .get(this.activeFileId)
-            ?.ifcTypeByExpressId.get(expressId);
+        return undefined;
     }
 
     isLoaded(fileId: string): boolean {
         return this.loadedModels.get(fileId)?.complete === true;
     }
 
-    /** IDs to pass as isolatedIds to both render() and pick() - keeping
-     *  these in sync is what makes a hidden model's geometry unclickable,
-     *  not just invisible (pick() doesn't inherit render()'s hidden/isolated
-     *  state automatically - only section/clip state is auto-mirrored). */
+    /** IDs to pass as isolatedIds to both render() and pick() - pick()
+     *  doesn't inherit render()'s hidden/isolated state automatically. */
     getIsolatedIds(): Set<number> | null {
         return this.activeIsolatedIds;
     }
 
-    /** Makes `fileId` (already loaded) the only visible/pickable model. */
-    showOnly(fileId: string): void {
-        const model = this.loadedModels.get(fileId);
-        if (!model) {
-            return;
+    /**
+     * Sets which loaded models are visible/pickable, replacing whatever
+     * was visible before. Files not yet loaded are silently ignored here -
+     * loadFile() adds itself to the visible set and unions its own
+     * expressIds in as they stream in. Never reframes the camera - toggling
+     * visibility shouldn't move it; a newly loading file frames itself once
+     * on its first batch (see loadFile).
+     */
+    setVisibleFiles(fileIds: Iterable<string>): void {
+        this.visibleFileIds = new Set(fileIds);
+        this.recomputeIsolatedIds();
+    }
+
+    private recomputeIsolatedIds(): void {
+        const union = new Set<number>();
+        for (const fileId of this.visibleFileIds) {
+            const model = this.loadedModels.get(fileId);
+            if (model) {
+                for (const id of model.expressIds) {
+                    union.add(id);
+                }
+            }
         }
-        this.activeFileId = fileId;
-        this.activeIsolatedIds = new Set(model.expressIds);
-        this.renderer.fitToView();
-        // Any sun path shown for the previously active model isn't
-        // meaningful for this one (different bounds, usually different
-        // site) - the UI re-opens it explicitly if the user wants one here.
-        this.hideSunPath();
+        this.activeIsolatedIds = union;
     }
 
-    /** Hides every loaded model (e.g. no file selected). */
-    showNone(): void {
-        this.activeFileId = null;
-        this.activeIsolatedIds = new Set();
-        this.hideSunPath();
-    }
-
-    /** The active model's real-world site location, if IfcSite had one -
-     *  purely for the UI to prefill its lat/lon inputs with a sensible
-     *  default. null doesn't block showSunPathAt: the user can type in any
-     *  location regardless of what (if anything) the file carries. */
+    /** The first visible model's detected IfcSite location, if any - purely
+     *  to prefill the sun-path UI's lat/lon inputs. */
     getSiteLocation(): SiteLocation | null {
-        const model = this.activeFileId
-            ? this.loadedModels.get(this.activeFileId)
-            : undefined;
-        return model?.siteLocation ?? null;
+        for (const fileId of this.visibleFileIds) {
+            const location = this.loadedModels.get(fileId)?.siteLocation;
+            if (location) {
+                return location;
+            }
+        }
+        return null;
     }
 
-    /** Shows the sun-path dome (graticule + day arc + a marker at the
-     *  sun's exact position) for `site` as of `date`, sized to the active
-     *  model's CURRENT bounds - which, if a model is still streaming in (or
-     *  none has loaded at all yet), won't be its final size. Recomputed
-     *  fresh on every call rather than cached (cheap: a few hundred line
-     *  segments), and remembered so loadFile() can silently redo this once
-     *  real bounds are ready - see `lastSunPathRequest`. */
+    /**
+     * Shows the sun-path dome (graticule + day arc + a marker at the sun's
+     * exact position) for `site` as of `date`, sized to the current
+     * (possibly still-growing) model bounds. Recomputed fresh on every call
+     * rather than cached, and remembered so loadFile() can silently redo
+     * this once bounds are final - see `lastSunPathRequest`.
+     */
     showSunPathAt(site: SiteLocation, date: Date): void {
         this.lastSunPathRequest = { site, date };
         const { radius, origin } = computeDomeGeometry(
@@ -116,31 +138,20 @@ class IfcViewer {
         );
     }
 
-    /** Hides the sun-path dome. Also forgets any pending request from
-     *  showSunPathAt, so switching models (showOnly/showNone both call
-     *  this) doesn't leave a stale one to replay against the new model. */
     hideSunPath(): void {
         this.lastSunPathRequest = null;
         this.renderer.uploadAlignmentLines3D(new Float32Array(0));
     }
 
-    /** Parses the site's real-world lat/long out of the raw file text. Runs
-     *  concurrently with mesh geometry streaming (never awaited before it),
-     *  since it decodes the whole buffer as a string and re-parses it -
-     *  gating first-batch render on this would undo the whole point of
-     *  progressive streaming for a feature that's cosmetic on top. Resolves
-     *  to null (not a throw) on any failure, since a missing/broken sun-path
-     *  overlay should never take down the rest of the load.
+    /**
+     * Parses the site's real-world lat/long out of the raw file text.
+     * Resolves to null (not a throw) on any failure - a missing/broken
+     * sun-path overlay should never take down the rest of the load.
      *
      * The lat/long regex match needs the whole file as one JS string, and
-     * every V8-based engine (Node, Chrome, Edge - so this isn't Node-
-     * specific) caps a string at ~536.8M UTF-16 code units (`0x1fffffe8`).
-     * IFC STEP files are close enough to pure ASCII that byteLength is a
-     * safe proxy for the resulting character count, so a file above
-     * MAX_TEXT_PARSE_BYTES is skipped outright rather than attempted-and-
-     * caught - this is a hard engine ceiling, not something a retry or
-     * different decode would fix, so it gets a clear log line instead of
-     * surfacing as a generic error. */
+     * every V8-based engine caps a string at ~536.8M UTF-16 code units, so
+     * a file above MAX_TEXT_PARSE_BYTES is skipped outright.
+     */
     private async loadSiteLocation(
         buffer: Uint8Array
     ): Promise<SiteLocation | null> {
@@ -164,20 +175,17 @@ class IfcViewer {
 
     /**
      * Parses `buffer` (a full IFC file) client-side and streams the result
-     * into the renderer progressively via GeometryProcessor.processAdaptive -
-     * small files parse synchronously and render in one batch, large files
-     * stream batches from a worker pool as they're produced. `fileId` becomes
-     * the active (visible/pickable) model immediately, so geometry appears as
-     * it streams in rather than only once the whole file is parsed.
+     * into the renderer progressively via GeometryProcessor.processAdaptive.
+     * Assumes the caller has already included `fileId` in setVisibleFiles()
+     * before calling this - it never adds itself to the visible set, so a
+     * toggle-off that happens mid-load (a later setVisibleFiles call
+     * without this fileId) is respected rather than overridden once this
+     * catches up.
      *
-     * `signal` has no direct hook into processAdaptive (it takes no abort
-     * signal itself), so this checks it once per event and `break`s out of
-     * the for-await loop - which calls the async generator's `.return()`,
-     * the same mechanism a `for await...of` uses on any early exit. Without
-     * this, switching files while a big model is still parsing would leave
-     * its worker pool running to decode/upload batches for a file nobody's
-     * viewing anymore (the same class of bug documented on the old
-     * server-streaming subscription, just on the client side now).
+     * `signal` has no direct hook into processAdaptive, so this checks it
+     * once per event and `break`s out of the for-await loop - which calls
+     * the async generator's `.return()`, stopping its worker pool instead
+     * of letting it run to completion for a file nobody's viewing anymore.
      */
     async loadFile(
         fileId: string,
@@ -193,8 +201,6 @@ class IfcViewer {
             siteLocation: null
         };
         this.loadedModels.set(fileId, model);
-        this.activeFileId = fileId;
-        this.activeIsolatedIds = new Set();
 
         const siteLocationPromise = this.loadSiteLocation(buffer);
 
@@ -235,16 +241,12 @@ class IfcViewer {
                         }
                     }
 
-                    // Keep the active isolate set in sync while this model
-                    // is still streaming in (it's the active model for the
-                    // whole duration of its own first load).
-                    if (this.activeFileId === fileId) {
-                        this.activeIsolatedIds = new Set(model.expressIds);
-                    }
-
-                    if (!hasFramedThisModel) {
-                        hasFramedThisModel = true;
-                        this.renderer.fitToView();
+                    if (this.visibleFileIds.has(fileId)) {
+                        this.recomputeIsolatedIds();
+                        if (!hasFramedThisModel) {
+                            hasFramedThisModel = true;
+                            this.renderer.fitToView();
+                        }
                     }
 
                     this.onProgress?.({
@@ -268,7 +270,7 @@ class IfcViewer {
 
         if (!signal?.aborted) {
             model.complete = true;
-            if (this.activeFileId === fileId && this.lastSunPathRequest) {
+            if (this.lastSunPathRequest) {
                 this.showSunPathAt(
                     this.lastSunPathRequest.site,
                     this.lastSunPathRequest.date

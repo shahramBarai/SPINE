@@ -20,11 +20,8 @@ export type SelectedIfcFile = {
     fileName: string;
 };
 
-// Everything a digital-twin window (sidebar, graph pane, and future 3D
-// viewer / semantic data panels) needs to share so an action in one window
-// (select a node, search, hide a type) is reflected in every other one.
-// Window-local concerns - physics simulation, SVG pan/zoom, and similar
-// rendering state - stay in that window's own hooks instead of here.
+/** Shared state across digital-twin windows (sidebar, graph pane, 3D
+ *  viewer) - window-local concerns stay in that window's own hooks. */
 type DigitalTwinContextValue = {
     projectInfo: ProjectInfo;
 
@@ -36,8 +33,8 @@ type DigitalTwinContextValue = {
     focusId: string;
     setFocusId: Dispatch<SetStateAction<string>>;
 
-    selectedIfcFile: SelectedIfcFile | null;
-    setSelectedIfcFile: Dispatch<SetStateAction<SelectedIfcFile | null>>;
+    visibleIfcFiles: SelectedIfcFile[];
+    toggleIfcFile: (file: SelectedIfcFile) => void;
 
     ttlFilesHidden: string[];
     setTtlFilesHidden: Dispatch<SetStateAction<string[]>>;
@@ -66,8 +63,9 @@ export function DigitalTwinProvider({
 }) {
     const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
     const [focusId, setFocusId] = useState<string>(initialFocusId);
-    const [selectedIfcFile, setSelectedIfcFile] =
-        useState<SelectedIfcFile | null>(null);
+    const [visibleIfcFiles, setVisibleIfcFiles] = useState<SelectedIfcFile[]>(
+        []
+    );
     const [ttlFilesHidden, setTtlFilesHidden] = useState<string[]>([]);
     const [searchText, setSearchText] = useState("");
     const [selectedNodeTypes, setSelectedNodeTypes] =
@@ -82,6 +80,15 @@ export function DigitalTwinProvider({
     );
     const clearSelection = useCallback(() => setSelectedObjectIds([]), []);
 
+    /** Adds `file` to the visible set, or removes it if already present. */
+    const toggleIfcFile = useCallback((file: SelectedIfcFile) => {
+        setVisibleIfcFiles((current) =>
+            current.some((f) => f.fileId === file.fileId)
+                ? current.filter((f) => f.fileId !== file.fileId)
+                : [...current, file]
+        );
+    }, []);
+
     const value = useMemo<DigitalTwinContextValue>(
         () => ({
             projectInfo,
@@ -91,8 +98,8 @@ export function DigitalTwinProvider({
             clearSelection,
             focusId,
             setFocusId,
-            selectedIfcFile,
-            setSelectedIfcFile,
+            visibleIfcFiles,
+            toggleIfcFile,
             ttlFilesHidden,
             setTtlFilesHidden,
             searchText,
@@ -108,7 +115,8 @@ export function DigitalTwinProvider({
             selectObject,
             clearSelection,
             focusId,
-            selectedIfcFile,
+            visibleIfcFiles,
+            toggleIfcFile,
             ttlFilesHidden,
             searchText,
             selectedNodeTypes,

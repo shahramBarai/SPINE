@@ -2,7 +2,6 @@ import { Building2 } from "lucide-react";
 import { cn } from "utils/index";
 import { IfcSectionTree } from "./IFCSectionTree";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
-import { TtlSectionTree } from "./TTLSectionTree";
 import { TreeHeader } from "components/complex/TreeHeader";
 import { DISCIPLINES } from "utils/disciplines";
 
@@ -32,40 +31,31 @@ function ProjectTreeSection({ className }: { className?: string }) {
             defaultExpanded={true}
         >
             <>
-                {DISCIPLINES.map((discipline) => {
-                    return (
-                        <TreeHeader
-                            key={discipline.id}
-                            className={cn(
-                                "pl-5 border-l-3",
-                                selectedObjectIds.includes(discipline.id)
-                                    ? "bg-primary/15 text-primary border-primary"
-                                    : "hover:bg-accent/60 border-transparent text-foreground/80"
-                            )}
-                            label={
-                                <HeaderLabel
-                                    id={discipline.id}
-                                    name={discipline.name}
-                                />
-                            }
-                        >
-                            <>
-                                {discipline.id !== "disc-sahko:linkset" && (
-                                    <IfcSectionTree
-                                        className="pl-8 pr-1"
-                                        discipline={discipline}
-                                        projectId={projectInfo.id}
-                                    />
-                                )}
-                                <TtlSectionTree
-                                    className="pl-8 pr-1"
-                                    discipline={discipline}
-                                    projectId={projectInfo.id}
-                                />
-                            </>
-                        </TreeHeader>
-                    );
-                })}
+                {DISCIPLINES.filter(
+                    (discipline) => discipline.id !== "disc-sahko:linkset"
+                ).map((discipline) => (
+                    <TreeHeader
+                        key={discipline.id}
+                        className={cn(
+                            "pl-5 border-l-3",
+                            selectedObjectIds.includes(discipline.id)
+                                ? "bg-primary/15 text-primary border-primary"
+                                : "hover:bg-accent/60 border-transparent text-foreground/80"
+                        )}
+                        label={
+                            <HeaderLabel
+                                id={discipline.id}
+                                name={discipline.name}
+                            />
+                        }
+                    >
+                        <IfcSectionTree
+                            className="pl-8 pr-1"
+                            discipline={discipline}
+                            projectId={projectInfo.id}
+                        />
+                    </TreeHeader>
+                ))}
             </>
         </TreeHeader>
     );

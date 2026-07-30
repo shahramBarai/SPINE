@@ -9,7 +9,7 @@ import {
     Sun
 } from "lucide-react";
 import { cn } from "utils/index";
-import { useDigitalTwin } from "hooks/useDigitalTwin";
+import { useDigitalTwin, type SelectedIfcFile } from "hooks/useDigitalTwin";
 import { useTheme } from "hooks/useTheme";
 import { buildProjectFileUrl } from "utils/projectFileUrl";
 import { IfcViewer } from "./ifcViewer";
@@ -30,13 +30,8 @@ function hexToRgba(hex: string, alpha = 1): [number, number, number, number] {
     return [r, g, b, alpha];
 }
 
-// Mirrors globals.css's --background / --muted-foreground tokens for each
-// theme. WebGPU needs raw RGBA floats (not CSS custom properties), so this
-// is a hand-kept parallel to those two values rather than reading the DOM -
-// keep them in sync if the theme's palette changes. `lineColor` covers the
-// renderer's overlay lines generally (annotation/alignment/grid share one
-// setter) - currently only the sun-path dome (on the alignment channel)
-// uses it.
+/** Mirrors globals.css's --background / --muted-foreground per theme -
+ *  WebGPU needs raw RGBA floats, not CSS custom properties. */
 function getViewerColors(theme: "light" | "dark"): {
     clearColor: [number, number, number, number];
     lineColor: [number, number, number, number];
@@ -49,14 +44,11 @@ function getViewerColors(theme: "light" | "dark"): {
           };
 }
 
-// Ignore the click that ends a drag (orbit/pan) - without this, releasing
-// the mouse after orbiting spuriously picks whatever ended up under the
-// cursor.
 const CLICK_DRAG_THRESHOLD_PX = 4;
 
 async function downloadWithProgress(
     url: string,
-    signal: AbortSignal,
+    signal: AbortSignal | undefined,
     onProgress: (loadedBytes: number, totalBytes: number | null) => void
 ): Promise<Uint8Array> {
     const response = await fetch(url, { credentials: "include", signal });
@@ -92,11 +84,8 @@ async function downloadWithProgress(
     return buffer;
 }
 
-// User-driven isolation (a single hand-picked "isolate this element" set)
-// always wins over IfcViewer's own per-model isolatedIds (the "only show
-// the active model" mechanism from IfcViewer.showOnly) - safe because
-// anything the user can isolate is already within the active model, so
-// it's always a subset, never a conflicting third set.
+/** A user-picked isolation always wins over IfcViewer's own visible-files
+ *  union - safe since anything selectable is already within it. */
 function getEffectiveIsolatedIds(
     viewer: IfcViewer,
     userIsolatedIds: Set<number> | null
@@ -113,47 +102,39 @@ function IfcViewerPane({
     maximized: boolean;
     onToggleMaximize: () => void;
 }) {
-    const { projectInfo, selectedIfcFile } = useDigitalTwin();
+    const { projectInfo, visibleIfcFiles } = useDigitalTwin();
     const { theme } = useTheme();
-    // Read fresh by the animate loop (captured once, at mount, in a
-    // closure) rather than plain state - same reason selectionRef/
-    // visibilityRef are refs. Kept in sync by the effect below whenever
-    // `theme` changes.
     const themeColorsRef = useRef(getViewerColors(theme));
     const mountRef = useRef<HTMLDivElement>(null);
     const viewerRef = useRef<IfcViewer | null>(null);
-    // Selection lives outside React state (read directly by the animate
-    // loop's render() call each frame) so highlighting a click doesn't need
-    // to tear down/recreate the render loop's closure.
+    const loadAbortControllerRef = useRef<AbortController | null>(null);
     const selectionRef = useRef<{ selectedExpressId: number | null }>({
         selectedExpressId: null
     });
-    // User-driven hide/isolate, read directly by the animate loop's
-    // render() call and by pick() each frame - like selectionRef, this
-    // can't be plain React state without the animate closure (captured
-    // once, at mount) going stale. `userIsolatedIds`, when set, always
-    // takes over from IfcViewer's own per-model isolatedIds (see
-    // getEffectiveIsolatedIds below) - safe because anything the user can
-    // select/isolate is by definition already within the active model's
-    // set, so it's always a subset, never a conflicting third set.
     const visibilityRef = useRef<{
         hiddenIds: Set<number>;
         userIsolatedIds: Set<number> | null;
     }>({ hiddenIds: new Set(), userIsolatedIds: null });
+    // Queue of not-yet-loaded files waiting their turn; loads run one at a
+    // time (GeometryProcessor's WASM worker pool is shared per viewer, and
+    // concurrent processAdaptive calls on it aren't known to be safe).
+    const pendingQueueRef = useRef<SelectedIfcFile[]>([]);
+    const queueRunningRef = useRef(false);
+    const desiredFileIdsRef = useRef<Set<string>>(new Set());
+
     const [loadState, setLoadState] = useState<LoadState | null>(null);
+    const [loadingFile, setLoadingFile] = useState<SelectedIfcFile | null>(
+        null
+    );
     const [selectedElement, setSelectedElement] =
         useState<SelectedElement | null>(null);
-    // Mirrors visibilityRef purely so the toolbar can show/hide its "Show
-    // all" reset button and a hidden-count badge - the ref above is what
-    // actually drives rendering/picking.
     const [hiddenCount, setHiddenCount] = useState(0);
     const [isIsolating, setIsIsolating] = useState(false);
     const [sunPanelOpen, setSunPanelOpen] = useState(false);
-    const [siteLocation, setSiteLocation] = useState<SiteLocation | null>(null);
+    const [siteLocation, setSiteLocation] = useState<SiteLocation | null>(
+        null
+    );
 
-    // Scene lifecycle: mounts the renderer once and keeps it alive (and
-    // rendering) for as long as the pane exists, independent of whether a
-    // file is selected.
     useEffect(() => {
         const mount = mountRef.current;
         if (!mount) {
@@ -161,6 +142,7 @@ function IfcViewerPane({
         }
 
         let disposed = false;
+        loadAbortControllerRef.current = new AbortController();
 
         const canvas = document.createElement("canvas");
         canvas.style.width = "100%";
@@ -250,12 +232,6 @@ function IfcViewerPane({
                 return;
             }
             const rect = canvas.getBoundingClientRect();
-            // pick() doesn't inherit render()'s hidden/isolated state
-            // automatically (only section/clip state is auto-mirrored), so
-            // the same hiddenIds/isolatedIds have to be passed here too -
-            // otherwise a click could select an element belonging to a
-            // hidden (inactive cached model, or user-hidden) element right
-            // through whatever's actually visible.
             const hit = await viewer
                 .getRenderer()
                 .pick(event.clientX - rect.left, event.clientY - rect.top, {
@@ -344,6 +320,7 @@ function IfcViewerPane({
 
         return () => {
             disposed = true;
+            loadAbortControllerRef.current?.abort();
             cancelAnimationFrame(animationFrame);
             resizeObserver.disconnect();
             canvas.removeEventListener("pointerdown", handlePointerDown);
@@ -360,81 +337,59 @@ function IfcViewerPane({
         };
     }, []);
 
-    // Keeps the viewport background/overlay-line color in sync with the
-    // app's light/dark theme toggle. clearColor is picked up fresh from the
-    // ref by the animate loop's own render() call every frame, so no extra
-    // re-render is needed for that half; setOverlayLineColor is a one-shot
-    // call that only needs re-running when the color actually changes.
     useEffect(() => {
         const colors = getViewerColors(theme);
         themeColorsRef.current = colors;
         viewerRef.current?.getRenderer().setOverlayLineColor(colors.lineColor);
     }, [theme]);
 
-    // Model selection: switches which already-mounted renderer's model is
-    // visible/pickable whenever the selected file changes. A file already
-    // loaded this session is never re-downloaded or re-parsed - it's just a
-    // different isolatedIds Set (see IfcViewer.showOnly) - so reselecting a
-    // previously viewed file is instant. Only a genuinely new file goes
-    // through the download+parse path below.
+    // Reconciles the desired visible-file set against the viewer: already-
+    // loaded files show instantly, not-yet-loaded ones are queued and
+    // downloaded/parsed one at a time.
     useEffect(() => {
         setSelectedElement(null);
         selectionRef.current.selectedExpressId = null;
-        visibilityRef.current.hiddenIds.clear();
-        visibilityRef.current.userIsolatedIds = null;
-        setHiddenCount(0);
-        setIsIsolating(false);
-
-        let disposed = false;
-        const controller = new AbortController();
 
         const viewer = viewerRef.current;
         if (!viewer) {
             return;
         }
 
-        // The sun-path popover is specific to whichever model it was opened
-        // for (IfcViewer.showOnly/showNone already clear the dome itself on
-        // switch); closing it here keeps the panel's open/closed state from
-        // silently drifting out of sync with that.
-        setSunPanelOpen(false);
+        desiredFileIdsRef.current = new Set(
+            visibleIfcFiles.map((f) => f.fileId)
+        );
+        viewer.setVisibleFiles(desiredFileIdsRef.current);
+        setSiteLocation(viewer.getSiteLocation());
 
-        if (!selectedIfcFile) {
-            viewer.showNone();
-            setLoadState(null);
-            setSiteLocation(null);
-            return;
-        }
-
-        if (viewer.isLoaded(selectedIfcFile.fileId)) {
-            viewer.showOnly(selectedIfcFile.fileId);
-            setLoadState(null);
-            setSiteLocation(viewer.getSiteLocation());
-            return;
-        }
-
-        setLoadState({ status: "connecting" });
-
-        viewer.onProgress = (progress) => {
-            if (disposed) {
-                return;
+        for (const file of visibleIfcFiles) {
+            const alreadyQueued = pendingQueueRef.current.some(
+                (f) => f.fileId === file.fileId
+            );
+            if (!viewer.isLoaded(file.fileId) && !alreadyQueued) {
+                pendingQueueRef.current.push(file);
             }
-            setLoadState({
-                status: "processing",
-                processed: progress.processed
-            });
-        };
+        }
 
-        (async () => {
+        if (!queueRunningRef.current) {
+            void processQueue();
+        }
+
+        async function loadOneFile(file: SelectedIfcFile): Promise<void> {
+            setLoadingFile(file);
+            setLoadState({ status: "connecting" });
+            viewer!.onProgress = (progress) => {
+                setLoadState({
+                    status: "processing",
+                    processed: progress.processed
+                });
+            };
             try {
-                const objectKey = `${projectInfo.id}/${selectedIfcFile.discipline}/${selectedIfcFile.fileId}`;
+                const signal = loadAbortControllerRef.current?.signal;
+                const objectKey = `${projectInfo.id}/${file.discipline}/${file.fileId}`;
                 const buffer = await downloadWithProgress(
                     buildProjectFileUrl(objectKey),
-                    controller.signal,
+                    signal,
                     (loadedBytes, totalBytes) => {
-                        if (disposed) {
-                            return;
-                        }
                         setLoadState({
                             status: "downloading",
                             processed: loadedBytes,
@@ -442,22 +397,13 @@ function IfcViewerPane({
                         });
                     }
                 );
-                if (disposed) {
-                    return;
-                }
-
                 setLoadState({ status: "processing", processed: 0 });
-                await viewer.loadFile(
-                    selectedIfcFile.fileId,
-                    buffer,
-                    controller.signal
-                );
-                if (!disposed) {
-                    setLoadState(null);
-                    setSiteLocation(viewer.getSiteLocation());
-                }
+                await viewer!.loadFile(file.fileId, buffer, signal);
+                viewer!.setVisibleFiles(desiredFileIdsRef.current);
+                setSiteLocation(viewer!.getSiteLocation());
+                setLoadState(null);
             } catch (error) {
-                if (disposed || controller.signal.aborted) {
+                if (loadAbortControllerRef.current?.signal.aborted) {
                     return;
                 }
                 console.error("Failed to load IFC file:", error);
@@ -468,15 +414,27 @@ function IfcViewerPane({
                             ? error.message
                             : "Failed to load 3D geometry."
                 });
+            } finally {
+                viewer!.onProgress = undefined;
+                setLoadingFile(null);
             }
-        })();
+        }
 
-        return () => {
-            disposed = true;
-            controller.abort();
-            viewer.onProgress = undefined;
-        };
-    }, [selectedIfcFile, projectInfo.id]);
+        async function processQueue(): Promise<void> {
+            queueRunningRef.current = true;
+            while (pendingQueueRef.current.length > 0) {
+                const next = pendingQueueRef.current.shift()!;
+                if (
+                    viewer!.isLoaded(next.fileId) ||
+                    !desiredFileIdsRef.current.has(next.fileId)
+                ) {
+                    continue;
+                }
+                await loadOneFile(next);
+            }
+            queueRunningRef.current = false;
+        }
+    }, [visibleIfcFiles, projectInfo.id]);
 
     function handleDismissError() {
         setLoadState(null);
@@ -626,11 +584,6 @@ function IfcViewerPane({
                         onClick={() => {
                             setSunPanelOpen((open) => {
                                 const next = !open;
-                                // Closing the panel should stop showing the
-                                // dome too - otherwise it lingers with
-                                // whatever it last showed until the user
-                                // switches files (the only other place
-                                // hideSunPath() gets called).
                                 if (!next) {
                                     viewerRef.current?.hideSunPath();
                                 }
@@ -665,11 +618,10 @@ function IfcViewerPane({
                                 viewerRef.current?.hideSunPath();
                             }}
                             onSubmit={(latLon, dateTime) => {
-                                const viewer = viewerRef.current;
-                                if (!viewer) {
-                                    return;
-                                }
-                                viewer.showSunPathAt(latLon, dateTime);
+                                viewerRef.current?.showSunPathAt(
+                                    latLon,
+                                    dateTime
+                                );
                             }}
                         />
                     )}
@@ -678,7 +630,7 @@ function IfcViewerPane({
 
             <div ref={mountRef} className="h-full w-full" />
 
-            {!selectedIfcFile && (
+            {visibleIfcFiles.length === 0 && (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-muted-foreground">
                     Select an IFC file from the sidebar to view it here.
                 </div>
@@ -686,7 +638,7 @@ function IfcViewerPane({
 
             <IfcLoadStatusBar
                 loadState={loadState}
-                fileName={selectedIfcFile?.fileName}
+                fileName={loadingFile?.fileName}
                 onDismissError={handleDismissError}
             />
         </div>
