@@ -107,7 +107,7 @@ function SemanticSearchPanel({
             {!collapsed && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 min-h-0">
                     <QueryEditor
-                        className="border-r border-border/40"
+                        className="border-r border-border/40 p-3"
                         query={query}
                         onQueryChange={setQuery}
                         onRun={runSearch}
@@ -117,6 +117,7 @@ function SemanticSearchPanel({
                         onSelectExample={selectExample}
                     />
                     <ResultsTable
+                        className="p-3"
                         triples={triples ?? []}
                         isLoading={isLoading}
                         isError={isError}
