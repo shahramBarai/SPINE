@@ -7,13 +7,26 @@ import {
     Minimize2
 } from "lucide-react";
 import { cn } from "utils/index";
-import { QueryEditor } from "components/complex/semanticSearch/QueryEditor";
-import { ResultsTable } from "components/complex/semanticSearch/ResultsTable";
-import { useSemanticSearch } from "./hooks/useSemanticSearch";
+import { api } from "utils/trpc";
+import { useDigitalTwin } from "hooks/useDigitalTwin";
 import {
-    DEFAULT_SPARQL_QUERY,
-    SEMANTIC_SEARCH_EXAMPLES
-} from "./utils/semanticSearchExamples";
+    QueryEditor,
+    type SemanticSearchExample
+} from "components/complex/semanticSearch/QueryEditor";
+import { ResultsTable } from "components/complex/semanticSearch/ResultsTable";
+
+export const DEFAULT_SPARQL_QUERY = `SELECT ?s ?p ?o
+WHERE {
+  ?s ?p ?o .
+}
+LIMIT 200`;
+
+// Shown in the examples dropdown in place of the project's saved queries
+// when it has none saved yet, so there's always at least one query to load.
+const FALLBACK_EXAMPLE: SemanticSearchExample = {
+    id: "all-triples",
+    label: "All triples"
+};
 
 function SemanticSearchPanel({
     maximized,
@@ -28,18 +41,35 @@ function SemanticSearchPanel({
     onToggleCollapsed: () => void;
     hidden?: boolean;
 }) {
+    const { projectInfo } = useDigitalTwin();
     const [query, setQuery] = useState(DEFAULT_SPARQL_QUERY);
     const [submittedQuery, setSubmittedQuery] = useState<string | null>(null);
     const [selectedExampleId, setSelectedExampleId] = useState("");
+    const [isLoadingExample, setIsLoadingExample] = useState(false);
 
     const {
         data: triples,
         isLoading,
-        isError
-    } = useSemanticSearch({
-        query: submittedQuery,
-        enabled: submittedQuery !== null
-    });
+        isError,
+        error
+    } = api.digitalTwin.runSemanticSearch.useQuery(
+        { projectId: projectInfo.id, query: submittedQuery ?? "" },
+        { enabled: submittedQuery !== null && query !== null }
+    );
+
+    const { data: savedQueries } =
+        api.digitalTwin.listSemanticSearchQueries.useQuery({
+            projectId: projectInfo.id
+        });
+    const utils = api.useUtils();
+
+    const examples: SemanticSearchExample[] =
+        savedQueries && savedQueries.length > 0
+            ? savedQueries.map((saved) => ({
+                  id: saved.fileId,
+                  label: saved.name
+              }))
+            : [FALLBACK_EXAMPLE];
 
     const runSearch = () => {
         const trimmed = query.trim();
@@ -49,13 +79,30 @@ function SemanticSearchPanel({
         setSubmittedQuery(trimmed);
     };
 
-    const selectExample = (exampleId: string) => {
+    const selectExample = async (exampleId: string) => {
         setSelectedExampleId(exampleId);
-        const example = SEMANTIC_SEARCH_EXAMPLES.find(
-            (entry) => entry.id === exampleId
-        );
-        if (example) {
-            setQuery(example.query);
+
+        // The fallback only ever appears when there are no saved queries to
+        // look up, so resolve it locally instead of hitting the backend.
+        if (exampleId === FALLBACK_EXAMPLE.id) {
+            setQuery(DEFAULT_SPARQL_QUERY);
+            return;
+        }
+
+        setIsLoadingExample(true);
+        try {
+            const { query: text } =
+                await utils.digitalTwin.getSemanticSearchQuery.fetch({
+                    projectId: projectInfo.id,
+                    fileId: exampleId
+                });
+            setQuery(text);
+        } catch {
+            // A saved query becoming unreadable mid-session (deleted, MinIO
+            // hiccup) shouldn't crash the panel - the dropdown selection
+            // just doesn't load new text, leaving whatever was there before.
+        } finally {
+            setIsLoadingExample(false);
         }
     };
 
@@ -112,15 +159,17 @@ function SemanticSearchPanel({
                         onQueryChange={setQuery}
                         onRun={runSearch}
                         isLoading={isLoading}
-                        examples={SEMANTIC_SEARCH_EXAMPLES}
+                        examples={examples}
                         selectedExampleId={selectedExampleId}
-                        onSelectExample={selectExample}
+                        onSelectExample={(id) => void selectExample(id)}
+                        isLoadingExample={isLoadingExample}
                     />
                     <ResultsTable
                         className="p-3"
                         triples={triples ?? []}
                         isLoading={isLoading}
                         isError={isError}
+                        errorMessage={error?.message}
                         hasSearched={submittedQuery !== null}
                     />
                 </div>

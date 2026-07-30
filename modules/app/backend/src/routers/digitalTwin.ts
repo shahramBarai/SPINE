@@ -6,10 +6,12 @@ import {
     DatasetService,
     BuildingGraphService,
     RelationshipGraphService,
+    SemanticSearchService,
     FusekiSparqlError
 } from "@spine/storage-rdf-store";
 import { EntityService, FileService } from "@spine/storage-platform";
 import { getCoverImageUrl } from "../utils/coverImage";
+import { readStreamToText } from "../utils/stream";
 
 // FusekiSparqlError with status 404 covers two "no data yet" cases: the
 // project's dataset hasn't been provisioned, or the dataset exists but this
@@ -203,5 +205,65 @@ export const digitalTwinRouter = router({
                     includePredicates: input.includePredicates
                 }
             ).catch(rethrowMissingDataset);
+        }),
+
+    runSemanticSearch: publicProcedure
+        .input(z.object({ projectId: z.string(), query: z.string().min(1) }))
+        .query(async ({ input }) => {
+            try {
+                return await SemanticSearchService.executeSemanticSearchQuery(
+                    input.projectId,
+                    input.query
+                );
+            } catch (error) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : "Failed to execute SPARQL query"
+                });
+            }
+        }),
+
+    listSemanticSearchQueries: publicProcedure
+        .input(z.object({ projectId: z.string() }))
+        .query(async ({ input }) => {
+            const files = await FileService.listFiles(input.projectId);
+            return files
+                .filter(
+                    (file) =>
+                        ProjectFileService.getFolderFromObjectKey(
+                            file.objectKey
+                        ) === ProjectFileService.ReservedFolder.SavedQueries
+                )
+                .map((file) => ({
+                    fileId: file.id,
+                    name: ProjectFileService.parseSavedQueryName(file.fileName)
+                }));
+        }),
+
+    getSemanticSearchQuery: publicProcedure
+        .input(z.object({ projectId: z.string(), fileId: z.string() }))
+        .query(async ({ input }) => {
+            const file = await FileService.getFile(
+                input.projectId,
+                input.fileId
+            );
+            if (!file) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "Saved query not found"
+                });
+            }
+
+            const stream = await ProjectFileService.readFile(file.objectKey);
+            if (!stream) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: `Saved query not found: ${file.fileName}`
+                });
+            }
+            return { query: await readStreamToText(stream) };
         })
 });
