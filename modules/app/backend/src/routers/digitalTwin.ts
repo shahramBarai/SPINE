@@ -10,6 +10,7 @@ import {
     FusekiSparqlError
 } from "@spine/storage-rdf-store";
 import { EntityService, FileService } from "@spine/storage-platform";
+import { twinProjectProcedure } from "../procedures/project";
 import { getCoverImageUrl } from "../utils/coverImage";
 import { readStreamToText } from "../utils/stream";
 
@@ -30,10 +31,6 @@ function rethrowMissingDataset(error: unknown): never {
     throw error;
 }
 
-function buildTtlGraphUri(discipline: string, fileId: string): string {
-    return `urn:spine:${discipline}:${fileId}`;
-}
-
 interface FileInfo {
     discipline: string;
     fileId: string;
@@ -45,8 +42,8 @@ interface FileInfo {
 // -----------------------------------------------------------------------------
 
 export const digitalTwinRouter = router({
-    // Projects visible to the caller: public projects, plus (if logged in)
-    // any project they are a member of.
+    // Projects visible to the caller: twin-enabled projects, plus (if logged
+    // in) any project they are a member of.
     getProjects: publicProcedure.query(async ({ ctx }) => {
         const projects = await EntityService.getVisibleProjects(
             ctx.session.data?.user?.id
@@ -66,29 +63,20 @@ export const digitalTwinRouter = router({
     // isn't synced yet (see BuildingGraphService.get_root_id). Lets the
     // digital-twin page resolve the active project directly instead of
     // fetching the whole visible-projects list and filtering by id.
-    getProject: publicProcedure
-        .input(z.object({ projectId: z.string() }))
-        .query(async ({ input }) => {
-            const project = await EntityService.getEntityById(input.projectId);
-            if (!project) {
-                throw new TRPCError({
-                    code: "NOT_FOUND",
-                    message: `Project not found: ${input.projectId}`
-                });
+    getProject: twinProjectProcedure.query(async ({ ctx, input }) => {
+        const rootId = await BuildingGraphService.get_root_id(
+            input.projectId
+        ).catch((error) => {
+            if (error instanceof FusekiSparqlError && error.status === 404) {
+                return null;
             }
+            throw error;
+        });
 
-            // Empty fileId trims buildTtlGraphUri's output down to the
-            // "urn:spine:disc-ark:" prefix shared by every ARK graph.
-            const arkGraphPrefix = buildTtlGraphUri("disc-ark", "");
-            const rootId = await BuildingGraphService.get_root_id(
-                input.projectId,
-                arkGraphPrefix
-            ).catch(rethrowMissingDataset);
+        const coverImageUrl = getCoverImageUrl(ctx.project.coverImageKey);
 
-            const coverImageUrl = getCoverImageUrl(project.coverImageKey);
-
-            return { ...project, rootId, coverImageUrl };
-        }),
+        return { ...ctx.project, rootId, coverImageUrl };
+    }),
 
     // Creates a project and its dedicated Fuseki dataset together. If dataset
     // provisioning fails, the project row is rolled back so a project never
@@ -98,15 +86,14 @@ export const digitalTwinRouter = router({
             z.object({
                 name: z.string().min(1),
                 description: z.string().optional(),
-                isPublic: z.boolean().optional()
+                type: z.enum(["DISTRICT", "CAMPUS", "BUILDING", "LAB"])
             })
         )
         .mutation(async ({ ctx, input }) => {
             const project = await EntityService.createEntity({
                 name: input.name,
                 description: input.description,
-                type: "PROJECT",
-                isPublic: input.isPublic ?? false,
+                type: input.type,
                 members: [{ userId: ctx.user.id, role: "OWNER" }]
             });
 
@@ -120,10 +107,9 @@ export const digitalTwinRouter = router({
             return project;
         }),
 
-    getProjectFilesInfo: publicProcedure
+    getProjectFilesInfo: twinProjectProcedure
         .input(
             z.object({
-                projectId: z.string(),
                 discipline: z.string().optional(),
                 fileTypes: z.array(z.enum(["ifc", "ttl", "pdf"]))
             })
@@ -162,27 +148,23 @@ export const digitalTwinRouter = router({
                 }));
         }),
 
-    getGraphTree: publicProcedure
+    getGraphTree: twinProjectProcedure
         .input(
             z.object({
-                projectId: z.string(),
                 discipline: z.string(),
                 fileId: z.string()
             })
         )
         .query(async ({ input }) => {
-            const graphUri = buildTtlGraphUri(input.discipline, input.fileId);
-
             return await BuildingGraphService.get_tree(
                 input.projectId,
-                graphUri
+                "DEFAULT"
             ).catch(rethrowMissingDataset);
         }),
 
-    getRelationshipGraph: publicProcedure
+    getRelationshipGraph: twinProjectProcedure
         .input(
             z.object({
-                projectId: z.string(),
                 focusId: z.string(),
                 includeNodeTypes: z.array(z.string()).optional(),
                 excludeNodeTypes: z.array(z.string()).optional(),
@@ -207,8 +189,8 @@ export const digitalTwinRouter = router({
             ).catch(rethrowMissingDataset);
         }),
 
-    runSemanticSearch: publicProcedure
-        .input(z.object({ projectId: z.string(), query: z.string().min(1) }))
+    runSemanticSearch: twinProjectProcedure
+        .input(z.object({ query: z.string().min(1) }))
         .query(async ({ input }) => {
             try {
                 return await SemanticSearchService.executeSemanticSearchQuery(
@@ -226,25 +208,23 @@ export const digitalTwinRouter = router({
             }
         }),
 
-    listSemanticSearchQueries: publicProcedure
-        .input(z.object({ projectId: z.string() }))
-        .query(async ({ input }) => {
-            const files = await FileService.listFiles(input.projectId);
-            return files
-                .filter(
-                    (file) =>
-                        ProjectFileService.getFolderFromObjectKey(
-                            file.objectKey
-                        ) === ProjectFileService.ReservedFolder.SavedQueries
-                )
-                .map((file) => ({
-                    fileId: file.id,
-                    name: ProjectFileService.parseSavedQueryName(file.fileName)
-                }));
-        }),
+    listSemanticSearchQueries: twinProjectProcedure.query(async ({ input }) => {
+        const files = await FileService.listFiles(input.projectId);
+        return files
+            .filter(
+                (file) =>
+                    ProjectFileService.getFolderFromObjectKey(
+                        file.objectKey
+                    ) === ProjectFileService.ReservedFolder.SavedQueries
+            )
+            .map((file) => ({
+                fileId: file.id,
+                name: ProjectFileService.parseSavedQueryName(file.fileName)
+            }));
+    }),
 
-    getSemanticSearchQuery: publicProcedure
-        .input(z.object({ projectId: z.string(), fileId: z.string() }))
+    getSemanticSearchQuery: twinProjectProcedure
+        .input(z.object({ fileId: z.string() }))
         .query(async ({ input }) => {
             const file = await FileService.getFile(
                 input.projectId,

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { Boxes } from "lucide-react";
 import { type ImperativePanelHandle } from "react-resizable-panels";
 import { LeftSidebar } from "components/feature/twin/LeftSidebar";
 import { TopNav } from "components/feature/twin/TopNav/index";
@@ -18,10 +20,32 @@ import { pageGuard } from "utils/pageGuard";
 type MaximizedZone = "viewer" | "graph" | "semantic" | null;
 
 interface DigitalTwinPageProps {
-    project: { id: string; name: string; rootId: string };
+    project: { id: string; name: string; rootId: string | null };
 }
 
 function DigitalTwinPageContent({ project }: DigitalTwinPageProps) {
+    if (project.rootId === null) {
+        return (
+            <div className="h-screen w-screen flex flex-col items-center justify-center gap-3 bg-background text-foreground">
+                <Boxes className="h-10 w-10 text-muted-foreground" />
+                <p className="text-lg font-medium">
+                    No building data synced yet
+                </p>
+                <p className="text-sm text-muted-foreground max-w-md text-center">
+                    This project has no building/site data in its graph yet.
+                    Upload an IFC file and run the IFC-to-graph conversion tool
+                    from the project's manage page to get started.
+                </p>
+                <Link
+                    to={`/projects/${project.id}/manage`}
+                    className="text-sm text-primary hover:underline"
+                >
+                    Go to project settings
+                </Link>
+            </div>
+        );
+    }
+
     return (
         <DigitalTwinProvider
             key={project.id}

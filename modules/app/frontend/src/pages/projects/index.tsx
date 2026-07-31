@@ -30,7 +30,8 @@ const ProjectsPage = () => {
                         imageUrl={project.coverImageUrl ?? undefined}
                         title={project.name}
                         description={project.description || ""}
-                        isPublic={project.isPublic}
+                        type={project.type}
+                        isTwinEnabled={project.isTwinEnabled}
                         href={`/projects/${project.id}/manage`}
                     />
                 ))}

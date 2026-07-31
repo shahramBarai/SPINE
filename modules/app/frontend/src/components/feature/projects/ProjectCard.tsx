@@ -6,7 +6,8 @@ interface BaseProps {
     imageUrl?: string;
     title: string;
     description: string;
-    isPublic: boolean;
+    type: string;
+    isTwinEnabled: boolean;
     className?: string;
 }
 interface LinkProps extends BaseProps {
@@ -20,21 +21,52 @@ interface ButtonProps extends BaseProps {
 
 type ProjectCardProps = LinkProps | ButtonProps;
 
-const VisibilityBadge = ({ isPublic }: { isPublic: boolean }) => (
+const ProjectTypesMap: Record<string, { style: string; text: string }> = {
+    DISTRICT: {
+        style: "bg-red-100/50 text-red-500 border border-red-300",
+        text: "District"
+    },
+    CAMPUS: {
+        style: "bg-blue-100/50 text-blue-500 border border-blue-300",
+        text: "Campus"
+    },
+    BUILDING: {
+        style: "bg-green-100/50 text-green-500 border border-green-300",
+        text: "Building"
+    },
+    LAB: {
+        style: "bg-purple-100/50 text-purple-500 border border-purple-300",
+        text: "Lab"
+    }
+};
+
+const Badge = ({ type }: { type: string }) => {
+    const typeData = ProjectTypesMap[type];
+    if (!typeData) return null;
+    return (
+        <div className={cn("text-xs rounded-md px-2 py-1", typeData.style)}>
+            {typeData.text}
+        </div>
+    );
+};
+
+// "Live" means the project's digital twin is published - anyone can open it.
+// A draft is visible to its members only.
+const TwinStatusBadge = ({ isTwinEnabled }: { isTwinEnabled: boolean }) => (
     <div
         className={cn(
             "flex items-center gap-1 text-xs rounded-md px-2 py-1",
-            isPublic
+            isTwinEnabled
                 ? "bg-blue-100/50 text-blue-500 border border-blue-300"
                 : "bg-muted text-muted-foreground border border-border"
         )}
     >
-        {isPublic ? (
+        {isTwinEnabled ? (
             <Globe className="h-3 w-3" />
         ) : (
             <Lock className="h-3 w-3" />
         )}
-        {isPublic ? "Public" : "Private"}
+        {isTwinEnabled ? "Live" : "Draft"}
     </div>
 );
 
@@ -42,7 +74,8 @@ function ProjectCard({
     imageUrl,
     title,
     description,
-    isPublic,
+    type,
+    isTwinEnabled,
     className,
     onClick,
     href
@@ -50,7 +83,7 @@ function ProjectCard({
     return (
         <div
             className={cn(
-                "relative border border-border rounded-lg shadow-sm bg-background overflow-hidden group",
+                "relative flex flex-col border border-border rounded-lg shadow-sm bg-background overflow-hidden group",
                 className
             )}
         >
@@ -70,21 +103,24 @@ function ProjectCard({
                 <div className="absolute inset-0 group-hover:bg-foreground/15 transition-colors duration-300" />
             </div>
             {/* Content */}
-            <div className="p-4 w-full group-hover:bg-surface/50 transition-colors duration-300">
-                <div className="flex flex-col gap-3">
-                    {/* Title + Description */}
-                    <div className="flex flex-col text-left">
-                        <h2 className="text-xl font-bold text-foreground truncate mb-1">
-                            {title}
-                        </h2>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                            {description}
-                        </p>
-                    </div>
-                    {/* Badge */}
-                    <div className="flex flex-row justify-end items-end">
-                        <VisibilityBadge isPublic={isPublic} />
-                    </div>
+            <div className="p-4 flex-1 flex flex-col justify-between gap-1 group-hover:bg-surface/50 transition-colors duration-300">
+                {/* Title + Description */}
+                <div className="flex flex-col text-left">
+                    <h2
+                        className={cn(
+                            "text-xl font-bold text-foreground truncate mb-1"
+                        )}
+                    >
+                        {title}
+                    </h2>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                        {description}
+                    </p>
+                </div>
+                {/* Badge */}
+                <div className="flex flex-row justify-end items-end gap-1">
+                    <Badge type={type} />
+                    <TwinStatusBadge isTwinEnabled={isTwinEnabled} />
                 </div>
             </div>
             {/* Expand hit area for button or link */}
@@ -119,7 +155,7 @@ function ProjectCardLoading() {
                     </div>
                     {/* Badge */}
                     <div className="flex flex-row justify-end items-end">
-                        <Skeleton className="h-[20px] w-[60px]" />
+                        <Skeleton className="h-5 w-[60px]" />
                     </div>
                 </div>
             </div>

@@ -144,15 +144,26 @@ async function handleProjectFileUpload(
 }
 
 /**
+ * Readable by anyone once the project's digital twin is enabled - the public
+ * 3D viewer downloads raw IFC bytes straight from this route, so gating them
+ * behind membership would leave a published twin with an empty viewer. A
+ * draft project keeps every file (covers included) member-only.
+ */
+async function canReadProjectFiles(
+    projectId: string,
+    user: UserSession | undefined
+): Promise<boolean> {
+    const project = await EntityService.getEntityById(projectId);
+    if (!project) return false;
+    if (project.isTwinEnabled) return true;
+    return Boolean(user && (await EntityService.getMember(projectId, user.id)));
+}
+
+/**
  * Handles `GET /files/<projectId>/<folder>/<fileId>` - cover images (stored
  * under the reserved ReservedFolder.Cover, not Postgres-tracked) are served
  * straight from the object key; every other project file is Postgres-tracked
  * and looks up its fileName/objectKey from its File row.
- *
- * Cover images are viewable by anyone who can see the project at all -
- * public, or a member. Every other project file requires membership,
- * matching the project-role hierarchy the Files tab already enforces for
- * listing/uploading.
  */
 async function handleProjectFileDownload(
     req: IncomingMessage,
@@ -174,14 +185,7 @@ async function handleProjectFileDownload(
             fileName: fileId,
             disposition: "inline",
             getStream: () => ProjectFileService.readFile(objectKey),
-            authorize: async (user) => {
-                const project = await EntityService.getEntityById(projectId);
-                if (!project) return false;
-                if (project.isPublic) return true;
-                return Boolean(
-                    user && (await EntityService.getMember(projectId, user.id))
-                );
-            }
+            authorize: (user) => canReadProjectFiles(projectId, user)
         });
         return;
     }
@@ -199,8 +203,7 @@ async function handleProjectFileDownload(
         disposition: "attachment",
         contentLength: file.size,
         getStream: () => ProjectFileService.readFile(file.objectKey),
-        authorize: async (user) =>
-            Boolean(user && (await EntityService.getMember(projectId, user.id)))
+        authorize: (user) => canReadProjectFiles(projectId, user)
     });
 }
 

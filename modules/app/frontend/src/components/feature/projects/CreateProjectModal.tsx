@@ -4,13 +4,27 @@ import { api } from "utils/trpc";
 import { Modal } from "components/complex/Modal";
 import { Input } from "components/basics/input";
 import { Label } from "components/basics/label";
-import { Switch } from "components/basics/switch";
 import { Button } from "components/basics/Button";
+import {
+    Select,
+    SelectTrigger,
+    SelectValue,
+    SelectItem,
+    SelectContent
+} from "../../basics/select";
+import { Textarea } from "components/basics/textarea";
+
+enum EntityType {
+    DISTRICT = "DISTRICT",
+    CAMPUS = "CAMPUS",
+    BUILDING = "BUILDING",
+    LAB = "LAB"
+}
 
 interface CreateProjectForm {
     name: string;
     description: string;
-    isPublic: boolean;
+    type: EntityType;
 }
 
 function CreateProjectModal({
@@ -21,10 +35,8 @@ function CreateProjectModal({
     setOpen: (open: boolean) => void;
 }) {
     const utils = api.useUtils();
-    const { handleSubmit, register, watch, setValue, reset } =
-        useForm<CreateProjectForm>({
-            defaultValues: { isPublic: false }
-        });
+    const { handleSubmit, register, setValue, reset } =
+        useForm<CreateProjectForm>();
 
     const createProject = api.digitalTwin.createProject.useMutation();
 
@@ -58,19 +70,29 @@ function CreateProjectModal({
                 </div>
                 <div className="flex flex-col gap-2">
                     <Label>Description</Label>
-                    <Input
+                    <Textarea
                         {...register("description")}
                         placeholder="Enter description"
                     />
                 </div>
-                <div className="flex items-center gap-2">
-                    <Switch
-                        checked={watch("isPublic")}
-                        onCheckedChange={(checked) =>
-                            setValue("isPublic", checked)
+                <div className="flex flex-col gap-2">
+                    <Label>Type</Label>
+                    <Select
+                        onValueChange={(value) =>
+                            setValue("type", value as EntityType)
                         }
-                    />
-                    <Label>Public project</Label>
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {Object.values(EntityType).map((type) => (
+                                <SelectItem key={type} value={type}>
+                                    {type}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
                 <Button
                     type="submit"

@@ -45,7 +45,7 @@ function SettingsTab({ projectId }: { projectId: string }) {
                     projectId={projectId}
                     name={project.name}
                     description={project.description}
-                    isPublic={project.isPublic}
+                    isTwinEnabled={project.isTwinEnabled}
                 />
             </div>
             <div className="w-3/5 flex flex-col gap-3">

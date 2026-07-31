@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Boxes } from "lucide-react";
 import { api } from "utils/trpc";
 import { pageGuard } from "utils/pageGuard";
+import { Button } from "components/basics/Button";
 import { TabBar } from "components/complex/TabBar";
 import { FilesOverviewTab } from "components/feature/projectManage/FilesOverviewTab";
 import { SettingsTab } from "components/feature/projectManage/SettingsTab";
@@ -15,7 +18,7 @@ const TABS: { id: ManageTab; label: string }[] = [
 ];
 
 interface ProjectManagePageProps {
-    project: { id: string; name: string };
+    project: { id: string; name: string; isTwinEnabled: boolean };
     role: "OWNER" | "EDITOR" | "VIEWER";
 }
 
@@ -26,9 +29,27 @@ function ProjectManagePageContent({ project, role }: ProjectManagePageProps) {
 
     return (
         <div className="p-6 max-w-5xl mx-auto pb-20">
-            <h1 className="text-2xl font-bold text-foreground mb-1">
-                {project.name}
-            </h1>
+            <div className="flex items-start justify-between gap-4 mb-1">
+                <h1 className="text-2xl font-bold text-foreground">
+                    {project.name}
+                </h1>
+                {/* Members can always open the twin, draft or not - the
+                    badge just flags that it isn't public yet. */}
+                <Link
+                    to={`/projects/${project.id}/digital-twin`}
+                    className="shrink-0"
+                >
+                    <Button variant="outline" size="sm">
+                        <Boxes className="h-4 w-4" />
+                        Open Digital Twin
+                        {!project.isTwinEnabled && (
+                            <span className="ml-1 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                Draft
+                            </span>
+                        )}
+                    </Button>
+                </Link>
+            </div>
             <p className="text-sm text-muted-foreground mb-6">
                 Manage members, files, and semantic graphs for this project.
             </p>

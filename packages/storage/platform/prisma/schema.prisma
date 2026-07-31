@@ -37,7 +37,7 @@ model Entity {
     name     String
     description String?
     type     EntityType
-    isPublic Boolean  @default(false)
+    isTwinEnabled Boolean @default(false)
     coverImageKey String?
 
     members  EntityMember[]

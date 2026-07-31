@@ -18,7 +18,6 @@ async function createEntity(data: {
     name: string;
     type: EntityType;
     description?: string;
-    isPublic?: boolean;
     members?: { userId: string; role: MemberRole }[];
 }) {
     // Validate that all member users exist if members are provided
@@ -38,7 +37,7 @@ async function createEntity(data: {
             name: data.name,
             description: data.description,
             type: data.type,
-            isPublic: data.isPublic ?? false,
+            isTwinEnabled: false,
             members: data.members
                 ? {
                       create: data.members
@@ -50,7 +49,7 @@ async function createEntity(data: {
             name: true,
             description: true,
             type: true,
-            isPublic: true,
+            isTwinEnabled: true,
             createdAt: true,
             updatedAt: true
         }
@@ -138,7 +137,7 @@ async function getEntityById(id: string) {
             name: true,
             description: true,
             type: true,
-            isPublic: true,
+            isTwinEnabled: true,
             coverImageKey: true,
             createdAt: true,
             updatedAt: true
@@ -174,17 +173,17 @@ async function getEntitiesByUserId(userId: string) {
 }
 
 /**
- * Get PROJECT entities visible to a user: entities marked public, plus any
- * the user is a member of. Anonymous callers (no userId) only see public ones.
+ * Get PROJECT entities visible to a user: projects with the digital twin
+ * enabled, plus any the user is a member of. Anonymous callers (no userId)
+ * only see twin-enabled ones.
  * @param userId - The id of the user, if authenticated
  * @returns An array of visible project entities
  */
 async function getVisibleProjects(userId?: string) {
     const projects = await prisma.entity.findMany({
         where: {
-            type: EntityType.PROJECT,
             OR: [
-                { isPublic: true },
+                { isTwinEnabled: true },
                 ...(userId ? [{ members: { some: { userId } } }] : [])
             ]
         },
@@ -192,7 +191,8 @@ async function getVisibleProjects(userId?: string) {
             id: true,
             name: true,
             description: true,
-            isPublic: true,
+            type: true,
+            isTwinEnabled: true,
             coverImageKey: true,
             createdAt: true,
             updatedAt: true
@@ -248,7 +248,7 @@ async function updateEntity(
     data: {
         name?: string;
         description?: string;
-        isPublic?: boolean;
+        isTwinEnabled?: boolean;
         coverImageKey?: string | null;
     }
 ) {

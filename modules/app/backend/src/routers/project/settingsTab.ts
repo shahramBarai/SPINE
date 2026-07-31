@@ -54,14 +54,14 @@ export const settingsTabRouter = router({
             z.object({
                 name: z.string().min(1),
                 description: z.string().optional(),
-                isPublic: z.boolean()
+                isTwinEnabled: z.boolean()
             })
         )
         .mutation(async ({ input }) => {
             return await EntityService.updateEntity(input.projectId, {
                 name: input.name,
                 description: input.description,
-                isPublic: input.isPublic
+                isTwinEnabled: input.isTwinEnabled
             });
         }),
 
