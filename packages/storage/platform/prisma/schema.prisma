@@ -17,7 +17,6 @@ model User {
 
     entityMemberships EntityMember[]
     jobExecutions     JobExecution[]
-    apiKeys           ApiKey[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -157,16 +156,30 @@ model ApiKey {
     keyPrefix  String
 
     entityId   String
-    createdBy  String
+
+    canReadGraph Boolean   @default(false)
+    fileGrants ApiKeyFile[]
+    expiresAt    DateTime?
 
     lastUsedAt DateTime?
     createdAt  DateTime  @default(now())
     updatedAt  DateTime  @updatedAt
 
-    entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
-    user   User   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+    entity     Entity       @relation(fields: [entityId], references: [id], onDelete: Cascade)
 
     @@index([entityId])
+}
+
+model ApiKeyFile {
+    apiKeyId  String
+    fileId    String
+    createdAt DateTime @default(now())
+
+    apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+    file   File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+    @@id([apiKeyId, fileId])
+    @@index([fileId])
 }
 
 // Kafka topic model for Kafka topics
@@ -253,7 +266,8 @@ model File {
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
-    entity     Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+    entity       Entity       @relation(fields: [entityId], references: [id], onDelete: Cascade)
+    apiKeyGrants ApiKeyFile[]
 
     @@index([entityId])
 }
