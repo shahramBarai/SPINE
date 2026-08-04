@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Key, Loader2, Trash2 } from "lucide-react";
+import { Copy, Key, Loader2, SlidersHorizontal, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { api } from "utils/trpc";
 import { cn } from "utils/index";
@@ -8,6 +8,30 @@ import { Input } from "components/basics/input";
 import { Modal } from "components/complex/Modal";
 import { ConfirmModal } from "components/complex/ConfirmModal";
 import { SectionCard } from "components/complex/SectionCard";
+import { ApiKeyAccessModal } from "./ApiKeyAccessModal";
+
+type ApiKeyListItem = {
+    id: string;
+    name: string;
+    canReadGraph: boolean;
+    expiresAt: Date | string | null;
+    fileGrantCount: number;
+};
+
+/**
+ * Summarizes what a key currently unlocks, so an owner can audit the list
+ * without opening each key's access editor.
+ */
+function describeAccess(key: ApiKeyListItem): string {
+    const parts: string[] = [];
+    if (key.canReadGraph) parts.push("Graph");
+    if (key.fileGrantCount > 0) {
+        parts.push(
+            `${key.fileGrantCount} file${key.fileGrantCount === 1 ? "" : "s"}`
+        );
+    }
+    return parts.length > 0 ? parts.join(" · ") : "No access";
+}
 
 // `date` may arrive as an ISO string over the wire even though its static
 // type says Date, since plain JSON (no superjson transformer here) can't
@@ -43,6 +67,9 @@ function ApiKeysSection({
         id: string;
         name: string;
     } | null>(null);
+    const [accessTarget, setAccessTarget] = useState<ApiKeyListItem | null>(
+        null
+    );
 
     const invalidateKeys = () =>
         utils.project.settingsTab.listApiKeys.invalidate({ projectId });
@@ -104,9 +131,9 @@ function ApiKeysSection({
     return (
         <SectionCard title="API Access" className={className}>
             <p className="text-xs text-muted-foreground">
-                API keys let external systems run read-only SPARQL queries
-                against this project's dataset. Anyone with a key can query it -
-                treat keys like passwords.
+                API keys let external systems read this project. A new key
+                grants nothing until you give it graph or file access. Anyone
+                holding a key can use it - treat keys like passwords.
             </p>
 
             <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
@@ -126,7 +153,21 @@ function ApiKeysSection({
                                     ? `· Last used ${formatDate(key.lastUsedAt)}`
                                     : "· Never used"}
                             </span>
+                            <span className="text-xs text-muted-foreground truncate">
+                                {describeAccess(key)}
+                                {key.expiresAt
+                                    ? ` · Expires ${formatDate(key.expiresAt)}`
+                                    : ""}
+                            </span>
                         </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Manage access"
+                            onClick={() => setAccessTarget(key)}
+                        >
+                            <SlidersHorizontal className="h-4 w-4" />
+                        </Button>
                         <Button
                             variant="ghost"
                             size="icon"
@@ -187,6 +228,17 @@ function ApiKeysSection({
                     </button>
                 )}
             </div>
+
+            {accessTarget && (
+                <ApiKeyAccessModal
+                    projectId={projectId}
+                    apiKey={accessTarget}
+                    open={!!accessTarget}
+                    setOpen={(open) => {
+                        if (!open) setAccessTarget(null);
+                    }}
+                />
+            )}
 
             {revokeTarget && (
                 <ConfirmModal

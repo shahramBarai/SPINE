@@ -19,14 +19,12 @@ function hashKey(rawKey: string): string {
  * A key starts with no access at all: pass `canReadGraph` to allow graph
  * reads, and grant files individually with addFileGrant.
  * @param entityId - The id of the project the key grants access to
- * @param createdBy - The id of the user creating the key
  * @param name - A label for the key, for the owner's own bookkeeping (e.g. "CI pipeline")
  * @param access - Optional graph permission and expiry; both default to "no access"/"never expires"
  * @returns The created key's metadata plus the one-time raw key value
  */
 async function createApiKey(
     entityId: string,
-    createdBy: string,
     name: string,
     access?: { canReadGraph?: boolean; expiresAt?: Date | null }
 ) {
@@ -37,7 +35,6 @@ async function createApiKey(
     const apiKey = await prisma.apiKey.create({
         data: {
             entityId,
-            createdBy,
             name,
             keyHash,
             keyPrefix,

@@ -13,6 +13,22 @@ import {
 import { type MemberRole } from "@spine/storage-platform/types";
 import { ProjectFileService } from "@spine/storage-minio";
 import { getCoverImageUrl } from "../../utils/coverImage";
+import { asBadRequest } from "./shared";
+
+const API_KEY_NAME_MAX_LENGTH = 100;
+
+/**
+ * Rejects an expiry that is already in the past, which would otherwise mint
+ * or leave a key that can never authenticate.
+ */
+function assertFutureExpiry(expiresAt: Date | null | undefined): void {
+    if (expiresAt && expiresAt <= new Date()) {
+        throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Expiry must be in the future."
+        });
+    }
+}
 
 // Backs SettingsTab's four sections (ProjectDetailsSection, MembersSection,
 // CoverImageSection, ApiKeysSection) - each too small for its own file, but
@@ -153,22 +169,112 @@ export const settingsTabRouter = router({
         return { success: true };
     }),
 
-    // API keys let external systems run read-only SPARQL queries against
-    // this project's dataset (see routes/sparqlApi.ts) without a user
-    // session - owner-only since creating one hands out standing query
-    // access to the whole dataset.
+    // API keys authenticate external systems that have no user session.
+    // Owner-only: a key's scope is granted per graph and per file, so
+    // handing one out is a standing grant over whatever it's been given.
     listApiKeys: projectOwnerProcedure.query(async ({ input }) => {
         return await ApiKeyService.listApiKeys(input.projectId);
     }),
 
     createApiKey: projectOwnerProcedure
-        .input(z.object({ name: z.string().min(1) }))
-        .mutation(async ({ ctx, input }) => {
+        .input(
+            z.object({
+                name: z.string().trim().min(1).max(API_KEY_NAME_MAX_LENGTH),
+                canReadGraph: z.boolean().default(false),
+                expiresAt: z.coerce.date().nullish()
+            })
+        )
+        .mutation(async ({ input }) => {
+            assertFutureExpiry(input.expiresAt);
+
             return await ApiKeyService.createApiKey(
                 input.projectId,
-                ctx.user.id,
-                input.name.trim()
+                input.name,
+                {
+                    canReadGraph: input.canReadGraph,
+                    expiresAt: input.expiresAt ?? null
+                }
             );
+        }),
+
+    updateApiKeyAccess: projectOwnerProcedure
+        .input(
+            z.object({
+                keyId: z.string(),
+                canReadGraph: z.boolean().optional(),
+                expiresAt: z.coerce.date().nullish()
+            })
+        )
+        .mutation(async ({ input }) => {
+            assertFutureExpiry(input.expiresAt);
+
+            try {
+                await ApiKeyService.updateApiKeyAccess(
+                    input.projectId,
+                    input.keyId,
+                    {
+                        canReadGraph: input.canReadGraph,
+                        expiresAt: input.expiresAt
+                    }
+                );
+            } catch {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "API key not found"
+                });
+            }
+
+            return { success: true };
+        }),
+
+    listApiKeyFiles: projectOwnerProcedure
+        .input(z.object({ keyId: z.string() }))
+        .query(async ({ input }) => {
+            return await ApiKeyService.listFileGrants(
+                input.projectId,
+                input.keyId
+            );
+        }),
+
+    // Saves the key's granted files as a single desired state, mirroring
+    // updateMembers: only the difference against what's already granted is
+    // written, so re-saving an unchanged selection costs nothing.
+    setApiKeyFiles: projectOwnerProcedure
+        .input(z.object({ keyId: z.string(), fileIds: z.array(z.string()) }))
+        .mutation(async ({ input }) => {
+            const current = await ApiKeyService.listFileGrants(
+                input.projectId,
+                input.keyId
+            );
+            const currentIds = new Set(current.map((file) => file.id));
+            const nextIds = new Set(input.fileIds);
+
+            const toAdd = input.fileIds.filter((id) => !currentIds.has(id));
+            const toRemove = current.filter((file) => !nextIds.has(file.id));
+
+            try {
+                for (const fileId of toAdd) {
+                    await ApiKeyService.addFileGrant(
+                        input.projectId,
+                        input.keyId,
+                        fileId
+                    );
+                }
+            } catch (error) {
+                throw asBadRequest(error, "Failed to grant file access");
+            }
+
+            await Promise.all(
+                toRemove.map((file) =>
+                    ApiKeyService.removeFileGrant(
+                        input.projectId,
+                        input.keyId,
+                        file.id
+                    )
+                )
+            );
+
+            return { granted: input.fileIds.length };
         }),
 
     revokeApiKey: projectOwnerProcedure
