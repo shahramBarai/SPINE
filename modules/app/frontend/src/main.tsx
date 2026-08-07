@@ -13,6 +13,7 @@ import { DigitalTwin } from "pages/projects/digitalTwin";
 import { ProjectsPage } from "pages/projects";
 import { ProjectManagePage } from "pages/projects/manage";
 import { UserManagementPage } from "pages/admin/users";
+import { KafkaManagementPage } from "pages/admin/kafka";
 
 import { ToastContainer } from "react-toastify";
 
@@ -67,10 +68,10 @@ createRoot(document.getElementById("root")!).render(
                             }
                         />
                         <Route
-                            path="/admin/security"
+                            path="/admin/kafka"
                             element={
                                 <AppLayout>
-                                    <SecurityPage />
+                                    <KafkaManagementPage />
                                 </AppLayout>
                             }
                         />

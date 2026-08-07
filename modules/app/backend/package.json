@@ -12,6 +12,7 @@
         "@spine/storage-rdf-store": "workspace:*",
         "@trpc/server": "^11.7.1",
         "iron-session": "^8.0.4",
+        "kafkajs": "^2.2.4",
         "bcryptjs": "^3.0.3",
         "cors": "^2.8.6",
         "zod": "^4.4.3"
