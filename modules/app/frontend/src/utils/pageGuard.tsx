@@ -11,6 +11,31 @@ interface GuardState<T> {
     fullScreen?: boolean;
 }
 
+interface PageLoadingProps {
+    label?: string;
+    /** Use the full viewport (e.g. a top-level page) instead of filling its parent. */
+    fullScreen?: boolean;
+}
+
+/** The loading state a guard shows while it works out what to render. */
+function PageLoading({
+    label = "Loading...",
+    fullScreen = false
+}: PageLoadingProps) {
+    return (
+        <div
+            className={
+                fullScreen
+                    ? "h-screen w-screen flex items-center justify-center gap-2 bg-background text-foreground"
+                    : "h-full w-full flex items-center justify-center gap-2 text-foreground"
+            }
+        >
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <span className="text-muted-foreground">{label}</span>
+        </div>
+    );
+}
+
 interface PageGuardOptions<T, K extends string> {
     /** URL param names this page requires - if any is missing, the page redirects to /404 before `handler` ever runs. */
     params: readonly K[];
@@ -61,24 +86,11 @@ function pageGuard<T extends object, K extends string>(
         }
 
         if (isLoading) {
-            return (
-                <div
-                    className={
-                        fullScreen
-                            ? "h-screen w-screen flex items-center justify-center gap-2 bg-background text-foreground"
-                            : "h-full w-full flex items-center justify-center gap-2 text-foreground"
-                    }
-                >
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    <span className="text-muted-foreground">
-                        {loadingLabel}
-                    </span>
-                </div>
-            );
+            return <PageLoading label={loadingLabel} fullScreen={fullScreen} />;
         }
 
         return <Component {...(data as T)} />;
     };
 }
 
-export { pageGuard };
+export { pageGuard, PageLoading };
