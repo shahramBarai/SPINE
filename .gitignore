@@ -11,3 +11,8 @@ Cargo.lock
 
 # Local env files
 .env
+
+# Docs + claude
+docs/presentation
+.claude
+CLAUDE.md
