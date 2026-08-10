@@ -9,9 +9,7 @@ import {
     FolderIcon,
     CpuChipIcon,
     DocumentTextIcon,
-    CogIcon,
     UsersIcon,
-    ShieldCheckIcon,
     ArrowRightEndOnRectangleIcon
 } from "@heroicons/react/24/outline";
 import ThemeButton from "./ThemButton";
@@ -46,13 +44,7 @@ const navigationSections: NavigationSection[] = [
         items: [
             { name: "Kafka", href: "/admin/kafka", icon: CpuChipIcon },
             { name: "Schemas", href: "/admin/schemas", icon: DocumentTextIcon },
-            { name: "User Management", href: "/admin/users", icon: UsersIcon },
-            { name: "System Settings", href: "/admin/settings", icon: CogIcon },
-            {
-                name: "Security",
-                href: "/admin/security",
-                icon: ShieldCheckIcon
-            }
+            { name: "User Management", href: "/admin/users", icon: UsersIcon }
         ]
     }
 ];

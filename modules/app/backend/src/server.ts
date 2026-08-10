@@ -8,6 +8,7 @@ import { projectRouter } from "./routers/project";
 import { kafkaRouter } from "./routers/kafka";
 import { schemaRegistryRouter } from "./routers/schemaRegistry";
 import { handleProjectFilesRoute } from "./routes/projectFiles";
+import { handleHealthRoute } from "./routes/health";
 import { env } from "@spine/shared";
 
 export const appRouter = router({
@@ -29,9 +30,15 @@ const corsMiddleware = cors({
 const server = createHTTPServer({
     middleware: (req, res, next) => {
         corsMiddleware(req, res, () => {
-            handleProjectFilesRoute(req, res).then((handled) => {
-                if (!handled) next();
-            });
+            // Plain (non-tRPC) routes get first refusal; anything they don't
+            // claim falls through to the tRPC handler.
+            handleHealthRoute(req, res)
+                .then((handled) =>
+                    handled ? true : handleProjectFilesRoute(req, res)
+                )
+                .then((handled) => {
+                    if (!handled) next();
+                });
         });
     },
     router: appRouter,

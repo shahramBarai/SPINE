@@ -5,7 +5,7 @@ import {
 import type { ForwardRefExoticComponent, SVGProps } from "react";
 import { TitledCard } from "components/basics/TitledCard";
 import { api } from "utils/trpc";
-import { KafkaLogo } from "./KafkaLogo";
+import { KafkaLogo } from "components/complex/KafkaLogo";
 
 const StatCard = ({
     title,

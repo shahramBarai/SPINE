@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { createRoot } from "react-dom/client";
 import "./styles/globals.css";
 import AppLayout from "./layout/layout";
@@ -12,6 +12,7 @@ import { AuthPage } from "pages/auth";
 import { DigitalTwin } from "pages/projects/digitalTwin";
 import { ProjectsPage } from "pages/projects";
 import { ProjectManagePage } from "pages/projects/manage";
+import { PipelinePage } from "pages/projects/pipeline";
 import { UserManagementPage } from "pages/admin/users";
 import { KafkaManagementPage } from "pages/admin/kafka";
 import { SchemaManagementPage } from "pages/admin/schemas";
@@ -25,9 +26,11 @@ createRoot(document.getElementById("root")!).render(
             <BrowserRouter>
                 <AuthProvider>
                     <Routes>
+                        {/* No landing page of its own - the app starts
+                            at the dashboard. */}
                         <Route
                             path="/"
-                            element={<AppLayout>Root Page</AppLayout>}
+                            element={<Navigate to="/dashboard" replace />}
                         />
                         <Route
                             path="/auth"
@@ -58,6 +61,14 @@ createRoot(document.getElementById("root")!).render(
                             element={
                                 <AppLayout>
                                     <ProjectManagePage />
+                                </AppLayout>
+                            }
+                        />
+                        <Route
+                            path="/projects/:projectId/pipeline"
+                            element={
+                                <AppLayout>
+                                    <PipelinePage />
                                 </AppLayout>
                             }
                         />
