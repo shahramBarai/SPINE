@@ -1,0 +1,18 @@
+# Several module images build with the repository root as their context
+# (they need workspace packages), so this list is what keeps that context
+# from including every node_modules tree in the monorepo.
+
+.git
+.github
+.devcontainer
+**/node_modules
+**/dist
+**/.next
+**/.venv
+**/__pycache__
+**/target
+**/generated/prisma
+**/.env
+docs
+*.md
+!packages/**/README.md

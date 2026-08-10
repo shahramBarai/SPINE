@@ -1,10 +1,47 @@
-# Intentionally empty.
+services:
+    # ------ Backend (standalone tRPC server) ------ #
+    backend:
+        container_name: spine-backend
+        build:
+            # Repository root: both images need workspace packages, so their
+            # Dockerfiles copy from the monorepo root rather than the module.
+            context: ../..
+            dockerfile: modules/app/backend/Dockerfile.dev
+        ports:
+            - "4000:4000"
+        volumes:
+            # @spine/shared reads this file directly and throws if it is
+            # missing, so it is bind-mounted rather than passed via env_file.
+            - ../../packages/shared/.env:/workspace/packages/shared/.env:ro
+            # Source only, for tsx watch. The workspace's node_modules and
+            # the generated Prisma client stay as the image built them -
+            # mounting over /workspace would hide both.
+            - ./backend/src:/workspace/modules/app/backend/src
+        healthcheck:
+            test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        profiles: ["app", "full"]
+
+    # ------ Frontend (Vite SPA) ------ #
+    frontend:
+        container_name: spine-frontend
+        build:
+            context: ../..
+            dockerfile: modules/app/frontend/Dockerfile.dev
+        ports:
+            - "3000:3000"
+        volumes:
+            - ../../packages/shared/.env:/workspace/packages/shared/.env:ro
+            - ./frontend/src:/workspace/modules/app/frontend/src
+            - ./frontend/public:/workspace/modules/app/frontend/public
+            - ./frontend/index.html:/workspace/modules/app/frontend/index.html
+        profiles: ["app", "full"]
+# The browser loads the bundle from the host, so FRONTEND_URL and BACKEND_URL
+# in packages/shared/.env stay as localhost:3000 / localhost:4000 - they refer
+# to the published ports above, not to container-internal addresses.
 #
-# This file used to define the `webapp` service (the superseded Next.js app,
-# removed along with the module itself). The current app is the Vite frontend
-# plus the standalone tRPC backend, neither of which is containerised yet -
-# run them with `pnpm dev` in modules/app/frontend and modules/app/backend.
-#
-# Services for those two go here once their Dockerfiles exist; the root
-# docker-compose.yml already has a commented-out `include:` entry waiting for
-# this file.
+# Postgres/MinIO/Fuseki come from modules/storage/docker-compose.dev.yml.
+# There is no depends_on for them here so this file still works standalone;
+# start that stack first if the backend needs to reach them.

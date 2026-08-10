@@ -1,0 +1,49 @@
+# Build context must be the repository root so workspace packages are
+# available - see modules/app/docker-compose.dev.yml, or build by hand with:
+#   docker build -f modules/app/backend/Dockerfile.dev .
+#
+# Node 22 rather than the node:20-alpine3.17 the older module images use:
+# that tag is stuck on a Node 20 minor below what the app's toolchain wants
+# (Vite 8 needs ^20.19 || >=22.12, and the frontend image has to match).
+FROM node:22-alpine
+
+# libc6-compat for prebuilt native binaries; openssl for Prisma's query engine.
+RUN apk add --no-cache libc6-compat openssl
+
+WORKDIR /workspace
+
+# Manifests first so the install layer caches independently of source edits.
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
+
+# Workspace packages this module imports. Each one exports ./src/index.ts
+# directly, so there is no build step - tsx reads the TypeScript source.
+COPY packages/shared ./packages/shared
+COPY packages/storage/platform ./packages/storage/platform
+COPY packages/storage/minio ./packages/storage/minio
+COPY packages/storage/rdf-store ./packages/storage/rdf-store
+
+COPY modules/app/backend ./modules/app/backend
+
+# corepack takes the pnpm version from the root package.json's
+# "packageManager" field - don't pin a different one here.
+RUN corepack enable
+RUN pnpm install --frozen-lockfile
+
+# @spine/storage-platform's types re-export ../generated/prisma, which is
+# gitignored and excluded by .dockerignore, so it must be generated in-image.
+#
+# Its prisma.config.ts reads the datasource URL through @spine/shared, which
+# throws unless packages/shared/.env exists - so stand the example up as that
+# file just for this step. `prisma generate` only reads the URL to write the
+# client; it never connects. The real env arrives at runtime from the mounted
+# workspace, so the placeholder is removed again immediately.
+RUN cp packages/shared/.env.example packages/shared/.env \
+    && pnpm --filter @spine/storage-platform db:generate \
+    && rm packages/shared/.env
+
+WORKDIR /workspace/modules/app/backend
+
+# Matches the port in BACKEND_URL (packages/shared/.env).
+EXPOSE 4000
+
+CMD ["pnpm", "run", "dev"]
