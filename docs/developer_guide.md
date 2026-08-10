@@ -36,10 +36,12 @@ pnpm install
 # Generate Prisma clients
 pnpm db:generate
 
-# Start the backend (standalone tRPC server) and the frontend, in
-# separate terminals
-cd modules/app/backend && pnpm dev
-cd modules/app/frontend && pnpm dev
+# Start the backend (standalone tRPC server) and the frontend together
+pnpm dev
+
+# ...or one at a time, if you want their output separated
+pnpm dev:backend
+pnpm dev:frontend
 ```
 
 You can then access the frontend at the `FRONTEND_URL` set in `packages/shared/.env`.
