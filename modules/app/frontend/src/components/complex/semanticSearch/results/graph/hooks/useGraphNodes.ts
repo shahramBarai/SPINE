@@ -5,7 +5,7 @@ import {
     type GraphData,
     type LayoutPosition,
     type NodeState
-} from "../types/graph";
+} from "../types";
 import { createHubClusterLayout } from "../utils/graphLayout";
 
 const SOFT_LAYOUT_RADIUS = 250;
@@ -41,8 +41,7 @@ function useGraphNodes({
                     return {
                         ...existing,
                         label: rawNode.label,
-                        type: rawNode.type,
-                        sameAsIds: rawNode.sameAsIds
+                        type: rawNode.type
                     };
                 }
 
@@ -51,7 +50,6 @@ function useGraphNodes({
                     id: rawNode.id,
                     label: rawNode.label,
                     type: rawNode.type,
-                    sameAsIds: rawNode.sameAsIds,
                     x: position?.x ?? VIEW_CENTER_X,
                     y: position?.y ?? VIEW_CENTER_Y,
                     vx: 0,

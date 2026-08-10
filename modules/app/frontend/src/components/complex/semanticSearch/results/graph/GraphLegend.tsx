@@ -1,5 +1,5 @@
-import { type GraphNode } from "./types/graph";
-import { colorForType } from "../utils/typeColors";
+import { type GraphNode } from "./types";
+import { colorForType } from "utils/typeColors";
 import { cn } from "utils/index";
 
 // Shows the distinct node types actually present on the canvas, each with

@@ -44,12 +44,9 @@ export const settingsTabRouter = router({
             return member?.role ?? null;
         }),
 
-    // Basic project info for the manage page - deliberately lighter than
-    // digitalTwin.getProject, which also resolves a Fuseki rootId for the
-    // 3D/graph viewer's default focus node. That resolution fails for a
-    // project with no synced Fuseki data yet, which would needlessly break
-    // the manage page (name/description/cover editing, etc.) even though it
-    // never uses rootId.
+    // Basic project info for the manage page - kept separate from
+    // digitalTwin.getProject, which is gated on the project being
+    // twin-enabled.
     getProjectInfo: projectViewerProcedure.query(async ({ input }) => {
         const project = await EntityService.getEntityById(input.projectId);
         if (!project) {

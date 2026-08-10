@@ -1,23 +1,20 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { GripHorizontal, X } from "lucide-react";
-import { type GraphNode } from "./types/graph";
-import { useDigitalTwin } from "hooks/useDigitalTwin";
-import { FocusButton } from "../FocusButton";
+import { type GraphNode } from "./types";
 import { cn } from "utils/index";
 
 function SelectionPanel({
     containerRef,
-    nodes
+    node,
+    onClose
 }: {
     containerRef: RefObject<HTMLDivElement | null>;
-    nodes: GraphNode[];
+    node: GraphNode | null;
+    onClose: () => void;
 }) {
-    const { selectedObjectIds, clearSelection } = useDigitalTwin();
-    const node = nodes.find((n) => selectedObjectIds.includes(n.id)) ?? null;
-
     const [position, setPosition] = useState<{ x: number; y: number }>({
         x: 12,
-        y: 208
+        y: 64
     });
     const draggingRef = useRef(false);
     const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
@@ -70,9 +67,10 @@ function SelectionPanel({
         { label: "Name", value: node.label },
         { label: "Id", value: node.id },
         { label: "Type", value: node.type },
-        ...(node.sameAsIds.length > 0
-            ? [{ label: "Same As", value: node.sameAsIds.join(", ") }]
-            : [])
+        ...node.properties.map((property) => ({
+            label: property.predicate,
+            value: property.value
+        }))
     ];
 
     return (
@@ -105,7 +103,6 @@ function SelectionPanel({
                 </div>
                 <div className="flex items-center gap-2">
                     <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-                    <FocusButton nodeId={node.id} />
                     <button
                         type="button"
                         className="rounded p-1 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
@@ -114,17 +111,17 @@ function SelectionPanel({
                             event.stopPropagation();
                             draggingRef.current = false;
                             dragOffsetRef.current = null;
-                            clearSelection();
+                            onClose();
                         }}
                     >
                         <X className="h-3.5 w-3.5" />
                     </button>
                 </div>
             </div>
-            <div className="space-y-1 px-3 py-2 text-[11px]">
-                {rows.map((row) => (
+            <div className="max-h-56 space-y-1 overflow-auto px-3 py-2 text-[11px]">
+                {rows.map((row, index) => (
                     <div
-                        key={row.label}
+                        key={index}
                         className="border-b border-border/30 pb-1 last:border-b-0"
                     >
                         <div className="text-[10px] font-mono text-primary">

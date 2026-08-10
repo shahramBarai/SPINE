@@ -11,9 +11,9 @@ import { api } from "utils/trpc";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
 import {
     QueryEditor,
+    ResultsPanel,
     type SemanticSearchExample
-} from "components/complex/semanticSearch/QueryEditor";
-import { ResultsTable } from "components/complex/semanticSearch/ResultsTable";
+} from "components/complex/semanticSearch";
 
 export const DEFAULT_SPARQL_QUERY = `SELECT ?s ?p ?o
 WHERE {
@@ -164,7 +164,7 @@ function SemanticSearchPanel({
                         onSelectExample={(id) => void selectExample(id)}
                         isLoadingExample={isLoadingExample}
                     />
-                    <ResultsTable
+                    <ResultsPanel
                         className="p-3"
                         triples={triples ?? []}
                         isLoading={isLoading}

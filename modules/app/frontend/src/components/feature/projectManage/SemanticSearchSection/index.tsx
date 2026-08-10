@@ -4,9 +4,9 @@ import { cn } from "utils/index";
 import { api } from "utils/trpc";
 import {
     QueryEditor,
+    ResultsPanel,
     type SemanticSearchExample
-} from "components/complex/semanticSearch/QueryEditor";
-import { ResultsTable } from "components/complex/semanticSearch/ResultsTable";
+} from "components/complex/semanticSearch";
 import { SavedQueriesBar } from "./SavedQueriesBar";
 
 const DEFAULT_SPARQL_QUERY = `SELECT ?s ?p ?o
@@ -117,7 +117,8 @@ function SemanticSearchSection({
                 isLoadingExample={isLoadingExample}
             />
 
-            <ResultsTable
+            <ResultsPanel
+                className="min-h-[480px]"
                 triples={triples ?? []}
                 isLoading={isLoading}
                 isError={isError}

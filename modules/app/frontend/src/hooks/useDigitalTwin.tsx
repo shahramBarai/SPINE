@@ -20,32 +20,20 @@ export type SelectedIfcFile = {
     fileName: string;
 };
 
-/** Shared state across digital-twin windows (sidebar, graph pane, 3D
- *  viewer) - window-local concerns stay in that window's own hooks. */
+/** Shared state across digital-twin windows (sidebar, 3D viewer) -
+ *  window-local concerns stay in that window's own hooks. */
 type DigitalTwinContextValue = {
     projectInfo: ProjectInfo;
 
-    selectedObjectIds: string[];
-    setSelectedObjectIds: Dispatch<SetStateAction<string[]>>;
-    selectObject: (id: string, sameAsIds?: string[]) => void;
+    selectedObjectId: string | null;
+    selectObject: (id: string) => void;
     clearSelection: () => void;
-
-    focusId: string;
-    setFocusId: Dispatch<SetStateAction<string>>;
 
     visibleIfcFiles: SelectedIfcFile[];
     toggleIfcFile: (file: SelectedIfcFile) => void;
 
     ttlFilesHidden: string[];
     setTtlFilesHidden: Dispatch<SetStateAction<string[]>>;
-
-    searchText: string;
-    setSearchText: Dispatch<SetStateAction<string>>;
-
-    selectedNodeTypes: Set<string> | null;
-    setSelectedNodeTypes: Dispatch<SetStateAction<Set<string> | null>>;
-    selectedPredicates: Set<string> | null;
-    setSelectedPredicates: Dispatch<SetStateAction<Set<string> | null>>;
 };
 
 const DigitalTwinContext = createContext<DigitalTwinContextValue | undefined>(
@@ -54,31 +42,24 @@ const DigitalTwinContext = createContext<DigitalTwinContextValue | undefined>(
 
 export function DigitalTwinProvider({
     projectInfo,
-    focusId: initialFocusId,
     children
 }: {
     projectInfo: ProjectInfo;
-    focusId: string;
     children: ReactNode;
 }) {
-    const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
-    const [focusId, setFocusId] = useState<string>(initialFocusId);
+    const [selectedObjectId, setSelectedObjectId] = useState<string | null>(
+        null
+    );
     const [visibleIfcFiles, setVisibleIfcFiles] = useState<SelectedIfcFile[]>(
         []
     );
     const [ttlFilesHidden, setTtlFilesHidden] = useState<string[]>([]);
-    const [searchText, setSearchText] = useState("");
-    const [selectedNodeTypes, setSelectedNodeTypes] =
-        useState<Set<string> | null>(null);
-    const [selectedPredicates, setSelectedPredicates] =
-        useState<Set<string> | null>(null);
 
     const selectObject = useCallback(
-        (id: string, sameAsIds: string[] = []) =>
-            setSelectedObjectIds([id, ...sameAsIds]),
+        (id: string) => setSelectedObjectId(id),
         []
     );
-    const clearSelection = useCallback(() => setSelectedObjectIds([]), []);
+    const clearSelection = useCallback(() => setSelectedObjectId(null), []);
 
     /** Adds `file` to the visible set, or removes it if already present. */
     const toggleIfcFile = useCallback((file: SelectedIfcFile) => {
@@ -92,35 +73,22 @@ export function DigitalTwinProvider({
     const value = useMemo<DigitalTwinContextValue>(
         () => ({
             projectInfo,
-            selectedObjectIds,
-            setSelectedObjectIds,
+            selectedObjectId,
             selectObject,
             clearSelection,
-            focusId,
-            setFocusId,
             visibleIfcFiles,
             toggleIfcFile,
             ttlFilesHidden,
-            setTtlFilesHidden,
-            searchText,
-            setSearchText,
-            selectedNodeTypes,
-            setSelectedNodeTypes,
-            selectedPredicates,
-            setSelectedPredicates
+            setTtlFilesHidden
         }),
         [
             projectInfo,
-            selectedObjectIds,
+            selectedObjectId,
             selectObject,
             clearSelection,
-            focusId,
             visibleIfcFiles,
             toggleIfcFile,
-            ttlFilesHidden,
-            searchText,
-            selectedNodeTypes,
-            selectedPredicates
+            ttlFilesHidden
         ]
     );
 

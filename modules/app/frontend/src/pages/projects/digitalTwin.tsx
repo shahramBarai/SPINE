@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { Boxes } from "lucide-react";
 import { type ImperativePanelHandle } from "react-resizable-panels";
 import { LeftSidebar } from "components/feature/twin/LeftSidebar";
 import { TopNav } from "components/feature/twin/TopNav/index";
 import { IfcViewerPane } from "components/feature/twin/IfcViewerPane";
-import { GraphPane } from "components/feature/twin/GraphPane";
 import { SemanticSearchPanel } from "components/feature/twin/SemanticSearchPanel";
 import {
     ResizableHandle,
@@ -17,40 +14,17 @@ import { api } from "utils/trpc";
 import { cn } from "utils/index";
 import { pageGuard } from "utils/pageGuard";
 
-type MaximizedZone = "viewer" | "graph" | "semantic" | null;
+type MaximizedZone = "viewer" | "semantic" | null;
 
 interface DigitalTwinPageProps {
-    project: { id: string; name: string; rootId: string | null };
+    project: { id: string; name: string };
 }
 
 function DigitalTwinPageContent({ project }: DigitalTwinPageProps) {
-    // if (project.rootId === null) {
-    //     return (
-    //         <div className="h-screen w-screen flex flex-col items-center justify-center gap-3 bg-background text-foreground">
-    //             <Boxes className="h-10 w-10 text-muted-foreground" />
-    //             <p className="text-lg font-medium">
-    //                 No building data synced yet
-    //             </p>
-    //             <p className="text-sm text-muted-foreground max-w-md text-center">
-    //                 This project has no building/site data in its graph yet.
-    //                 Upload an IFC file and run the IFC-to-graph conversion tool
-    //                 from the project's manage page to get started.
-    //             </p>
-    //             <Link
-    //                 to={`/projects/${project.id}/manage`}
-    //                 className="text-sm text-primary hover:underline"
-    //             >
-    //                 Go to project settings
-    //             </Link>
-    //         </div>
-    //     );
-    // }
-
     return (
         <DigitalTwinProvider
             key={project.id}
             projectInfo={{ id: project.id, name: project.name }}
-            focusId={project.rootId || "null"}
         >
             <DigitalTwinLayout />
         </DigitalTwinProvider>
@@ -65,8 +39,8 @@ const DigitalTwinLayout = () => {
     const semanticPanelRef = useRef<ImperativePanelHandle | null>(null);
 
     const semanticMaximized = maximized === "semantic";
-    const viewerHidden = maximized === "graph" || semanticMaximized;
-    const graphHidden = maximized === "viewer" || semanticMaximized;
+    const viewerMaximized = maximized === "viewer";
+    const viewerHidden = semanticMaximized;
 
     useEffect(() => {
         const panel = semanticPanelRef.current;
@@ -105,82 +79,23 @@ const DigitalTwinLayout = () => {
                                     semanticMaximized ? "hidden" : ""
                                 )}
                             >
-                                <ResizablePanelGroup
-                                    direction="horizontal"
-                                    className="min-h-0 gap-2"
-                                >
-                                    <ResizablePanel
-                                        defaultSize={58}
-                                        minSize={25}
-                                        className={cn(
-                                            "min-w-0",
-                                            maximized === "graph"
-                                                ? "hidden"
-                                                : ""
-                                        )}
-                                    >
-                                        <IfcViewerPane
-                                            hidden={viewerHidden}
-                                            maximized={maximized === "viewer"}
-                                            onToggleMaximize={() =>
-                                                setMaximized((m) =>
-                                                    m === "viewer"
-                                                        ? null
-                                                        : "viewer"
-                                                )
-                                            }
-                                        />
-                                    </ResizablePanel>
-
-                                    <ResizableHandle
-                                        withHandle
-                                        className={cn(
-                                            maximized === "viewer" ||
-                                                maximized === "graph"
-                                                ? "hidden"
-                                                : ""
-                                        )}
-                                    />
-
-                                    <ResizablePanel
-                                        defaultSize={42}
-                                        minSize={25}
-                                        className={cn(
-                                            "min-w-0",
-                                            maximized === "viewer"
-                                                ? "hidden"
-                                                : ""
-                                        )}
-                                    >
-                                        <section
-                                            className={cn(
-                                                "h-full min-w-0",
-                                                graphHidden ? "hidden" : ""
-                                            )}
-                                            aria-label="Relationship Graph"
-                                            aria-hidden={graphHidden}
-                                        >
-                                            <GraphPane
-                                                maximized={
-                                                    maximized === "graph"
-                                                }
-                                                onToggleMaximize={() =>
-                                                    setMaximized((m) =>
-                                                        m === "graph"
-                                                            ? null
-                                                            : "graph"
-                                                    )
-                                                }
-                                            />
-                                        </section>
-                                    </ResizablePanel>
-                                </ResizablePanelGroup>
+                                <IfcViewerPane
+                                    hidden={viewerHidden}
+                                    maximized={viewerMaximized}
+                                    onToggleMaximize={() =>
+                                        setMaximized((m) =>
+                                            m === "viewer" ? null : "viewer"
+                                        )
+                                    }
+                                />
                             </ResizablePanel>
 
                             <ResizableHandle
                                 withHandle
                                 className={cn(
-                                    semanticMaximized ? "hidden" : ""
+                                    semanticMaximized || viewerMaximized
+                                        ? "hidden"
+                                        : ""
                                 )}
                             />
 
@@ -190,7 +105,10 @@ const DigitalTwinLayout = () => {
                                 minSize={10}
                                 collapsible
                                 collapsedSize={6}
-                                className="min-h-0"
+                                className={cn(
+                                    "min-h-0",
+                                    viewerMaximized ? "hidden" : ""
+                                )}
                             >
                                 <SemanticSearchPanel
                                     maximized={semanticMaximized}

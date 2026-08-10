@@ -11,7 +11,7 @@ import {
     VIEW_HEIGHT,
     VIEW_WIDTH,
     type NodeState
-} from "../types/graph";
+} from "../types";
 
 const MIN_ZOOM = 0.35;
 const MAX_ZOOM = 3.5;

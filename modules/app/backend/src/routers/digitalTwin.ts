@@ -5,7 +5,6 @@ import { ProjectFileService } from "@spine/storage-minio";
 import {
     DatasetService,
     BuildingGraphService,
-    RelationshipGraphService,
     SemanticSearchService,
     FusekiSparqlError
 } from "@spine/storage-rdf-store";
@@ -16,9 +15,9 @@ import { readStreamToText } from "../utils/stream";
 
 // FusekiSparqlError with status 404 covers two "no data yet" cases: the
 // project's dataset hasn't been provisioned, or the dataset exists but this
-// file's graph is empty/unsynced (see resolve_focus_uri). Surface both as a
-// typed NOT_FOUND instead of a raw 500 so the UI can show a specific
-// "no data yet" message rather than a generic error.
+// file's graph is empty/unsynced. Surface both as a typed NOT_FOUND instead
+// of a raw 500 so the UI can show a specific "no data yet" message rather
+// than a generic error.
 function rethrowMissingDataset(error: unknown): never {
     if (error instanceof FusekiSparqlError && error.status === 404) {
         throw new TRPCError({
@@ -55,27 +54,13 @@ export const digitalTwinRouter = router({
         }));
     }),
 
-    // A single project by id, plus rootId - the default relationship-graph
-    // focus. Each discipline keeps its own independent site/building/storey
-    // skeleton (stitched together by owl:sameAs links in Linkset graphs), so
-    // get_root_id is steered toward the architectural discipline's graphs
-    // first for a stable default, falling back to any synced graph if ARK
-    // isn't synced yet (see BuildingGraphService.get_root_id). Lets the
-    // digital-twin page resolve the active project directly instead of
-    // fetching the whole visible-projects list and filtering by id.
-    getProject: twinProjectProcedure.query(async ({ ctx, input }) => {
-        const rootId = await BuildingGraphService.get_root_id(
-            input.projectId
-        ).catch((error) => {
-            if (error instanceof FusekiSparqlError && error.status === 404) {
-                return null;
-            }
-            throw error;
-        });
-
+    // A single project by id - lets the digital-twin page resolve the active
+    // project directly instead of fetching the whole visible-projects list
+    // and filtering by id.
+    getProject: twinProjectProcedure.query(({ ctx }) => {
         const coverImageUrl = getCoverImageUrl(ctx.project.coverImageKey);
 
-        return { ...ctx.project, rootId, coverImageUrl };
+        return { ...ctx.project, coverImageUrl };
     }),
 
     // Creates a project and its dedicated Fuseki dataset together. If dataset
@@ -159,33 +144,6 @@ export const digitalTwinRouter = router({
             return await BuildingGraphService.get_tree(
                 input.projectId,
                 "DEFAULT"
-            ).catch(rethrowMissingDataset);
-        }),
-
-    getRelationshipGraph: twinProjectProcedure
-        .input(
-            z.object({
-                focusId: z.string(),
-                includeNodeTypes: z.array(z.string()).optional(),
-                excludeNodeTypes: z.array(z.string()).optional(),
-                includePredicates: z.array(z.string()).optional()
-            })
-        )
-        .query(async ({ input }) => {
-            const graphs = await DatasetService.read_list_graphs(
-                input.projectId
-            );
-            const graphUris = graphs.map((g) => g.uri);
-
-            return await RelationshipGraphService.get_relationship_graph(
-                input.projectId,
-                graphUris,
-                input.focusId,
-                {
-                    includeNodeTypes: input.includeNodeTypes,
-                    excludeNodeTypes: input.excludeNodeTypes,
-                    includePredicates: input.includePredicates
-                }
             ).catch(rethrowMissingDataset);
         }),
 

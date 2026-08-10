@@ -1,8 +1,4 @@
-import {
-    VIEW_CENTER_X,
-    VIEW_CENTER_Y,
-    type LayoutPosition
-} from "../types/graph";
+import { VIEW_CENTER_X, VIEW_CENTER_Y, type LayoutPosition } from "../types";
 
 export const edgeKey = (
     index: number,

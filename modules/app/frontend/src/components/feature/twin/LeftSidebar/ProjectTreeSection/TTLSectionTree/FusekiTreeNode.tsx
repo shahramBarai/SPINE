@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ChevronRight, Box } from "lucide-react";
 import { cn } from "utils/index";
 import { useDigitalTwin } from "hooks/useDigitalTwin";
-import { FocusButton } from "../../../FocusButton";
 
 interface FusekiTreeNodeData {
     id: string;
@@ -19,9 +18,9 @@ function FusekiTreeNode({
     depth: number;
 }) {
     const [expanded, setExpanded] = useState<boolean>(depth < 1);
-    const { selectedObjectIds, selectObject } = useDigitalTwin();
+    const { selectedObjectId, selectObject } = useDigitalTwin();
     const hasChildren = node.children.length > 0;
-    const isSelected = selectedObjectIds.includes(node.id);
+    const isSelected = selectedObjectId === node.id;
 
     return (
         <div>
@@ -69,8 +68,6 @@ function FusekiTreeNode({
                         {node.type}
                     </span>
                 </button>
-
-                <FocusButton nodeId={node.id} className="shrink-0" />
             </div>
 
             {expanded && hasChildren && (

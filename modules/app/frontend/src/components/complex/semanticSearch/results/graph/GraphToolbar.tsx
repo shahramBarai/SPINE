@@ -8,12 +8,10 @@ import {
     Search
 } from "lucide-react";
 import { cn } from "utils/index";
-import { useGraphSearch } from "./hooks/useGraphSearch";
-import { useDigitalTwin } from "hooks/useDigitalTwin";
-import type { GraphNode } from "./types/graph";
 
 function GraphToolbar({
-    nodes,
+    searchText,
+    onSearchTextChange,
     onFitToScreen,
     onFocusSelection,
     physicsEnabled,
@@ -25,7 +23,8 @@ function GraphToolbar({
     filterActive,
     className
 }: {
-    nodes: Pick<GraphNode, "id" | "label" | "sameAsIds">[];
+    searchText: string;
+    onSearchTextChange: (searchText: string) => void;
     onFitToScreen: () => void;
     onFocusSelection: () => void;
     physicsEnabled: boolean;
@@ -37,16 +36,9 @@ function GraphToolbar({
     filterActive: boolean;
     className?: string;
 }) {
-    const { searchText, setSearchText } = useDigitalTwin();
-
-    // `nodes` here is the stable fetched graph data (not the physics-updated
-    // positions), and useGraphSearch itself drives the shared selection from
-    // the debounced match, so no separate effect is needed here.
-    useGraphSearch({ nodes });
-
     const handleResetView = () => {
         onResetView();
-        setSearchText("");
+        onSearchTextChange("");
     };
 
     return (
@@ -62,8 +54,8 @@ function GraphToolbar({
                 <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-2 top-1/2 -translate-y-1/2" />
                 <input
                     value={searchText}
-                    onChange={(event) => setSearchText(event.target.value)}
-                    placeholder="Search nodes and predicates"
+                    onChange={(event) => onSearchTextChange(event.target.value)}
+                    placeholder="Search nodes"
                     className="h-7 w-40 pl-7 pr-2 rounded bg-background/70 border border-border/60 text-[11px] font-mono outline-none focus:border-primary/50"
                 />
             </div>

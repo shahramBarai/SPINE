@@ -17,7 +17,7 @@ const HeaderLabel = ({ id, name }: { id: string; name: string }) => {
 };
 
 function ProjectTreeSection({ className }: { className?: string }) {
-    const { projectInfo, selectedObjectIds } = useDigitalTwin();
+    const { projectInfo, selectedObjectId } = useDigitalTwin();
 
     return (
         <TreeHeader
@@ -38,7 +38,7 @@ function ProjectTreeSection({ className }: { className?: string }) {
                         key={discipline.id}
                         className={cn(
                             "pl-5 border-l-3",
-                            selectedObjectIds.includes(discipline.id)
+                            selectedObjectId === discipline.id
                                 ? "bg-primary/15 text-primary border-primary"
                                 : "hover:bg-accent/60 border-transparent text-foreground/80"
                         )}

@@ -10,11 +10,7 @@ import {
 } from "components/basics/select";
 import { cn } from "utils/index";
 import { SectionCard } from "components/complex/SectionCard";
-
-type SemanticSearchExample = {
-    id: string;
-    label: string;
-};
+import { type SemanticSearchExample } from "./types";
 
 function QueryEditor({
     query,
@@ -136,4 +132,4 @@ function QueryEditor({
     );
 }
 
-export { QueryEditor, type SemanticSearchExample };
+export { QueryEditor };

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useDigitalTwin } from "hooks/useDigitalTwin";
-import { type GraphNode } from "../types/graph";
+import { type GraphNode } from "../types";
 
 const SEARCH_DEBOUNCE_MS = 500;
 
@@ -23,18 +22,23 @@ const searchTokens = (query: string): string[] =>
             return withoutPrefix ? [token, withoutPrefix] : [token];
         });
 
-// Debounces the shared search text (see useDigitalTwin), matches it against
-// this window's own node list, and drives the shared selection from the
-// result - so any window with a node/label list can wire up the same search
-// box behavior. Returns the matched node id (or null) for callers that also
-// want to show match state locally. Debouncing means we don't re-highlight
-// on every keystroke while the user is still typing.
+/**
+ * Debounces the search text and matches it against the given node list,
+ * returning the id of the first node whose label contains every token (or
+ * null when there is no match / nothing typed). Debouncing means we don't
+ * re-highlight on every keystroke while the user is still typing.
+ *
+ * @param nodes The nodes to search through.
+ * @param searchText The raw, undebounced search text.
+ * @returns The matched node id, or null.
+ */
 function useGraphSearch({
-    nodes
+    nodes,
+    searchText
 }: {
-    nodes: Pick<GraphNode, "id" | "label" | "sameAsIds">[];
+    nodes: Pick<GraphNode, "id" | "label">[];
+    searchText: string;
 }): string | null {
-    const { searchText, selectObject, clearSelection } = useDigitalTwin();
     const [debouncedText, setDebouncedText] = useState(searchText);
 
     useEffect(() => {
@@ -45,7 +49,7 @@ function useGraphSearch({
         return () => clearTimeout(timeout);
     }, [searchText]);
 
-    const matchId = useMemo(() => {
+    return useMemo(() => {
         const tokens = searchTokens(debouncedText);
         if (!tokens.length) {
             return null;
@@ -59,17 +63,6 @@ function useGraphSearch({
         const match = nodes.find((node) => matchesAllTokens([node.label]));
         return match ? match.id : null;
     }, [nodes, debouncedText]);
-
-    useEffect(() => {
-        if (!matchId) {
-            clearSelection();
-            return;
-        }
-        const match = nodes.find((node) => node.id === matchId);
-        selectObject(matchId, match?.sameAsIds);
-    }, [matchId, nodes, selectObject, clearSelection]);
-
-    return matchId;
 }
 
 export { useGraphSearch };
