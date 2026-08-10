@@ -11,10 +11,14 @@
             "@spine/ingress": "workspace:*",
             "@spine/storage-platform": "workspace:*",
             "@spine/storage-minio": "workspace:*",
-            "@spine/storage-timescale": "workspace:*"
+            "@spine/storage-timescale": "workspace:*",
+            "@spine/storage-rdf-store": "workspace:*"
         }
     },
     "scripts": {
+        "dev": "pnpm --parallel --filter spine-backend --filter spine-frontend dev",
+        "dev:backend": "pnpm --filter spine-backend dev",
+        "dev:frontend": "pnpm --filter spine-frontend dev",
         "pretype-check": "pnpm -r --filter ./packages run build",
         "type-check": "npm run pretype-check && pnpm -r --if-present run type-check",
         "lint": "pnpm exec eslint . --ext .ts,.js",

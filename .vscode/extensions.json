@@ -1,5 +1,6 @@
 {
     "recommendations": [
+        "ms-vscode-remote.remote-wsl",
         "github.copilot",
         "esbenp.prettier-vscode",
         "humao.rest-client",

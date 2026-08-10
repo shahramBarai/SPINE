@@ -8,7 +8,8 @@
     },
     "scripts": {
         "db:init": "tsx scripts/initialize-buckets.ts",
-        "type-check": "tsc --noEmit"
+        "type-check": "tsc --noEmit",
+        "build": "tsc"
     },
     "dependencies": {
         "@spine/shared": "workspace:*",

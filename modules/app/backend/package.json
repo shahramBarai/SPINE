@@ -1,0 +1,27 @@
+{
+    "name": "spine-backend",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsx watch src/server.ts",
+        "start": "node dist/index.js"
+    },
+    "dependencies": {
+        "@spine/shared": "workspace:*",
+        "@spine/storage-platform": "workspace:*",
+        "@spine/storage-minio": "workspace:*",
+        "@spine/storage-rdf-store": "workspace:*",
+        "@trpc/server": "^11.7.1",
+        "iron-session": "^8.0.4",
+        "kafkajs": "^2.2.4",
+        "bcryptjs": "^3.0.3",
+        "cors": "^2.8.6",
+        "zod": "^4.4.3"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "dotenv": "catalog:",
+        "@types/cors": "^2.8.19",
+        "tsx": "^4.22.4"
+    }
+}

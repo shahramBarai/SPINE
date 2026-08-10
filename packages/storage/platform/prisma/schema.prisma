@@ -16,6 +16,7 @@ model User {
     role     UserRole @default(USER)
 
     entityMemberships EntityMember[]
+    jobExecutions     JobExecution[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -35,12 +36,17 @@ model Entity {
     name     String
     description String?
     type     EntityType
+    isTwinEnabled Boolean @default(false)
+    coverImageKey String?
 
     members  EntityMember[]
     sensors  SensorData[]
 
     kafkaTopics KafkaTopic[]
     flinkTasks  Pipeline[]
+    jobExecutions JobExecution[]
+    apiKeys ApiKey[]
+    files File[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -52,6 +58,7 @@ enum EntityType {
     CAMPUS
     BUILDING
     LAB
+    PROJECT
 }
 
 model EntityMember {
@@ -94,7 +101,88 @@ model Pipeline {
     entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 }
 
-// Kafka topic model for Kafka topics 
+// Log of executed async jobs - tool runs today (e.g. building-service's
+// IFC->TTL conversion), Flink pipeline runs later via source. This is the
+// run *instance* (this input, by this user, at this time, with this
+// status); Pipeline above is the saved job *definition*. externalJobId is
+// whatever id the actual executing service hands back - this row tracks
+// it, it doesn't replace it.
+model JobExecution {
+    id            String             @id @default(cuid())
+    source        JobSource
+    jobKey        String // e.g. a tools.ts tool id, or a Pipeline id
+    externalJobId String?
+    status        JobExecutionStatus @default(QUEUED)
+    input         Json?
+    result        Json?
+    error         String?
+
+    entityId   String
+    executedBy String
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+    user   User   @relation(fields: [executedBy], references: [id], onDelete: Cascade)
+
+    @@index([entityId])
+    @@index([executedBy])
+}
+
+enum JobSource {
+    TOOL
+    FLINK
+}
+
+enum JobExecutionStatus {
+    QUEUED
+    RUNNING
+    COMPLETED
+    FAILED
+}
+
+// Lets external systems authenticate against a single project (e.g. to run
+// read-only SPARQL queries against its dataset) without a full user
+// session. Only keyHash (a fast SHA-256 digest, not a slow password hash -
+// a random high-entropy key doesn't need one) is ever stored; the raw key
+// is shown to the owner once, at creation, and is unrecoverable after that.
+// keyPrefix is a non-secret slice of the raw key kept only so the owner can
+// tell keys apart in the UI without re-hashing every guess.
+model ApiKey {
+    id         String    @id @default(cuid())
+    name       String
+    keyHash    String    @unique
+    keyPrefix  String
+
+    entityId   String
+
+    canReadGraph Boolean   @default(false)
+    fileGrants ApiKeyFile[]
+    expiresAt    DateTime?
+
+    lastUsedAt DateTime?
+    createdAt  DateTime  @default(now())
+    updatedAt  DateTime  @updatedAt
+
+    entity     Entity       @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+    @@index([entityId])
+}
+
+model ApiKeyFile {
+    apiKeyId  String
+    fileId    String
+    createdAt DateTime @default(now())
+
+    apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+    file   File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+    @@id([apiKeyId, fileId])
+    @@index([fileId])
+}
+
+// Kafka topic model for Kafka topics
 model KafkaTopic {
     topicName   String     @id
     description String?
@@ -159,5 +247,28 @@ model SensorTag {
     updatedAt DateTime @updatedAt
 
     sensorData SensorData[]
+}
+
+// ------PROJECT FILES------
+
+// id is not auto-generated - it's the same fileId minted by
+// ProjectFileService.getProjectFileUploadUrl.
+model File {
+    id        String  @id
+    fileName  String
+    size      Int
+    mimeType  String
+    objectKey String  @unique
+
+    entityId    String
+    createdBy   String
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    entity       Entity       @relation(fields: [entityId], references: [id], onDelete: Cascade)
+    apiKeyGrants ApiKeyFile[]
+
+    @@index([entityId])
 }
 

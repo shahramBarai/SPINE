@@ -1,8 +1,6 @@
-import { getPrisma } from "../../prisma/client";
-import { EntityType, MemberRole } from "../../generated/client";
+import { prisma } from "../../prisma/client";
+import { EntityType, MemberRole } from "../../prisma/types";
 import { getAllUsers } from "./userService";
-
-const prisma = getPrisma();
 
 /* -------------------------------- CREATE -------------------------------- */
 
@@ -39,6 +37,7 @@ async function createEntity(data: {
             name: data.name,
             description: data.description,
             type: data.type,
+            isTwinEnabled: false,
             members: data.members
                 ? {
                       create: data.members
@@ -50,6 +49,7 @@ async function createEntity(data: {
             name: true,
             description: true,
             type: true,
+            isTwinEnabled: true,
             createdAt: true,
             updatedAt: true
         }
@@ -137,6 +137,8 @@ async function getEntityById(id: string) {
             name: true,
             description: true,
             type: true,
+            isTwinEnabled: true,
+            coverImageKey: true,
             createdAt: true,
             updatedAt: true
         }
@@ -168,6 +170,35 @@ async function getEntitiesByUserId(userId: string) {
         }
     });
     return entities;
+}
+
+/**
+ * Get PROJECT entities visible to a user: projects with the digital twin
+ * enabled, plus any the user is a member of. Anonymous callers (no userId)
+ * only see twin-enabled ones.
+ * @param userId - The id of the user, if authenticated
+ * @returns An array of visible project entities
+ */
+async function getVisibleProjects(userId?: string) {
+    const projects = await prisma.entity.findMany({
+        where: {
+            OR: [
+                { isTwinEnabled: true },
+                ...(userId ? [{ members: { some: { userId } } }] : [])
+            ]
+        },
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            type: true,
+            isTwinEnabled: true,
+            coverImageKey: true,
+            createdAt: true,
+            updatedAt: true
+        }
+    });
+    return projects;
 }
 
 /**
@@ -217,6 +248,8 @@ async function updateEntity(
     data: {
         name?: string;
         description?: string;
+        isTwinEnabled?: boolean;
+        coverImageKey?: string | null;
     }
 ) {
     // Check if project exists
@@ -323,6 +356,7 @@ export {
     getAllEntities,
     getEntityById,
     getEntitiesByUserId,
+    getVisibleProjects,
     getMembers,
     getMember,
     updateEntity,

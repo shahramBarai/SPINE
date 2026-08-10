@@ -1,0 +1,195 @@
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+import { router, publicProcedure } from "../trpc";
+import { hashPassword, verifyPassword } from "../auth/password";
+import { type UserSession } from "../auth/iron-session";
+import { UserService } from "@spine/storage-platform";
+import { env } from "@spine/shared";
+
+// User input validation schemas
+const signUpSchema = z.object({
+    email: z.email(),
+    password: z.string().min(6),
+    name: z.string().optional()
+});
+
+const signInSchema = z.object({
+    email: z.email(),
+    password: z.string().min(6)
+});
+
+const devSignInSchema = z.object({
+    email: z.email(),
+    name: z.string(),
+    role: z.enum(["ADMIN", "USER"])
+});
+
+export const authRouter = router({
+    // Get the current user session
+    getSession: publicProcedure.query(async ({ ctx }) => {
+        if (!ctx.session.data || !ctx.session.data.user) {
+            return null;
+        }
+        return ctx.session.data.user;
+    }),
+
+    // Sign up a new user
+    signUp: publicProcedure
+        .input(signUpSchema)
+        .mutation(async ({ ctx, input }) => {
+            const { email, password, name } = input;
+
+            try {
+                // Check if user already exists
+                const existingUser = await UserService.getUserByEmail(email);
+
+                if (existingUser !== null) {
+                    throw new TRPCError({
+                        code: "CONFLICT",
+                        message: "User already exists"
+                    });
+                }
+
+                // Hash password
+                const hashedPassword = await hashPassword(password);
+
+                // Create new user
+                const user = await UserService.createUser({
+                    email,
+                    password: hashedPassword,
+                    name
+                });
+
+                // Create session
+                const session: UserSession = {
+                    id: user.id,
+                    email: user.email,
+                    fullName: user.name ?? "",
+                    avatar: "",
+                    role: user.role
+                };
+
+                ctx.session.data.user = session;
+                await ctx.session.save();
+
+                return { user: session };
+            } catch (error) {
+                if (error instanceof TRPCError) {
+                    throw error;
+                }
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: "Failed to create user"
+                });
+            }
+        }),
+
+    // Sign in existing user
+    signIn: publicProcedure
+        .input(signInSchema)
+        .mutation(async ({ ctx, input }) => {
+            const { email, password } = input;
+
+            try {
+                // Find user with password
+                const user =
+                    await UserService.getUserByEmailWithPassword(email);
+
+                if (!user) {
+                    throw new TRPCError({
+                        code: "NOT_FOUND",
+                        message: "Invalid email or password"
+                    });
+                }
+
+                // Verify password
+                const isValid = await verifyPassword(password, user.password);
+
+                if (!isValid) {
+                    throw new TRPCError({
+                        code: "UNAUTHORIZED",
+                        message: "Invalid email or password"
+                    });
+                }
+
+                // Create session
+                const session: UserSession = {
+                    id: user.id,
+                    email: user.email,
+                    fullName: user.name ?? "",
+                    avatar: "",
+                    role: user.role
+                };
+
+                ctx.session.data = { user: session };
+                await ctx.session.save();
+
+                return { user: session };
+            } catch (error) {
+                if (error instanceof TRPCError) {
+                    throw error;
+                }
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: "Failed to sign in"
+                });
+            }
+        }),
+
+    // Sign out current user
+    signOut: publicProcedure.mutation(async ({ ctx }) => {
+        ctx.session.destroy();
+        return { success: true };
+    }),
+
+    // Dev mode sign in - creates user if not exists
+    devSignIn: publicProcedure
+        .input(devSignInSchema)
+        .mutation(async ({ ctx, input }) => {
+            // Only allow in development mode
+            if (env.NODE_ENV !== "dev") {
+                throw new TRPCError({
+                    code: "FORBIDDEN",
+                    message: "Dev sign-in only available in development mode"
+                });
+            }
+
+            const { email, name, role } = input;
+            try {
+                // Check if user exists
+                let user = await UserService.getUserByEmail(email);
+                if (!user) {
+                    // Create user with a default dev password
+                    const devPassword = await hashPassword("dev123456");
+                    user = await UserService.createUser({
+                        email,
+                        password: devPassword,
+                        name,
+                        role
+                    });
+                }
+
+                // Create session
+                const session: UserSession = {
+                    id: user.id,
+                    email: user.email,
+                    fullName: user.name || name,
+                    avatar: "",
+                    role: user.role
+                };
+                ctx.session.data = { ...ctx.session.data, user: session };
+                await ctx.session.save();
+
+                return session;
+            } catch (error) {
+                console.error("Dev sign-in error:", error);
+                if (error instanceof TRPCError) {
+                    throw error;
+                }
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: "Failed to sign in"
+                });
+            }
+        })
+});

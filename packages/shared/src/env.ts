@@ -11,15 +11,18 @@ const SHARED_ENV_FILE = resolve(
 interface WorkspaceEnv {
     NODE_ENV: string;
     LOG_LEVEL: string;
-    MQTT_USERNAME: string;
-    MQTT_PASSWORD: string;
     DATABASE_URL_PLATFORM: string;
     DATABASE_URL_TIMESCALE: string;
     DATABASE_URL_MINIO: string;
+    DATABASE_URL_FUSEKI: string;
     KAFKA_BROKERS: string;
     SCHEMA_REGISTRY_URL: string;
     SCHEMA_REGISTRY_USERNAME?: string;
     SCHEMA_REGISTRY_PASSWORD?: string;
+    FRONTEND_URL: string;
+    BACKEND_URL: string;
+    SECRET_COOKIE_PASSWORD: string;
+    BUILDING_SERVICE_URL: string;
 }
 
 function requiredEnv(name: keyof WorkspaceEnv): string {
@@ -44,17 +47,26 @@ dotenv.config({ path: SHARED_ENV_FILE });
 const env: WorkspaceEnv = {
     NODE_ENV: requiredEnv("NODE_ENV"),
     LOG_LEVEL: requiredEnv("LOG_LEVEL"),
-    MQTT_USERNAME: requiredEnv("MQTT_USERNAME"),
-    MQTT_PASSWORD: requiredEnv("MQTT_PASSWORD"),
     DATABASE_URL_PLATFORM: requiredEnv("DATABASE_URL_PLATFORM"),
     DATABASE_URL_TIMESCALE: requiredEnv("DATABASE_URL_TIMESCALE"),
     DATABASE_URL_MINIO: requiredEnv("DATABASE_URL_MINIO"),
+    DATABASE_URL_FUSEKI: requiredEnv("DATABASE_URL_FUSEKI"),
     KAFKA_BROKERS: requiredEnv("KAFKA_BROKERS"),
     SCHEMA_REGISTRY_URL: requiredEnv("SCHEMA_REGISTRY_URL"),
     SCHEMA_REGISTRY_USERNAME:
         process.env.SCHEMA_REGISTRY_USERNAME?.trim() || undefined,
     SCHEMA_REGISTRY_PASSWORD:
-        process.env.SCHEMA_REGISTRY_PASSWORD?.trim() || undefined
+        process.env.SCHEMA_REGISTRY_PASSWORD?.trim() || undefined,
+    FRONTEND_URL: requiredEnv("FRONTEND_URL"),
+    BACKEND_URL: requiredEnv("BACKEND_URL"),
+    SECRET_COOKIE_PASSWORD: requiredEnv("SECRET_COOKIE_PASSWORD"),
+    // Not required (unlike the others above): building-service is optional,
+    // experimental infra, not part of the core docker-compose stack, so a
+    // missing .env entry shouldn't crash every other package that imports
+    // this shared env - it just falls back to the local dev default.
+    BUILDING_SERVICE_URL:
+        process.env.BUILDING_SERVICE_URL?.trim() ||
+        "http://172.29.248.145:8000"
 };
 
 export type { WorkspaceEnv };

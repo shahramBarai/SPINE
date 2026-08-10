@@ -65,7 +65,7 @@ services:
         environment:
             FUSEKI_DATASET_1: "spine"
             FUSEKI_DATASET_1_TYPE: "tdb2"
-            ADMIN_PASSWORD: "admin123"
+            ADMIN_PASSWORD: "password"
         volumes:
             - fuseki_data:/fuseki
         healthcheck:
