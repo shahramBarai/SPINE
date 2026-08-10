@@ -24,33 +24,33 @@ interface DigitalTwinPageProps {
 }
 
 function DigitalTwinPageContent({ project }: DigitalTwinPageProps) {
-    if (project.rootId === null) {
-        return (
-            <div className="h-screen w-screen flex flex-col items-center justify-center gap-3 bg-background text-foreground">
-                <Boxes className="h-10 w-10 text-muted-foreground" />
-                <p className="text-lg font-medium">
-                    No building data synced yet
-                </p>
-                <p className="text-sm text-muted-foreground max-w-md text-center">
-                    This project has no building/site data in its graph yet.
-                    Upload an IFC file and run the IFC-to-graph conversion tool
-                    from the project's manage page to get started.
-                </p>
-                <Link
-                    to={`/projects/${project.id}/manage`}
-                    className="text-sm text-primary hover:underline"
-                >
-                    Go to project settings
-                </Link>
-            </div>
-        );
-    }
+    // if (project.rootId === null) {
+    //     return (
+    //         <div className="h-screen w-screen flex flex-col items-center justify-center gap-3 bg-background text-foreground">
+    //             <Boxes className="h-10 w-10 text-muted-foreground" />
+    //             <p className="text-lg font-medium">
+    //                 No building data synced yet
+    //             </p>
+    //             <p className="text-sm text-muted-foreground max-w-md text-center">
+    //                 This project has no building/site data in its graph yet.
+    //                 Upload an IFC file and run the IFC-to-graph conversion tool
+    //                 from the project's manage page to get started.
+    //             </p>
+    //             <Link
+    //                 to={`/projects/${project.id}/manage`}
+    //                 className="text-sm text-primary hover:underline"
+    //             >
+    //                 Go to project settings
+    //             </Link>
+    //         </div>
+    //     );
+    // }
 
     return (
         <DigitalTwinProvider
             key={project.id}
             projectInfo={{ id: project.id, name: project.name }}
-            focusId={project.rootId}
+            focusId={project.rootId || "null"}
         >
             <DigitalTwinLayout />
         </DigitalTwinProvider>

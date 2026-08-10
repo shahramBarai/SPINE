@@ -6,6 +6,7 @@ import { authRouter } from "./routers/auth";
 import { digitalTwinRouter } from "./routers/digitalTwin";
 import { projectRouter } from "./routers/project";
 import { kafkaRouter } from "./routers/kafka";
+import { schemaRegistryRouter } from "./routers/schemaRegistry";
 import { handleProjectFilesRoute } from "./routes/projectFiles";
 import { env } from "@spine/shared";
 
@@ -14,7 +15,8 @@ export const appRouter = router({
     auth: authRouter,
     digitalTwin: digitalTwinRouter,
     project: projectRouter,
-    kafka: kafkaRouter
+    kafka: kafkaRouter,
+    schemaRegistry: schemaRegistryRouter
 });
 export type AppRouter = typeof appRouter;
 

@@ -14,6 +14,8 @@ import { ProjectsPage } from "pages/projects";
 import { ProjectManagePage } from "pages/projects/manage";
 import { UserManagementPage } from "pages/admin/users";
 import { KafkaManagementPage } from "pages/admin/kafka";
+import { SchemaManagementPage } from "pages/admin/schemas";
+import { SchemaDetailPage } from "pages/admin/schemas/detail";
 
 import { ToastContainer } from "react-toastify";
 
@@ -72,6 +74,22 @@ createRoot(document.getElementById("root")!).render(
                             element={
                                 <AppLayout>
                                     <KafkaManagementPage />
+                                </AppLayout>
+                            }
+                        />
+                        <Route
+                            path="/admin/schemas"
+                            element={
+                                <AppLayout>
+                                    <SchemaManagementPage />
+                                </AppLayout>
+                            }
+                        />
+                        <Route
+                            path="/admin/schemas/:subject"
+                            element={
+                                <AppLayout>
+                                    <SchemaDetailPage />
                                 </AppLayout>
                             }
                         />
