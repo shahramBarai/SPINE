@@ -1,17 +1,10 @@
-services:
-    # ------ Webapp ------ #
-    webapp:
-        container_name: webapp
-        build:
-            context: ./webapp
-            dockerfile: Dockerfile.dev
-        ports:
-            - "3000:3000"
-        env_file:
-            - path: ./webapp/.env.example
-              required: true
-        volumes:
-            - ./webapp:/app
-            - /app/node_modules
-            - /app/.next
-        profiles: ["app", "full"]
+# Intentionally empty.
+#
+# This file used to define the `webapp` service (the superseded Next.js app,
+# removed along with the module itself). The current app is the Vite frontend
+# plus the standalone tRPC backend, neither of which is containerised yet -
+# run them with `pnpm dev` in modules/app/frontend and modules/app/backend.
+#
+# Services for those two go here once their Dockerfiles exist; the root
+# docker-compose.yml already has a commented-out `include:` entry waiting for
+# this file.

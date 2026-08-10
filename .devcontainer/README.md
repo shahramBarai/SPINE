@@ -12,10 +12,10 @@ This DevContainer provides a complete development environment for the IoT Platfo
 
 ### Working with Different Modules
 
-**Node.js/TypeScript modules** (e.g., `modules/app/webapp`):
+**Node.js/TypeScript modules** (e.g., `modules/app/frontend`):
 
 ```bash
-cd modules/app/webapp
+cd modules/app/frontend
 pnpm install
 pnpm dev
 ```
@@ -43,7 +43,7 @@ pip install -r requirements.txt
 
 - **Node.js 20** with TypeScript support
     - pnpm package manager pre-installed
-    - For modules: app/webapp, storage/data-service, storage/timescale-writer, ingress/mqtt_subscriber_nodejs, analytics/job-submission-service
+    - For modules: app/frontend, app/backend, storage/data-service, storage/timescale-writer, ingress/mqtt_subscriber_nodejs, analytics/job-submission-service
 
 - **Rust** (latest stable)
     - rustup, cargo, rustfmt, clippy

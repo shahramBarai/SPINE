@@ -21,7 +21,7 @@ This guide contains detailed technical standards and best practices for contribu
 
 SPINE includes VS Code Dev Container configuration for a consistent development environment.
 
-\***\*Note:** Currently, it runs the [webapp](./modules/app/webapp) service and the core modules [messaging](./modules/messaging) and [storage](./modules/storage) to get you started.
+\***\*Note:** Currently, it runs the web app ([frontend](./modules/app/frontend) + [backend](./modules/app/backend)) and the core modules [messaging](./modules/messaging) and [storage](./modules/storage) to get you started.
 
 1. Install [VS Code](https://code.visualstudio.com/) and [Remote Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 2. Open the project in VS Code
@@ -36,11 +36,13 @@ pnpm install
 # Generate Prisma clients
 pnpm db:generate
 
-# Start the webapp service
-pnpm dev
+# Start the backend (standalone tRPC server) and the frontend, in
+# separate terminals
+cd modules/app/backend && pnpm dev
+cd modules/app/frontend && pnpm dev
 ```
 
-You can then access the webapp at `http://localhost:3000`.
+You can then access the frontend at the `FRONTEND_URL` set in `packages/shared/.env`.
 
 ### 2. Manual Development Setup
 
