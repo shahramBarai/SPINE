@@ -54,19 +54,19 @@ function BreadCrumb({
 
     const homeIcon = (
         <HomeIcon
-            className="h-5 w-5 flex-shrink-0 text-muted-foreground"
+            className="h-5 w-5 shrink-0 text-muted-foreground"
             aria-hidden="true"
         />
     );
     const chevronRightIcon = (
         <ChevronRightIcon
-            className="h-6 w-6 flex-shrink-0 text-muted-foreground"
+            className="h-6 w-6 shrink-0 text-muted-foreground"
             aria-hidden="true"
         />
     );
     const chevronDoubleRightIcon = (
         <ChevronDoubleRightIcon
-            className="h-6 w-6 flex-shrink-0 text-muted-foreground"
+            className="h-6 w-6 shrink-0 text-muted-foreground"
             aria-hidden="true"
         />
     );
