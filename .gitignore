@@ -16,3 +16,4 @@ Cargo.lock
 docs/presentation
 .claude
 CLAUDE.md
+skills-lock.json
