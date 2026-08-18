@@ -8,22 +8,10 @@ const ignorePatterns = [
     "**/dist/**",
     "**/build/**",
     "**/coverage/**",
+    "**/cache/**",
     "**/.next/**",
     "**/generated/**",
     "**/.venv/**"
-];
-
-const typeScriptFiles = [
-    "packages/messaging/tsconfig.json",
-    "packages/shared/tsconfig.json",
-    "packages/ingress/tsconfig.json",
-    "packages/storage/timescale/tsconfig.json",
-    "packages/storage/minio/tsconfig.json",
-    "packages/storage/platform/tsconfig.json",
-    "modules/ingress/eb_subscriber/tsconfig.json",
-    "modules/egress/mqtt-bridge/tsconfig.json",
-    "modules/ingress/mqtt_subscriber_nodejs/tsconfig.json",
-    "modules/app/webapp/tsconfig.json"
 ];
 
 export default defineConfig([
@@ -42,7 +30,8 @@ export default defineConfig([
         files: ["**/*.{ts,tsx,mts,cts}"],
         languageOptions: {
             parserOptions: {
-                project: typeScriptFiles
+                projectService: true,
+                tsconfigRootDir: import.meta.dirname
             }
         },
         rules: {

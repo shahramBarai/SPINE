@@ -1,0 +1,26 @@
+# Core RDF/IFC + geometry stack
+ifcopenshell
+rdflib
+shapely
+numpy
+rtree
+trimesh
+plotly
+ftfy
+fastapi
+uvicorn[standard]
+
+# For async HTTP requests
+httpx
+
+# For file uploads
+python-multipart
+
+# TimescaleDB client
+asyncpg
+aiokafka
+
+# WIP:ML/embedding stack used in notebooks
+torch
+torch-geometric
+sentence-transformers

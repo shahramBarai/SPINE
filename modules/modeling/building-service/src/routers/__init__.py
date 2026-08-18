@@ -1,0 +1,14 @@
+"""
+routers/ - HTTP routes and endpoints.
+"""
+
+from fastapi import APIRouter
+
+from .health import router as health_router
+from .pipeline import router as pipeline_router
+
+router = APIRouter()
+router.include_router(health_router)
+router.include_router(pipeline_router)
+
+__all__ = ["router"]

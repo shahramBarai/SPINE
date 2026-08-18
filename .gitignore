@@ -5,5 +5,15 @@ target/
 Cargo.lock
 .turbo
 
+# Python dependencies
+**/__pycache__
+**/.venv
+
 # Local env files
 .env
+
+# Docs + claude
+docs/presentation
+.claude
+CLAUDE.md
+skills-lock.json

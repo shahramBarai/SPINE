@@ -1,0 +1,19 @@
+{
+    "extends": "../../../tsconfig.base.json",
+    "compilerOptions": {
+        "target": "ES2020",
+        "useDefineForClassFields": true,
+        "lib": ["ES2020", "DOM", "DOM.Iterable"],
+        "jsx": "react-jsx",
+
+        /* Paths */
+        "paths": {
+            "utils/*": ["./src/utils/*"],
+            "components/*": ["./src/components/*"],
+            "hooks/*": ["./src/hooks/*"],
+            "pages/*": ["./src/pages/*"],
+            "@server/*": ["../backend/src/*"]
+        }
+    },
+    "include": ["src/**/*", "vite.config.ts"]
+}

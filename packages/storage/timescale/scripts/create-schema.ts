@@ -1,7 +1,6 @@
-import { env } from "@spine/shared";
-
 import { initTimescaleStorage } from "../src/db/connection";
 import { createSchema } from "../src/db/schema";
+import { env } from "@spine/shared";
 
 console.log("🔃​ Creating schema...\n");
 

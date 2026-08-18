@@ -1,7 +1,5 @@
-import { getPrisma } from "../../prisma/client";
-import { UserRole } from "../../generated/client";
-
-const prisma = getPrisma();
+import { prisma } from "../../prisma/client";
+import { UserRole } from "../../prisma/types";
 
 /* -------------------------------- CREATE -------------------------------- */
 /**
@@ -59,6 +57,46 @@ async function getAllUsers() {
             createdAt: true,
             updatedAt: true
         }
+    });
+    return users;
+}
+
+/**
+ * Search users by name or email, for lightweight "find a user" pickers
+ * (e.g. adding a project member) where returning the full user table
+ * would not scale.
+ * @param query - Substring to match against name or email (case-insensitive)
+ * @param options.excludeIds - User ids to exclude from the results
+ * @param options.limit - Max number of results to return (default 5)
+ * @returns An array of matching users, capped at `limit`
+ */
+async function searchUsers(
+    query: string,
+    options?: { excludeIds?: string[]; limit?: number }
+) {
+    const users = await prisma.user.findMany({
+        where: {
+            AND: [
+                {
+                    OR: [
+                        { name: { contains: query, mode: "insensitive" } },
+                        { email: { contains: query, mode: "insensitive" } }
+                    ]
+                },
+                ...(options?.excludeIds?.length
+                    ? [{ id: { notIn: options.excludeIds } }]
+                    : [])
+            ]
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true
+        },
+        take: options?.limit ?? 5
     });
     return users;
 }
@@ -194,6 +232,7 @@ async function deleteUser(id: string) {
 export {
     createUser,
     getAllUsers,
+    searchUsers,
     getUserById,
     getUserByEmail,
     getUserByEmailWithPassword,
