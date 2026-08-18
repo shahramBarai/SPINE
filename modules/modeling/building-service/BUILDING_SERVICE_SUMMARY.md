@@ -2,15 +2,16 @@
 
 ## 1. What this part of SPINE does
 
-The Building Service is the modeling pipeline that turns IFC files into linked RDF/Turtle (TTL), generates cross-model linksets, and exposes query/API access on top of Fuseki.
+The Building Service is the modeling pipeline that turns IFC files into linked RDF/Turtle (TTL) and generates cross-model linksets.
 
-At a high level, it does three things:
+At a high level, it does two things:
 
 1. Converts IFC to LBD-style TTL.
 2. Enriches and links entities across architecture and MEP TTLs.
-3. Loads and queries the data through Apache Jena Fuseki (plus FastAPI endpoints for frontend usage).
 
-Primary scripts are listed in `src/README` and implemented under `src/`.
+It exposes the conversion step over HTTP (FastAPI) for the SPINE backend to call; it does not upload to or query Fuseki itself - that happens through the main app's `packages/storage/rdf-store`.
+
+Primary scripts are listed in this directory's `README.md` and implemented under `src/`.
 
 ## 2. Main libraries and runtime components
 
@@ -24,23 +25,22 @@ Primary scripts are listed in `src/README` and implemented under `src/`.
 - numpy: geometry/math helper operations
 - ftfy: text/encoding cleanup support
 
-### Service/API and integration
+### Service/API
 
-- fastapi + uvicorn: HTTP API layer
-- httpx: async HTTP support
+- fastapi + uvicorn: HTTP API layer (`server.py`, `routers/`)
 - python-multipart: file upload support
-- TimescaleDB(TODO): history data retrieving and visualization to be updated.
-- Kafka(TODO): real-time data retrieving and visualization to be updated.
+
+There is no TimescaleDB or Kafka client in this module anymore - the sensor-data and real-time paths that used to integrate with them here were removed; that integration now lives on the TS backend / ingress side of SPINE.
 
 ### External tools/services
 
-- IFCtoLBD(v 2.44.0) Java CLI JAR: actual IFC -> TTL conversion engine
-  https://github.com/jyrkioraskari/IFCtoLBD/releases 
-- Apache Jena Fuseki: RDF store and SPARQL endpoint
+- IFCtoLBD Java CLI JAR (`src/java_files/IFCtoLBD_CLI.jar`): actual IFC -> TTL conversion engine
+  https://github.com/jyrkioraskari/IFCtoLBD/releases
+- Apache Jena Fuseki: RDF store and SPARQL endpoint - written to and queried by the main app, not by this module
 
 ## 3. Ontologies and namespaces used
 
-Defined centrally in `src/graph_manager.py` and reused across linkers:
+Defined centrally in `src/scripts/graph_manager.py` and reused across linkers:
 
 - BOT: https://w3id.org/bot#
 - Brick: https://brickschema.org/schema/Brick#
@@ -59,39 +59,20 @@ Practical role split in this codebase:
 
 ## 4. IFC -> TTL conversion flow
 
-Implemented in `src/ifc_lbd_converter.py`, `src/conversion/ifc_to_lbd.py`, and `src/ifc_ttl_fuseki_pipeline.py`.
+Two independent implementations of the same underlying Java call:
+
+- `src/scripts/ifc_lbd_converter.py` - standalone CLI (single file or batch directory mode)
+- `src/conversion/ifc_to_lbd.py` - the HTTP API's version, adding in-memory background job tracking, called from `src/routers/pipeline.py`
 
 ### Conversion behavior
 
 - IFC files are converted by running Java with the IFCtoLBD JAR.
 - Default options are level=1 and ifcOWL=False.
-- Single file and batch directory modes are supported.
+- Single file and batch directory modes are supported by the CLI script.
 
-### Pipeline order
+### Encoding fix
 
-The pipeline script enforces this sequence per file:
-
-1. Convert IFC to TTL.
-2. Run encoding fix on generated TTL.
-3. Upload corrected TTL into Fuseki.
-
-This is explicitly described in code as:
-
-- convert -> fix encoding -> upload to Fuseki
-
-### Fuseki loading details
-
-`src/ttl_fuseki_manager.py` uses Graph Store Protocol endpoints:
-
-- POST /data: append triples
-- PUT /data: replace graph contents
-- DELETE /data: delete graph contents
-
-Supports:
-
-- default graph or named graph URI
-- optional graph URI template per file stem
-- optional basic auth and timeout settings
+`src/utils/encoding_utils.py` fixes Finnish-letter encoding issues (mojibake, Latin-1, Java-escaped) in the generated TTL files.
 
 ## 5. How extra linkings are created across TTLs
 
@@ -99,7 +80,7 @@ The service creates multiple linkset TTLs, each focused on a different semantic 
 
 ## 5.1 Skeleton linking (architecture <-> MEP skeleton)
 
-Script: `src/ttl_skeleton_link.py`
+Script: `src/scripts/ttl_skeleton_link.py`
 
 Goal:
 
@@ -121,7 +102,7 @@ Important safeguard:
 
 ## 5.2 System + terminal/component to space linking
 
-Script: `src/ttl_ifc_system_link.py`
+Script: `src/scripts/ttl_ifc_system_link.py`
 
 Goal:
 
@@ -147,7 +128,7 @@ So this script links MEP TTL entities to architecture TTL spaces using IFC geome
 
 ## 5.3 Geometry adjacency linking (space/wall + MEP network topology)
 
-Script: `src/ttl_ifc_geom_link.py`
+Script: `src/scripts/ttl_ifc_geom_link.py`
 
 Two major outputs:
 
@@ -178,7 +159,7 @@ This provides both micro-level physical connectivity and macro-level network gra
 
 ## 5.4 Sensor linking (JSON metadata -> Brick sensors -> BOT spaces)
 
-Script: `src/ttl_sensor_link.py`
+Script: `src/scripts/ttl_sensor_link.py`
 
 Flow:
 
@@ -194,61 +175,19 @@ Matching strategy:
 - Exact case-insensitive label match first.
 - Prefix-based fuzzy match as fallback.
 
-## 6. Query and API layer after linking
+## 6. HTTP API layer
 
-- `src/db/fuseki_sparql_client.py` provides SELECT/CONSTRUCT/ASK wrappers and domain helpers.
-- `src/api_server.py` and `src/api/*.py` expose endpoints for tree/sensors/triples/graph and pipeline operations.
-- Fuseki SPARQL endpoint is the main read/query backend.
+- `src/server.py` builds the FastAPI app and registers `src/routers/*.py`.
+- `src/routers/health.py` - `GET /api/health`, a bare liveness check (no dependency pings).
+- `src/routers/pipeline.py` - upload/download files and run conversions in the background, backed by `src/conversion/ifc_to_lbd.py`'s in-memory job tracker.
 
-## 7. Frontend part (`frontend/`)
+This module does not query or upload to Fuseki, and has no SPARQL endpoint of its own - a project's TTL is loaded and queried through the main app's `packages/storage/rdf-store` (`DatasetService` for loading, `SemanticSearchService` for querying), driven from the backend's job-execution flow via `BuildingServiceClient`.
 
-The `building-service/frontend` app is the operator UI for browsing models, running pipeline actions, and exploring semantic links.
-
-### Frontend stack
-
-- Vite + React + TypeScript
-- TanStack React Query for API data fetching and cache invalidation
-- Three.js + `web-ifc-three` (`IFCLoader`) for IFC 3D visualization
-- UI components from Radix/shadcn patterns
-
-### Main frontend workflow
-
-1. User loads IFC files from the left sidebar into the viewer.
-2. Viewer parses IFC files client-side and renders multi-model scenes.
-3. Top bar actions trigger backend pipeline operations:
-   - Convert to TTL
-   - Sync to Fuseki
-4. Semantic and graph panels consume data from backend APIs and SPARQL-backed endpoints.
-
-### Key frontend features implemented
-
-- Multi-panel digital twin layout:
-  - `TopNav` (actions/status)
-  - `LeftSidebar` (project tree, sensors, IFC loading/layers/floor filtering)
-  - `ViewerPane` (3D IFC scene, selection, highlighting)
-  - `GraphPane` (relationship graph + sensor detail/history)
-  - `BottomPanel` (semantic search/table)
-- Live mode indicators based on backend health checks (Fuseki/Timescale connectivity).
-- IFC model handling with performance safeguards for larger models (loader configuration, geometry optimization, adaptive behavior in viewer code).
-
-### Backend integration behavior
-
-- API base URL is configured via `VITE_BUILDING_API_BASE_URL` (default `http://localhost:8000/api`).
-- Data hooks (`use-twin-data`) query backend endpoints for tree, sensors, triples, graph, and health.
-- If backend is unavailable, frontend falls back to local mock data (`src/lib/twin-data.ts`).
-- In dev mode, API calls can attempt an auto-start route (`/__dev/start-building-api`) and retry after health check.
-
-### Semantic search behavior in frontend
-
-- Frontend can execute semantic search requests and map SPARQL bindings into:
-  - triple table rows
-  - graph nodes/edges with RDF/BOT/Brick/S223/FSO label normalization
-
-## 8. End-to-end process summary
+## 7. End-to-end process summary
 
 Typical practical process for one dataset:
 
-1. Upload/prepare IFC files (architecture + MEP).
+1. Upload/prepare IFC files (architecture + MEP), via the HTTP API or directly on disk for the CLI scripts.
 2. Convert IFC -> TTL using IFCtoLBD (ifcOWL disabled by default in current scripts).
 3. Normalize TTL encoding.
 4. Generate linksets:
@@ -256,12 +195,12 @@ Typical practical process for one dataset:
    - system/component-space links
    - geometry adjacency links
    - sensor-space links
-5. Load base TTLs and linkset TTLs into Fuseki (default or named graphs).
-6. Query and serve via SPARQL/FastAPI for frontend and analytics.
+5. Load the base TTLs and linkset TTLs into Fuseki through the main app (not this module).
+6. Query via the main app's SPARQL/tRPC layer for the digital twin viewer and analytics.
 
-## 9. Notes on current implementation state
+## 8. Notes on current implementation state
 
-- Some scripts are production-oriented utilities; some API pipeline endpoints remain partially stubbed/TODO.
-- TODO: Data retrieving and visualization via Knowledge Graph nodes.
-- TODO: Sync of visualization of selected Knowledge Graph and selected IFC entitiies.
+- Some scripts are production-oriented utilities; the linking scripts in particular are function libraries with hardcoded sample paths in their `main` blocks, meant to be called via their public functions (see the README's usage examples) rather than run as-is.
+- `src/utils/sparql_helpers.py` is currently unused - it was written for the FastAPI graph/triple endpoints that lived under the now-removed `services/` and `routers/dataset.py`/`routers/sersors.py`, and nothing in the module calls it anymore.
+- `src/requirements.txt` still lists `asyncpg`, `aiokafka`, and `httpx` from the removed TimescaleDB/Kafka/Fuseki clients; none are imported anywhere in the current codebase.
 - The summary above reflects the implemented behavior in current Python scripts under `modules/modeling/building-service/src`.

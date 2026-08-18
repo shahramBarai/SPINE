@@ -7,23 +7,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from contextlib import asynccontextmanager
-from db.sensor_connection_client import kafka_background_consumer
 
 from routers import router
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup: Start the background Kafka worker safely
-    consumer_task = asyncio.create_task(kafka_background_consumer())
-    yield
-    # Shutdown: Cancel background worker gracefully when server stops
-    consumer_task.cancel()
-    try:
-        await consumer_task
-    except asyncio.CancelledError:
-        pass
-
-app = FastAPI(title="SPINE Building Service API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="SPINE Building Service API", version="0.1.0")
 
 frontend_origin_env = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 frontend_origins = [o.strip() for o in frontend_origin_env.split(",") if o.strip()]

@@ -1,327 +1,158 @@
 # Modeling Module - Building Service
 
-The Building Service in the Modeling module provides IFC-to-TTL conversion and RDF link generation for SPINE building models.
-
-This README is aligned with the current scripts in src. Files starting with WIP are temporary notebook work and are intentionally excluded.
+The Building Service in the Modeling module provides IFC-to-TTL conversion, RDF link generation, and a small FastAPI service on top of them for SPINE building models.
 
 ## Purpose
 
 - Convert IFC files into Linked Building Data (TTL)
 - Normalize TTL encoding issues
 - Generate linksets for skeleton, system, geometry, and sensor relations
-
-## Current Script Inventory
-
-Stable scripts currently used:
-
-- ifc_lbd_converter.py: IFC to TTL conversion using IFCtoLBD Java CLI
-- encoding_utils.py: detects and fixes encoding issues in TTL files
-- ttl_skeleton_link.py: links architecture and MEP skeleton entities (site, building, storey)
-- ttl_ifc_system_link.py: adds IFC system instances and links terminals/components to spaces
-- ttl_ifc_geom_link.py: computes adjacency links (space-space, space-wall, MEP component connectivity)
-- ttl_sensor_link.py: creates sensor instances from JSON and links sensors to BOT spaces
-- ifc_ttl_fuseki_pipeline.py: converts IFC, fixes TTL encoding, then uploads corrected TTL to Fuseki
-- ttl_fuseki_manager.py: loads, deletes, and updates TTL data in Apache Jena Fuseki
-- fuseki_sparql_client.py: queries Fuseki using SPARQL SELECT, CONSTRUCT, ASK with domain-specific helpers
-- graph_manager.py: RDF namespace setup and graph save helpers
-
-Temporary files not part of final repository:
-
-- WIP_*.ipynb notebooks
+- Serve conversions over HTTP for the SPINE backend to call (see `BuildingServiceClient` / `BUILDING_SERVICE_URL` in `modules/app/backend`)
 
 ## Directory Structure
 
 ```
 modules/modeling/building-service/
 ├── README.md
+├── BUILDING_SERVICE_SUMMARY.md
 └── src/
-	├── config.json
-	├── requirements.txt
-	├── jar/
-	│   └── IFCtoLBD_CLI_2_44_4.jar
-	├── graph_manager.py
-	├── ifc_lbd_converter.py
-	├── encoding_utils.py
-	├── ttl_skeleton_link.py
-	├── ttl_ifc_system_link.py
-	├── ttl_ifc_geom_link.py
-	├── ttl_sensor_link.py
-	├── ifc_ttl_fuseki_pipeline.py
-	├── ttl_fuseki_manager.py
-	├── fuseki_sparql_client.py
-	└── WIP_*.ipynb (temporary)
+    ├── requirements.txt
+    ├── server.py                FastAPI app entry point
+    ├── routers/                 HTTP endpoints
+    │   ├── health.py
+    │   └── pipeline.py
+    ├── conversion/
+    │   └── ifc_to_lbd.py        IFC->TTL conversion + in-memory job tracking, used by routers/pipeline.py
+    ├── scripts/                 standalone CLI/library scripts - not used by the HTTP API
+    │   ├── ifc_lbd_converter.py
+    │   ├── graph_manager.py
+    │   ├── ttl_skeleton_link.py
+    │   ├── ttl_ifc_system_link.py
+    │   ├── ttl_ifc_geom_link.py
+    │   └── ttl_sensor_link.py
+    ├── utils/
+    │   ├── file_utils.py
+    │   ├── encoding_utils.py
+    │   └── sparql_helpers.py
+    └── java_files/
+        ├── IFCtoLBD_CLI.jar     IFCtoLBD converter CLI
+        └── config.json          gitignored - JVM hardware flags, create locally
 ```
+
+## Current Script Inventory
+
+Stable scripts, all under `src/scripts/`:
+
+- ifc_lbd_converter.py: IFC to TTL conversion CLI, wraps conversion/ifc_to_lbd.py's Java call
+- graph_manager.py: RDF namespace setup and graph save helpers, shared by the linking scripts below
+- ttl_skeleton_link.py: links architecture and MEP skeleton entities (site, building, storey)
+- ttl_ifc_system_link.py: adds IFC system instances and links terminals/components to spaces
+- ttl_ifc_geom_link.py: computes adjacency links (space-space, space-wall, MEP component connectivity)
+- ttl_sensor_link.py: creates sensor instances from JSON and links sensors to BOT spaces
+
+`src/utils/encoding_utils.py` fixes TTL encoding issues and is used by both the scripts above and, separately, by `src/conversion/ifc_to_lbd.py`'s own HTTP-triggered conversions.
 
 ## Prerequisites
 
 - Python 3.10+
-- Java (required by ifc_lbd_converter.py)
+- Java (required by the IFCtoLBD conversion step)
 - Native deps for ifcopenshell/shapely/rtree/trimesh as needed by your platform
 
 Install Python dependencies:
 
-```powershell
+```bash
 cd modules/modeling/building-service/src
 pip install -r requirements.txt
 ```
 
 ## Configuration
 
-Conversion settings are read from src/config.json:
+JVM/conversion hardware flags are read from `src/java_files/config.json` (gitignored - create it locally):
 
-- hardware: Java JVM flags
-- ifc2lbd.jar_file: path to IFCtoLBD CLI jar
-- ifc2lbd.level: conversion level
-- ifc2lbd.ifcOWL: whether to include ifcOWL output
+```json
+{ "hardware": ["-Xmx4g"] }
+```
 
-## Running Scripts
+A missing file is fine - the converter falls back to no extra flags.
 
-Run commands from modules/modeling/building-service/src.
+## HTTP API (FastAPI)
 
-## Frontend API Bridge (FastAPI)
+`server.py` exposes the pipeline over HTTP for the SPINE backend to call. Run it via:
 
-The src folder now includes a minimal HTTP adapter for frontend integration:
-
-- api_server.py exposes /api/tree, /api/sensors, /api/triples, /api/graph
-- pipeline actions: /api/pipeline/load-ifc, /api/pipeline/convert, /api/pipeline/sync
-
-Install requirements and run:
-
-```powershell
+```bash
 cd modules/modeling/building-service/src
 pip install -r requirements.txt
-uvicorn api_server:app --host 0.0.0.0 --port 8000 --reload
+uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Optional environment variables:
+Optional environment variable:
 
-- FUSEKI_BASE_URL (default: http://localhost:3030)
-- FUSEKI_DATASET (default: dataset)
-- FRONTEND_ORIGIN (default: http://localhost:5173)
+- `FRONTEND_ORIGIN` - comma-separated CORS origins (default `http://localhost:5173`; any `localhost`/`127.0.0.1`/bare-IPv4 origin is always allowed regardless of this setting, on any port)
 
-Frontend should point to the API using VITE_BUILDING_API_BASE_URL, for example:
+Endpoints:
 
-```powershell
-$env:VITE_BUILDING_API_BASE_URL="http://localhost:8000/api"
+- `GET /api/health` - liveness check, no external dependencies
+- `POST /api/pipeline/upload` - upload an .ifc/.ttl file (multipart, up to 1000 MB)
+- `GET /api/pipeline/download?filename=` - download a previously uploaded/converted file
+- `POST /api/pipeline/convert/ifc-to-ttl?filename=` - start a background conversion job, returns a `job_id`
+- `GET /api/pipeline/convert/job?job_id=` - poll one conversion job's status
+- `GET /api/pipeline/convert/jobs` - list every conversion job (in-memory, reset on restart)
+
+Uploaded and converted files are stored under `/tmp/spine_building_service`, not yet backed by MinIO (see the `TODO` in `routers/pipeline.py`) - they don't survive a restart. There is no endpoint here that uploads TTL into Fuseki; that happens through the main app (see "Recommended End-to-End Order" below).
+
+## Running the standalone scripts
+
+The scripts under `src/scripts/` are separate from the HTTP API - they're function libraries, run from `src/` so `scripts`/`utils`/`conversion` resolve as packages:
+
+```bash
+cd modules/modeling/building-service/src
+python -m scripts.ifc_lbd_converter -f "/path/to/model.ifc"
+python -m scripts.ifc_lbd_converter -d "/path/to/IFC"
 ```
 
-### 1) IFC to TTL conversion
+### Encoding normalization
 
-Single IFC file:
-
-```powershell
-python ifc_lbd_converter.py -f "C:\path\to\model.ifc"
+```bash
+python -c "from utils.encoding_utils import process_path; process_path('/path/to/TTL')"
 ```
 
-Batch directory mode:
+### Skeleton linking (site/building/storey)
 
-```powershell
-python ifc_lbd_converter.py -d "C:\path\to\IFC"
+```bash
+python -c "from scripts.ttl_skeleton_link import link_folder_skeletons; link_folder_skeletons('/path/to/ARC.ttl', '/path/to/MEP_TTL_FOLDER', '/path/to/output_linkset.ttl')"
 ```
 
-Use dedicated pipeline script for database upload after encoding correction.
+### System and terminal-to-space linking
 
-Notes:
-
-- The converter auto-creates a TTL directory that mirrors the IFC folder structure.
-- Only .ifc files are processed in directory mode.
-
-### 2) Encoding normalization for TTL files
-
-encoding_utils.py currently exposes functions, not a CLI parser. Use it via Python import:
-
-```powershell
-python -c "from encoding_utils import process_path; process_path(r'C:\path\to\TTL')"
+```bash
+python -c "from scripts.ttl_ifc_system_link import link_mep_system_ttl; link_mep_system_ttl('/path/to/MEP_IFC_FOLDER', '/path/to/MEP_TTL_FOLDER', '/path/to/ARC.ifc', '/path/to/ARC.ttl', ['IfcFlowTerminal','IfcFlowController','IfcDistributionControlElement','IfcEnergyConversionDevice','IfcFlowMovingDevice','IfcFlowStorageDevice','IfcFlowTreatmentDevice','IfcBuildingElementProxy'], '/path/to/linked_systems_elements.ttl')"
 ```
 
-You can also run deep audit for one file:
+### Geometry-based linking
 
-```powershell
-python -c "from encoding_utils import check_fin_letter_encoding; check_fin_letter_encoding(r'C:\path\to\file.ttl')"
+```bash
+python -c "from scripts.ttl_ifc_geom_link import link_arc_spaces_walls_save; link_arc_spaces_walls_save('/path/to/ARC.ifc', '/path/to/ARC.ttl', '/path/to/linked_spaces_walls.ttl', 0.2)"
+python -c "from scripts.ttl_ifc_geom_link import link_mep_components_save; link_mep_components_save('/path/to/HVAC_IFC', '/path/to/HVAC_TTL', '/path/to/Linkset', 0.05)"
 ```
 
-### 3) Skeleton linking (site/building/storey)
+### Sensor linking
 
-ttl_skeleton_link.py is function-driven with dataset paths in its main block.
-
-Recommended usage pattern:
-
-```powershell
-python -c "from ttl_skeleton_link import link_folder_skeletons; link_folder_skeletons(r'C:\path\to\ARC.ttl', r'C:\path\to\MEP_TTL_FOLDER', r'C:\path\to\output_linkset.ttl')"
+```bash
+python -c "from scripts.ttl_sensor_link import define_sensor_instances, link_sensors_to_bot, print_summary_report, save_graph_to_file; g=define_sensor_instances(['/path/to/sensors1.json']); g,stats=link_sensors_to_bot(g, '/path/to/ARC.ttl'); print_summary_report(stats); save_graph_to_file(g, '/path/to/sensors_linked.ttl')"
 ```
-
-### 4) System and terminal-to-space linking
-
-ttl_ifc_system_link.py is function-driven. Use link_mep_system_ttl:
-
-```powershell
-python -c "from ttl_ifc_system_link import link_mep_system_ttl; link_mep_system_ttl(r'C:\path\to\MEP_IFC_FOLDER', r'C:\path\to\MEP_TTL_FOLDER', r'C:\path\to\ARC.ifc', r'C:\path\to\ARC.ttl', ['IfcFlowTerminal','IfcFlowController','IfcDistributionControlElement','IfcEnergyConversionDevice','IfcFlowMovingDevice','IfcFlowStorageDevice','IfcFlowTreatmentDevice','IfcBuildingElementProxy'], r'C:\path\to\linked_systems_elements.ttl')"
-```
-
-### 5) Geometry-based linking
-
-ttl_ifc_geom_link.py provides two main entry functions:
-
-- link_arc_spaces_walls_save(arc_ifc_path, arc_ttl_path, save_path, tolerance)
-- link_mep_components_save(mep_ifc_folder, mep_ttl_folder, save_folder, tolerance)
-
-Examples:
-
-```powershell
-python -c "from ttl_ifc_geom_link import link_arc_spaces_walls_save; link_arc_spaces_walls_save(r'C:\path\to\ARC.ifc', r'C:\path\to\ARC.ttl', r'C:\path\to\linked_spaces_walls.ttl', 0.2)"
-```
-
-```powershell
-python -c "from ttl_ifc_geom_link import link_mep_components_save; link_mep_components_save(r'C:\path\to\HVAC_IFC', r'C:\path\to\HVAC_TTL', r'C:\path\to\Linkset', 0.05)"
-```
-
-### 6) Sensor linking
-
-ttl_sensor_link.py is function-driven. Typical sequence:
-
-1. define_sensor_instances(json_files)
-2. link_sensors_to_bot(sensor_graph, arc_ttl)
-3. print_summary_report(stats)
-4. save_graph_to_file(graph, output_file)
-
-Example:
-
-```powershell
-python -c "from ttl_sensor_link import define_sensor_instances, link_sensors_to_bot, print_summary_report, save_graph_to_file; g=define_sensor_instances([r'C:\path\to\sensors1.json', r'C:\path\to\sensors2.json']); g,stats=link_sensors_to_bot(g, r'C:\path\to\ARC.ttl'); print_summary_report(stats); save_graph_to_file(g, r'C:\path\to\sensors_linked.ttl')"
-```
-
-### 7) IFC -> Encoding Fix -> Fuseki pipeline
-
-This script guarantees upload happens after encoding checks/fixes:
-
-```powershell
-python ifc_ttl_fuseki_pipeline.py -d "C:\path\to\IFC" --fuseki-base-url "http://localhost:3030" --fuseki-dataset "dataset"
-```
-
-If Fuseki authentication is enabled, provide credentials (or set env vars FUSEKI_USERNAME/FUSEKI_PASSWORD):
-
-```powershell
-python ifc_ttl_fuseki_pipeline.py -d "C:\path\to\IFC" --fuseki-dataset "spine" --fuseki-username "admin" --fuseki-password "admin123" --fuseki-timeout 600
-```
-
-Named graph replacement with one graph per file stem:
-
-```powershell
-python ifc_ttl_fuseki_pipeline.py -d "C:\path\to\IFC" --fuseki-dataset "dataset" --fuseki-graph-template "http://example.org/graph/{stem}" --fuseki-replace
-```
-
-### 8) Direct Fuseki TTL management
-
-Load (append) TTL into Fuseki:
-
-```powershell
-python ttl_fuseki_manager.py load --ttl "C:\path\to\file.ttl" --dataset "dataset" --username "admin" --password "admin123"
-```
-
-Update (replace) named graph with TTL:
-
-```powershell
-python ttl_fuseki_manager.py update --ttl "C:\path\to\file.ttl" --dataset "dataset" --graph "http://example.org/graph/building1" --username "admin" --password "admin123"
-```
-
-Delete default or named graph data:
-
-```powershell
-python ttl_fuseki_manager.py delete --dataset "dataset"
-python ttl_fuseki_manager.py delete --dataset "dataset" --graph "http://example.org/graph/building1"
-```
-
-### 9) Query building data with SPARQL
-
-fuseki_sparql_client.py provides both raw SPARQL execution and domain-specific query helpers.
-
-Query all buildings:
-
-```powershell
-python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); print(c.get_buildings())"
-```
-
-Query all spaces in a building:
-
-```powershell
-python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); spaces=c.get_spaces(building_uri='http://example.org/building1'); print(spaces)"
-```
-
-Query adjacent spaces:
-
-```powershell
-python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); adj=c.get_space_adjacencies('http://example.org/space1'); print(adj)"
-```
-
-Query all systems in a building:
-
-```powershell
-python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); sys=c.get_systems(building_uri='http://example.org/building1'); print(sys)"
-```
-
-Query components within a system:
-
-```powershell
-python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); comp=c.get_system_components('http://example.org/system1'); print(comp)"
-```
-
-Query all sensors:
-
-```powershell
-python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); sensors=c.get_sensors(); print(sensors)"
-```
-
-Query sensors in a specific space:
-
-```powershell
-python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); sensors=c.get_sensors(space_uri='http://example.org/space1'); print(sensors)"
-```
-
-Query all points in a space:
-
-```powershell
-python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); pts=c.get_space_points('http://example.org/space1'); print(pts)"
-```
-
-Count entities of a type:
-
-```powershell
-python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); n=c.count_entities('https://w3id.org/bot#Space'); print(f'Total spaces: {n}')"
-```
-
-Get all properties of an entity:
-
-```powershell
-python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); props=c.get_entity_properties('http://example.org/space1'); print(props)"
-```
-
-Execute custom SPARQL SELECT:
-
-```powershell
-python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); results=c.select_query('SELECT ?s WHERE { ?s a <https://w3id.org/bot#Space> } LIMIT 10'); print(results)"
-```
-
-Execute custom SPARQL CONSTRUCT (returns RDF graph):
-
-```powershell
-python -c "from fuseki_sparql_client import FusekiSparqlClient; c=FusekiSparqlClient(); g=c.construct_query('CONSTRUCT { ?s ?p ?o } WHERE { ?s a <https://w3id.org/bot#Building> . ?s ?p ?o }'); g.serialize(destination='output.ttl', format='turtle')"
-```
-
 
 ## Recommended End-to-End Order
 
-1. Convert IFC to TTL with ifc_lbd_converter.py
-2. Fix TTL encoding with encoding_utils.py
-3. Upload corrected TTL to Fuseki with ifc_ttl_fuseki_pipeline.py (or ttl_fuseki_manager.py for direct TTL operations)
-4. Build skeleton links with ttl_skeleton_link.py
-5. Build system/terminal links with ttl_ifc_system_link.py
-6. Build geometry links with ttl_ifc_geom_link.py
-7. Build sensor links with ttl_sensor_link.py
-8. Query linked data with fuseki_sparql_client.py
-
+1. Convert IFC to TTL - `scripts/ifc_lbd_converter.py`, or the HTTP API's `/api/pipeline/convert/ifc-to-ttl`
+2. Fix TTL encoding - `utils/encoding_utils.py`
+3. Build skeleton links - `scripts/ttl_skeleton_link.py`
+4. Build system/terminal links - `scripts/ttl_ifc_system_link.py`
+5. Build geometry links - `scripts/ttl_ifc_geom_link.py`
+6. Build sensor links - `scripts/ttl_sensor_link.py`
+7. Upload the base and linkset TTLs into the project's Fuseki dataset through the main app (`packages/storage/rdf-store`'s `DatasetService`) - this module doesn't talk to Fuseki itself
 
 ## Notes
 
-- Most linking scripts are currently configured as function libraries with hardcoded sample paths in their main blocks.
-- For reproducible runs, prefer calling their public functions (shown above) with explicit paths.
-
+- The linking scripts are function libraries with hardcoded sample paths in their `if __name__ == "__main__"` blocks where present - prefer calling their public functions directly, as shown above.
+- This module has no Fuseki client and no SPARQL query capability of its own (`db/fuseki_client.py` and the endpoints that used it were removed) - all Fuseki reads/writes for a project happen through the main app's backend.
+- There is no frontend in this module - the 3D/graph viewing UI lives in `modules/app/frontend`'s digital twin page.
