@@ -4,7 +4,9 @@ _The title should succintly explain the changes. For example, "Add search functi
 
 ## Description
 
-_Provide a brief description of the changes your request makes. Explains the problem it solves or the feature it adds to the project. Include any relevant issue number (e.g. #123)._
+_Provide a brief description of the changes your request makes. Explains the problem it solves or the feature it adds to the project._
+
+Closes #<issue number>
 
 ## Type of Change
 

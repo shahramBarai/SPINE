@@ -1,0 +1,86 @@
+name: Bug report
+description: Something in SPINE doesn't work as expected.
+labels: ["type:bug"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              > **This repository is public.** Do not include organization or building names, hostnames/IPs, credentials or API keys, sensor/station IDs, or personal data.
+
+    - type: textarea
+      id: description
+      attributes:
+          label: Description
+          description: A clear description of what the bug is.
+      validations:
+          required: true
+
+    - type: textarea
+      id: steps-to-reproduce
+      attributes:
+          label: Steps to reproduce
+          description: How can someone else make the bug happen?
+          placeholder: |
+              1. Go to '...'
+              2. Click on '...'
+              3. See error
+      validations:
+          required: true
+
+    - type: textarea
+      id: expected-behavior
+      attributes:
+          label: Expected behavior
+          description: What you expected to happen.
+      validations:
+          required: true
+
+    - type: textarea
+      id: actual-behavior
+      attributes:
+          label: Actual behavior
+          description: What actually happened.
+      validations:
+          required: true
+
+    - type: textarea
+      id: environment
+      attributes:
+          label: Environment
+          description: Anything about your setup that might matter.
+          placeholder: |
+              - OS: e.g. Ubuntu 24.04, macOS 15
+              - Browser: if applicable
+              - Node.js / Docker versions: if applicable
+              - How SPINE was started: e.g. pnpm dev, docker compose --profile full up
+      validations:
+          required: false
+
+    - type: textarea
+      id: logs
+      attributes:
+          label: Logs
+          description: Paste error messages or log output. Remove anything private first. Screenshots can go in the description above.
+          render: shell
+      validations:
+          required: false
+
+    - type: dropdown
+      id: area
+      attributes:
+          label: Area
+          description: Which part of SPINE does this touch? Pick any that apply.
+          multiple: true
+          options:
+              - frontend
+              - backend
+              - ingress
+              - messaging
+              - processing
+              - storage
+              - modeling
+              - egress
+              - infra
+              - not sure
+      validations:
+          required: false

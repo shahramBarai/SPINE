@@ -1,0 +1,41 @@
+name: Epic
+description: A larger goal split into several tasks. Intended for maintainers.
+labels: ["epic"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              > **This repository is public.** Do not include organization or building names, hostnames/IPs, credentials or API keys, sensor/station IDs, or personal data.
+
+    - type: textarea
+      id: why
+      attributes:
+          label: Why
+          description: The problem or opportunity this epic addresses.
+      validations:
+          required: true
+
+    - type: textarea
+      id: definition-of-done
+      attributes:
+          label: Definition of done
+          description: What has to be true for this epic to be closed?
+      validations:
+          required: true
+
+    - type: textarea
+      id: out-of-scope
+      attributes:
+          label: Out of scope
+          description: What this epic deliberately does not cover.
+      validations:
+          required: false
+
+    - type: textarea
+      id: planned-sub-issues
+      attributes:
+          label: Planned sub-issues
+          description: A rough list of tasks. Once each task exists, link it to this epic as a GitHub sub-issue.
+          value: "- [ ] "
+      validations:
+          required: false

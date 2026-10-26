@@ -1,0 +1,60 @@
+name: Task
+description: A well-scoped piece of work - a feature, refactor, docs or research.
+body:
+    - type: markdown
+      attributes:
+          value: |
+              > **This repository is public.** Do not include organization or building names, hostnames/IPs, credentials or API keys, sensor/station IDs, or personal data.
+
+    - type: textarea
+      id: context
+      attributes:
+          label: Context
+          description: Why does this matter? Link the parent epic if there is one.
+      validations:
+          required: true
+
+    - type: textarea
+      id: goal
+      attributes:
+          label: Goal
+          description: What should be true when this is done?
+      validations:
+          required: true
+
+    - type: textarea
+      id: acceptance-criteria
+      attributes:
+          label: Acceptance criteria
+          description: A checklist a reviewer can tick off.
+          value: "- [ ] "
+      validations:
+          required: true
+
+    - type: textarea
+      id: pointers
+      attributes:
+          label: Pointers
+          description: Relevant files, folders, docs or related issues - anything that helps someone get started.
+      validations:
+          required: false
+
+    - type: dropdown
+      id: area
+      attributes:
+          label: Area
+          description: Which part of SPINE does this touch? Pick any that apply.
+          multiple: true
+          options:
+              - frontend
+              - backend
+              - ingress
+              - messaging
+              - processing
+              - storage
+              - modeling
+              - egress
+              - infra
+              - not sure
+      validations:
+          required: false
