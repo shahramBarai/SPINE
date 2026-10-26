@@ -124,7 +124,7 @@ Your pull request should include:
 
 When reporting a bug, please:
 
-1. **Use our bug report template** [(Bug Report Template)](../../.github/bug_report.md)
+1. **Open an issue with the Bug report form** - click **New issue** on GitHub and choose **Bug report**
 2. **Provide a clear description** of the issue
 3. **Include steps to reproduce** the problem
 4. **Share your environment details** (OS, Node version, etc.)
@@ -134,7 +134,7 @@ When reporting a bug, please:
 
 For new feature ideas:
 
-1. **Use our feature request template** [(Feature Request Template)](../../.github/feature_request.md)
+1. **Open an issue with the Task form** - click **New issue** on GitHub and choose **Task**
 2. **Describe the problem** you're trying to solve
 3. **Explain your proposed solution**
 4. **Consider alternatives** you've thought about
